@@ -249,6 +249,11 @@ The owner sets this list; nothing below is promised until it's here.
   run?" asks GitHub). A Mac build that failed, or started and was cancelled, still publishes
   nothing. On a Mac, the update check offers only releases that have the disk image
   (`updates.up_to_one_with`).
+- **The battery runs every night** (owner, 23 Nov: "add a nightly battery test that runs at
+  12am"). .github/workflows/nightly-battery.yml runs tests/battery_random.py on main at 05:00
+  UTC (midnight EST), 2,000 steps per run with seeds new each night from the date: three runs
+  on Linux (one tagged), one on Windows, one on macOS. A failure goes into one open issue
+  labeled "battery", with the seed and step: a known bug, fixed like any other.
 - **No slop** (owner, 13 Nov: "please add a search for slop in future testing"; what AI tools
   leave behind): `tools/slop_check.py`, its hard rules in every build (tests/test_slop.py), its
   soft report read before each release (see AGENTS.md).

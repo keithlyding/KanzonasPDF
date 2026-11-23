@@ -1,0 +1,152 @@
+name: Nightly battery
+
+# Every night: the random editing battery (tests/battery_random.py) on main, 2,000 steps per
+# run, with seeds new each night (from the date: 2026112401 to 2026112405 on 24 Nov 2026), so
+# each night tries edits no build has tried. The builds run only its short version (in the
+# unit tests), and main skips the tests its pull request already passed (the owner, 23 Nov
+# 2026). Three runs on Linux (one on a tagged document), one on Windows, one on macOS. A
+# failure goes into one open issue labeled "battery", with the seed and step: rerun it with
+#   QT_QPA_PLATFORM=offscreen python tests/battery_random.py OUT --ops 2000 --seed SEED
+# (and --tagged when the issue says so). The run's output folder is kept for 14 days.
+on:
+  schedule:
+    - cron: "0 5 * * *"           # 05:00 UTC: midnight Eastern (EST; 1 AM in summer time)
+  workflow_dispatch:
+    inputs:
+      seed:
+        description: "First seed (empty: from today's date)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  battery:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {os: ubuntu-22.04, n: 1, flags: ""}
+          - {os: ubuntu-22.04, n: 2, flags: ""}
+          - {os: ubuntu-22.04, n: 3, flags: "--tagged"}
+          - {os: windows-latest, n: 4, flags: ""}
+          - {os: macos-15, n: 5, flags: ""}
+    name: battery ${{ matrix.n }} (${{ matrix.os }}${{ matrix.flags && ', tagged' || '' }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 120
+    defaults:
+      run:
+        shell: bash
+    env:
+      QT_QPA_PLATFORM: offscreen
+      PYTHONUTF8: "1"
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: System libraries (Linux; Qt's)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q --no-install-recommends \
+            libxcb-cursor0 libxkbcommon-x11-0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 \
+            libxcb-randr0 libxcb-render-util0 libxcb-shape0 libxcb-xinerama0 libxcb-xkb1 \
+            libegl1 libgl1 libopengl0 libdbus-1-3 libfontconfig1 libgtk-3-0 libcups2 libpulse0
+
+      - name: Install dependencies
+        run: |
+          # (wheels only on macOS, as its build does; one OpenCV, the headless one pinned in
+          # constraints.txt, as every build does)
+          only=""; [ "$RUNNER_OS" = macOS ] && only="--only-binary :all:"
+          python -m pip install $only -r requirements.txt -c constraints.txt
+          v=$(sed -n 's/^opencv-python-headless==\([0-9.]*\).*/\1/p' constraints.txt)
+          test -n "$v"
+          python -m pip uninstall -y opencv-python opencv-python-headless
+          python -m pip install --no-deps "opencv-python-headless==$v"
+
+      - name: Seed
+        id: seed
+        env:
+          FIRST: ${{ inputs.seed }}
+        run: |
+          first="${FIRST:-$(date -u +%Y%m%d)00}"
+          echo "seed=$((first + ${{ matrix.n }}))" >> "$GITHUB_OUTPUT"
+
+      - name: Random editing battery (seed ${{ steps.seed.outputs.seed }})
+        run: |
+          python tests/battery_random.py battery-out --ops 2000 \
+            --seed ${{ steps.seed.outputs.seed }} ${{ matrix.flags }}
+
+      - name: What failed (for the issue)
+        if: failure()
+        run: |
+          mkdir -p summary
+          {
+            echo "### ${{ matrix.os }}, seed ${{ steps.seed.outputs.seed }} ${{ matrix.flags }}"
+            echo
+            echo '```'
+            log=battery-out/battery_random.log
+            if grep -q '^FAIL' "$log" 2>/dev/null; then
+              grep -A12 '^FAIL' "$log" | head -80
+            elif [ -f "$log" ]; then
+              tail -40 "$log"           # (stopped without a FAIL line: a crash or the time limit)
+            else
+              echo "(no log: the battery didn't start; see the run)"
+            fi
+            echo '```'
+            echo
+            echo "Rerun: \`QT_QPA_PLATFORM=offscreen python tests/battery_random.py OUT --ops 2000 --seed ${{ steps.seed.outputs.seed }} ${{ matrix.flags }}\`"
+          } > "summary/battery-${{ matrix.n }}.md"
+
+      - uses: actions/upload-artifact@v6
+        if: failure()
+        with:
+          name: battery-${{ matrix.n }}-seed-${{ steps.seed.outputs.seed }}
+          path: battery-out
+          retention-days: 14
+          if-no-files-found: ignore
+
+      - uses: actions/upload-artifact@v6
+        if: failure()
+        with:
+          name: summary-${{ matrix.n }}
+          path: summary
+          if-no-files-found: ignore
+
+  # one open issue labeled "battery": made at the first failure, commented on at the next ones
+  report:
+    needs: battery
+    if: failure()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/download-artifact@v6
+        with:
+          pattern: summary-*
+          merge-multiple: true
+          path: summary
+
+      - name: Report in an issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          {
+            echo "Nightly battery on main ($(date -u +%F), ${GITHUB_SHA:0:7}) failed: $RUN"
+            echo
+            cat summary/*.md 2>/dev/null || echo "(no summary: see the run)"
+          } > body.md
+          gh label create battery --color D93F0B --description "Nightly random editing battery" 2>/dev/null || true
+          n=$(gh issue list --label battery --state open --search "Nightly battery in:title" --json number --jq '.[0].number')
+          if [ -n "$n" ]; then
+            gh issue comment "$n" --body-file body.md
+          else
+            gh issue create --title "Nightly battery: failures to fix" --label battery --body-file body.md
+          fi
