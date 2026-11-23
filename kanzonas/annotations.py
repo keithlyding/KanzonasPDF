@@ -105,17 +105,28 @@ DEFAULTS = {
     "opencloud": {"stroke": "#d00000", "width": 1.5, "opacity": 1.0},
     "callout": {"text_color": "#000000", "stroke": "#d00000", "fill": "#ffffd0", "width": 1.0,
                 "fontsize": 11, "head": "open", "opacity": 1.0, "fit": True},
-    "m_length": {"stroke": "#d00000", "width": 1.0, "fontsize": 9, "opacity": 1.0},
+    # waste: a waste or extra percent the takeoff adds (takeoff.with_waste).
+    # height: a wall's (or any vertical face's), in the page's unit; 0 for none (measure.py:
+    # the label shows length x height too, the summary and the takeoff a Wall area)
+    "m_length": {"stroke": "#d00000", "width": 1.0, "fontsize": 9, "opacity": 1.0,
+                 "height": 0.0, "waste": 0.0},
     # a dimension (dimensions.py): its arrowheads are one of dimensions.HEADS
     "m_dim": {"stroke": "#d00000", "width": 1.0, "fontsize": 9, "head": "closed",
               "opacity": 1.0},
-    "m_poly": {"stroke": "#d00000", "width": 1.0, "fontsize": 9, "opacity": 1.0},
-    "m_area": {"stroke": "#d00000", "fill": None, "width": 1.0, "fontsize": 9, "opacity": 1.0},
+    # drops: vertical lengths (drops, rises) at its points, [[point number, meters]]: in its
+    # total (measure.drops_m)
+    "m_poly": {"stroke": "#d00000", "width": 1.0, "fontsize": 9, "opacity": 1.0,
+               "height": 0.0, "drops": [], "waste": 0.0},
+    # slope: a roof's pitch, "6:12" (rise to run) or "30°" ("" for none): its area is
+    # the sloped one (measure.slope_factor)
+    "m_area": {"stroke": "#d00000", "fill": None, "width": 1.0, "fontsize": 9, "opacity": 1.0,
+               "waste": 0.0, "slope": ""},
     "m_angle": {"stroke": "#d00000", "width": 1.0, "fontsize": 9, "opacity": 1.0},
     "m_radius": {"stroke": "#d00000", "width": 1.0, "fontsize": 9, "opacity": 1.0},
-    "m_perimeter": {"stroke": "#d00000", "fill": None, "width": 1.0, "fontsize": 9, "opacity": 1.0},
+    "m_perimeter": {"stroke": "#d00000", "fill": None, "width": 1.0, "fontsize": 9, "opacity": 1.0,
+                    "waste": 0.0},
     "m_volume": {"stroke": "#d00000", "fill": None, "width": 1.0, "fontsize": 9, "depth": 1.0,
-                 "opacity": 1.0},
+                 "opacity": 1.0, "waste": 0.0},
     "m_count": {"stroke": "#0050ff", "fontsize": 9, "group": "Count 1", "opacity": 1.0,
                 "order": True},
     # a dot (dots.py): filled or outlined, its number and/or its text beside it ("side") or
@@ -342,6 +353,61 @@ def set_author(name):
 
 
 # ---- read / write ----------------------------------------------------------------
+def _outside_callout(annot):
+    """(text box, [arrow tip]) of a FreeText callout made elsewhere, from its leader (/CL,
+    PDF coordinates) and the inset of its text box in its rect (/RD); None for a plain text
+    box. The four /RD numbers are read the way that puts the leader's last point on the box's
+    edge (the PDF standard says left, top, right, bottom; MuPDF writes left, bottom, right,
+    top)."""
+    doc = annot.parent.parent
+    # (a callout says so, /IT /FreeTextCallout, as Bluebeam and Acrobat write it: PyMuPDF
+    # writes a /CL of no meaning on every text box)
+    if doc.xref_get_key(annot.xref, "IT")[1] != "/FreeTextCallout":
+        return None
+    try:
+        typ, cl = doc.xref_get_key(annot.xref, "CL")
+        if typ != "array":
+            return None
+        nums = [float(t) for t in cl.strip("[]").split()]
+    except (ValueError, RuntimeError):
+        return None
+    if len(nums) < 4:
+        return None
+    r = pymupdf.Rect(annot.rect)
+    # PDF coordinates to the page's (y down, from the page's top left corner): worked out
+    # from the annotation's own /Rect as written and as read
+    try:
+        raw = [float(t) for t in doc.xref_get_key(annot.xref, "Rect")[1].strip("[]").split()]
+    except (ValueError, RuntimeError):
+        return None
+    if len(raw) != 4:
+        return None
+    dx, top = r.x0 - min(raw[0], raw[2]), r.y0 + max(raw[1], raw[3])
+    pts = [pymupdf.Point(nums[i] + dx, top - nums[i + 1]) for i in range(0, len(nums) - 1, 2)]
+    insets = (0.0, 0.0, 0.0, 0.0)
+    try:
+        typ, rd = doc.xref_get_key(annot.xref, "RD")
+        if typ == "array":
+            got = [float(t) for t in rd.strip("[]").split()]
+            if len(got) == 4:
+                insets = got
+    except (ValueError, RuntimeError):
+        pass                            # (no inset: the text box is the whole rect)
+    left, second, right, fourth = insets
+    boxes = [pymupdf.Rect(r.x0 + left, r.y0 + second, r.x1 - right, r.y1 - fourth),
+             pymupdf.Rect(r.x0 + left, r.y0 + fourth, r.x1 - right, r.y1 - second)]
+    end = pts[-1]
+
+    def off_edge(b):
+        dx = max(b.x0 - end.x, 0, end.x - b.x1)
+        dy = max(b.y0 - end.y, 0, end.y - b.y1)
+        inside = min(abs(end.x - b.x0), abs(end.x - b.x1), abs(end.y - b.y0),
+                     abs(end.y - b.y1)) if b.contains(end) else 0
+        return dx + dy + inside
+    box = min((b for b in boxes if not b.is_empty), key=off_edge, default=r)
+    return box, [pts[0]]
+
+
 def read(annot):
     """Annotation -> model, or None for annotation types the app doesn't edit."""
     kind = _TYPE_KIND.get(annot.type[0])
@@ -357,6 +423,15 @@ def read(annot):
         stored = {}
     if kind == "line" and annot.line_ends and annot.line_ends[1] != pymupdf.PDF_ANNOT_LE_NONE:
         kind = "arrow"
+    outside_callout = None
+    if kind == "textbox" and "kind" not in stored:
+        # a callout made in another program (Bluebeam, Acrobat: a FreeText with a leader, /CL):
+        # read as one, its arrow where its leader points (read as a text box, the box took
+        # in the leader, and a change of its text or box wrote the leader to the page's
+        # corner: the owner, 23 Nov, "their arrows moved to some random location")
+        outside_callout = _outside_callout(annot)
+        if outside_callout is not None:
+            kind = "callout"
     kind = stored.get("kind", kind)
     if kind not in DEFAULTS:
         return None
@@ -447,6 +522,8 @@ def read(annot):
         model["n"] = geom.get("n", 1)
     elif kind == "dot":
         model["points"] = [pymupdf.Point(geom.get("at", annot.rect.tl + (3, 3)))]
+    elif kind == "callout" and outside_callout is not None and not geom:
+        model["rect"], model["points"] = outside_callout
     elif kind == "callout":
         model["rect"] = pymupdf.Rect(geom.get("box", annot.rect))
         model["points"] = [pymupdf.Point(geom.get("target", annot.rect.bl))]
@@ -888,6 +965,14 @@ def write(page, model):
             anchor, lab_angle = measure.label_anchor(kind, model["points"], page)
         measure.add_label(page, a, label_text, anchor, float(p.get("fontsize", 9)),
                           stroke or (0, 0, 0), lab_angle)
+        if kind == "m_poly":
+            # each drop or rise named at its point (measure.drops_m)
+            unit = measure.get_scale(page)[1]
+            for k, metres in measure.drops_m(p, len(model["points"])):
+                q = model["points"][k]
+                measure.add_label(page, a, tr("Drop {length}").format(
+                    length=measure.fmt_length(metres, unit)), pymupdf.Point(q.x, q.y - 10),
+                    float(p.get("fontsize", 9)), stroke or (0, 0, 0), 0.0)
     if kind == "dot":
         from . import dots
         dots.draw(page, a, model)

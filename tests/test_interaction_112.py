@@ -30,7 +30,7 @@ from PySide6.QtWidgets import QApplication  # noqa: E402
 
 APP = QApplication.instance() or QApplication([])
 
-from kanzonas import annotations as A  # noqa: E402
+from kanzonas import annotations as A, text_edit  # noqa: E402
 
 P = pymupdf.Point
 R = pymupdf.Rect
@@ -192,6 +192,31 @@ class TextOverText(Window):
         pump()
         b = {x[4].strip(): x[1] for x in v.doc[0].get_text("blocks")}
         self.assertAlmostEqual(b["Another line, small"], 240 - 8 * 1.07, delta=1.5)
+
+
+    def test_a_line_and_a_markup_moved_onto_another_line_stay_selected(self):
+        # (a markup selected with the text: the arrow keys move both as one step, and the
+        # markup's half dropped the page's objects as read before; the text, by then on
+        # another line that the page reads with it as one paragraph, wasn't found again and
+        # was left unselected after the first press. Random battery, seed 12, tagged)
+        def build(pg):
+            pg.insert_text((100, 200), "Page 2 Contractor agreed", fontsize=11)
+            pg.insert_text((100, 228), "Second line of text here", fontsize=11)
+        w, v = self.open(build)
+        w.set_tool("editobjects")
+        pump()
+        x = v._create(0, {"kind": "rect", "rect": R(300, 300, 340, 340), "text": "",
+                          "props": dict(A.DEFAULTS["rect"])})
+        text = next(it for it in v.text_objects(0)
+                    if "Contractor" in text_edit.line_text(it["lines"][0][1]))
+        v._set_selection(0, [x])
+        v.select_objects(0, [text])
+        for step in (10, 10, 1, 1):
+            self.assertIsNotNone(v.obj_sel)             # (never unselected mid-move)
+            self.assertTrue(v.nudge(0, 1, step))
+        self.assertEqual([it["kind"] for it in v.obj_sel[1]], ["text"])
+        self.assertEqual([text_edit.line_text(ln) for _r, ln in v.obj_sel[1][0]["lines"]],
+                         ["Page 2 Contractor agreed"])
 
 
 class AngledAndRefused(Window):

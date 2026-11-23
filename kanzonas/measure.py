@@ -6,6 +6,7 @@ moving a vertex or changing the scale updates the number.
 """
 
 import math
+import re
 from fractions import Fraction
 
 import pymupdf
@@ -234,6 +235,71 @@ def depth_m(props, unit):
         return UNITS[base]
 
 
+_SLOPE_RATIO = re.compile(r"\s*(\d+(?:\.\d+)?)\s*(?::|/|in)\s*(\d+(?:\.\d+)?)\s*")
+_SLOPE_DEG = re.compile(r"\s*(\d+(?:\.\d+)?)\s*(?:\u00b0|deg(?:rees?)?)\s*", re.I)
+
+
+def slope_factor(text):
+    """How much bigger a roof's sloped area is than its plan area, for a pitch typed as
+    "6:12" (or 6/12, 6 in 12: rise to run) or "30\u00b0" (or 30 deg): 1 / cos(its angle), and
+    its angle in degrees. (1.0, 0.0) for none or anything else; at most 80 degrees."""
+    t = (text or "").strip().replace(",", ".")
+    if not t:
+        return 1.0, 0.0
+    m = _SLOPE_RATIO.fullmatch(t)
+    if m:
+        rise, run = float(m.group(1)), float(m.group(2))
+        if run <= 0:
+            return 1.0, 0.0
+        ang = math.degrees(math.atan2(rise, run))
+    else:
+        m = _SLOPE_DEG.fullmatch(t)
+        if not m:
+            return 1.0, 0.0
+        ang = float(m.group(1))
+    if not 0 < ang <= 80:
+        return 1.0, 0.0
+    return 1.0 / math.cos(math.radians(ang)), ang
+
+
+def drops_m(props, n=None):
+    """A Polylength's drops and rises, [(point number, meters)] (the vertical runs at its
+    points that the plan doesn't show: conduit, wire, pipe), sorted; those past its n points
+    (when n is given) and any that aren't numbers left out."""
+    out = []
+    for d in (props or {}).get("drops") or ():
+        try:
+            k, metres = int(d[0]), float(d[1])
+        except (TypeError, ValueError, IndexError):
+            continue
+        if metres > 0 and math.isfinite(metres) and k >= 0 and (n is None or k < n):
+            out.append((k, metres))
+    return sorted(out)
+
+
+def height_m(props, unit):
+    """A Length's or Polylength's height (typed in the page's unit; feet for feet and
+    inches) in meters; 0 when it has none."""
+    base = "ft" if unit == "ft-in" else unit
+    try:
+        return max(0.0, float((props or {}).get("height") or 0.0)) * UNITS[base]
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def wall_area(kind, points, page, props):
+    """(the wall area of a Length or Polylength with a height, its unit), in display units
+    (square feet for feet and inches), or None when it has no height."""
+    if kind not in ("m_length", "m_poly"):
+        return None
+    f, unit, _l, _ok = get_scale(page)
+    h = height_m(props, unit)
+    if h <= 0:
+        return None
+    base = "ft" if unit == "ft-in" else unit
+    return length(points) * f * h / UNITS[base] ** 2, "sq " + base
+
+
 def _qpath(points):
     from PySide6.QtCore import QPointF
     from PySide6.QtGui import QPainterPath, QPolygonF
@@ -272,12 +338,32 @@ def measure_text(kind, points, page, group="", props=None, holes=None):
     value is the net one, and a line under it says what was taken out."""
     f, unit, _label, _ok = get_scale(page)
     if kind in ("m_length", "m_poly"):
-        return fmt_length(length(points) * f, unit)
+        text = fmt_length(length(points) * f, unit)
+        drops = drops_m(props, len(points)) if kind == "m_poly" else []
+        if drops:
+            # (its total with the vertical runs, and what they add)
+            down = sum(m for _k, m in drops)
+            text = fmt_length(length(points) * f + down, unit) + "\n" + (
+                tr("including 1 drop of {length}") if len(drops) == 1 else
+                tr("including {n} drops, {length}")).format(n=len(drops),
+                                                            length=fmt_length(down, unit))
+        h = height_m(props, unit)
+        if h > 0:
+            # (a wall's: for drywall, paint, insulation, masonry)
+            text += "\n" + tr("Wall area {area}").format(
+                area=fmt_area(length(points) * f * h, unit))
+        return text
     if kind == "m_dim":                 # (between its two measured points)
         return fmt_length(length(points[:2]) * f, unit)
     holes = [h for h in (holes or ()) if len(h) >= 3]
     if kind == "m_area":
-        a = fmt_area(net_area(points, holes) * f * f, unit)
+        plan = net_area(points, holes) * f * f
+        k, _ang = slope_factor((props or {}).get("slope"))
+        a = fmt_area(plan * k, unit)
+        if k != 1.0:
+            # (a roof's: its sloped area, and the plan area it's worked out from)
+            a = tr("Sloped {area}").format(area=a) + "\n" + tr("Plan {area} at {slope}").format(
+                area=fmt_area(plan, unit), slope=(props or {}).get("slope", "").strip())
         per = fmt_length(length(points + points[:1]) * f, unit)
         return a + "\n" + tr("Perimeter {length}").format(length=per) + _cut_line(
             points, holes, f, unit)
@@ -317,11 +403,13 @@ def raw_values(kind, points, page, props=None, holes=None):
     f, unit, _l, _ok = get_scale(page)
     base = "ft" if unit == "ft-in" else unit
     if kind in ("m_length", "m_poly"):
-        return length(points) * f / UNITS[base], base
+        down = sum(m for _k, m in drops_m(props, len(points))) if kind == "m_poly" else 0.0
+        return (length(points) * f + down) / UNITS[base], base
     if kind == "m_dim":
         return length(points[:2]) * f / UNITS[base], base
     if kind == "m_area":
-        return net_area(points, holes) * f * f / UNITS[base] ** 2, "sq " + base
+        k, _ang = slope_factor((props or {}).get("slope"))     # (a roof's: its sloped area)
+        return net_area(points, holes) * f * f * k / UNITS[base] ** 2, "sq " + base
     if kind == "m_perimeter":
         return length(points + points[:1]) * f / UNITS[base], base
     if kind == "m_volume":

@@ -279,6 +279,11 @@ REFUSALS = (
     # Edit objects / Edit text on a page with redaction marks not applied: taking text out
     # of a page applies every redaction mark on it (text_edit.py)
     "Apply or remove the redaction marks on this page before",
+    # Mark as decorative on an object tagged in one sequence with other content (text, other
+    # objects): it can't become decoration alone without untagging the rest
+    # (accessibility.mark_artifacts; random battery, seed 41, once Auto-tag and a group had
+    # put a shape and words in one tag)
+    "A selected object is tagged together with other content",
 )
 
 
@@ -748,6 +753,7 @@ class Battery:
             (self.op_textbox, 3), (self.op_callout, 2), (self.op_note, 2), (self.op_stamp, 2),
             (self.op_dot, 2), (self.op_dot_options, 2),
             (self.op_measure, 2), (self.op_dimension, 3), (self.op_cutout, 3),
+            (self.op_drops, 2),
             (self.op_text_markup, 6),
             (self.op_attach, 1), (self.op_legend, 2), (self.op_legend_options, 2),
             (self.op_move, 6), (self.op_nudge, 3), (self.op_resize, 3), (self.op_props, 4),
@@ -920,6 +926,45 @@ class Battery:
                                  "cut-outs %.3f" % (i, net, gross, cut))
         return "edit"
 
+    def op_drops(self):
+        """Drops and rises on a Polylength (1.16.3, measure.drops_m): one drawn, or one already
+        there given a vertical length at one of its points, changed, or taken off. Its value
+        must be its plan length and its drops, read back from the file."""
+        from kanzonas import annotations as A, measure as M
+        v = self.v
+        have = [(i, x) for i in range(v.doc.page_count) for x in self.markups(i)
+                if self.kind(i, x) == "m_poly"]
+        if not have or self.rnd.random() < 0.3:
+            i = self.page()
+            v.apply_poly(i, "m_poly", [self.point(i, 40) for _ in range(self.rnd.randint(2, 5))])
+            return None
+        i, x = self.rnd.choice(have)
+        v.select_xref(i, x)
+        m = v.selected_model
+        if m is None or m["kind"] != "m_poly" or m.get("locked"):
+            v.clear_selection()
+            return "none"
+        k = self.rnd.randrange(len(m["points"]))
+        rev = v.revision
+        v.set_drop(i, x, k, self.rnd.choice([None, 0.3, 1.5, 3.05]))
+        v.clear_selection()
+        if v.revision == rev:
+            return "none"
+        page = v.doc[i]
+        for a in A.each_annot(page):
+            got = A.read(a)
+            if got and got["kind"] == "m_poly":
+                f, unit = M.get_scale(page)[:2]
+                base = "ft" if unit == "ft-in" else unit
+                want = (M.length(got["points"]) * f +
+                        sum(d for _k, d in M.drops_m(got["props"], len(got["points"])))) / \
+                    M.UNITS[base]
+                value = M.raw_values("m_poly", got["points"], page, got["props"])[0]
+                if abs(value - want) > 1e-6:
+                    raise Failed("page %d: a Polylength's total %.4f isn't its length and "
+                                 "drops %.4f" % (i, value, want))
+        return "edit"
+
     def op_dimension(self):
         """Dimensions (dimensions.py): one drawn (its two points and where its line goes, as
         the clicks give them to apply_poly), or one already there with a grip dragged (a
@@ -1067,7 +1112,8 @@ class Battery:
         v = self.v
         props = v.selected_model["props"]
         choices = [k for k in ("stroke", "fill", "width", "opacity", "fontsize", "text_color",
-                               "head_start", "head", "mid", "dash")
+                               "head_start", "head", "mid", "dash", "height", "depth",
+                               "waste", "slope")
                    if k in props]
         if not choices:
             v.clear_selection()
@@ -1084,7 +1130,14 @@ class Battery:
                  "head_start": self.rnd.choice(list(A.HEADS)),
                  "head": self.rnd.choice(heads),
                  "mid": self.rnd.choice(list(A.MIDS)),
-                 "dash": self.rnd.choice(list(A.DASHES))}[k]
+                 "dash": self.rnd.choice(list(A.DASHES)),
+                 # (1.16.3: a Length's or Polylength's height, its wall area; a Volume's depth)
+                 "height": self.rnd.choice([0.0, 2.5, 8.0, 12.0]),
+                 "depth": self.rnd.choice([0.5, 1.0, 3.0]),
+                 # (1.16.3: a measurement's waste or extra percent, for the takeoff)
+                 "waste": self.rnd.choice([0.0, 5.0, 12.5]),
+                 # (1.16.3: a roof Area's pitch)
+                 "slope": self.rnd.choice(["", "6:12", "4/12", "30\u00b0"])}[k]
         v.update_selected_props({k: value})
         v.clear_selection()
 

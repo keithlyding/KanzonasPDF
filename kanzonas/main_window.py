@@ -1941,6 +1941,7 @@ class MainWindow(QMainWindow):
         self.props.resetRequested.connect(self._reset_tool_defaults)
         self.props.countLayer.connect(self._count_layer_picked)
         self.props.newCountGroup.connect(self._new_count_group)
+        self.props.countSetup.connect(self._count_setup)
         self.props.renumberCount.connect(
             lambda g: self.view() is not None and self.view().renumber_count_group(g) and
             self._refresh_props())
@@ -2949,6 +2950,24 @@ class MainWindow(QMainWindow):
         else:
             v.count_layer = layer
         self._refresh_props()
+
+    def _count_setup(self, group):
+        """Properties > Quantities and waste... for a Count group (takeoff.group_setup)."""
+        from . import counts, measure_ui, takeoff
+        v = self.view()
+        if v is None or v.read_only:
+            return
+        group = (group or "").strip() or counts.DEFAULT_GROUP
+        items, waste = takeoff.group_setup(v.doc, group)
+        dlg = measure_ui.CountSetupDialog(self, group, items, waste)
+        if self.run_count_setup(dlg):
+            new_items, new_waste = dlg.values()
+            if (new_items, new_waste) != (items, waste):
+                v.set_count_setup(group, new_items, new_waste)
+
+    def run_count_setup(self, dlg):
+        """Show the dialog; True when OK was pressed. (Tests replace it.)"""
+        return dlg.exec() == dlg.DialogCode.Accepted
 
     def _new_count_group(self):
         """New count (the Count tool's Properties): the next group, "Count 2" and on, whose

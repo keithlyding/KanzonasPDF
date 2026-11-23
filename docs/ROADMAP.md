@@ -164,14 +164,14 @@ The owner sets this list; nothing below is promised until it's here.
   2. **Excel export of the takeoff, grouped** (1.16.2): the Measurement summary to .xlsx (openpyxl,
      lazily), grouped by sheet, by Space and by Count group or kind, with quantities, units
      and subtotals; CSV stays. The start of a bill of quantities.
-  3. **Wall area from a length**: a Height on Length and Polylength (as Volume's Depth),
+  3. **Wall area from a length** (1.16.3): a Height on Length and Polylength (as Volume's Depth),
      showing length x height as well (drywall, paint, insulation, masonry).
-  4. **Drops on runs**: vertical lengths (drops, rises) at chosen points of a Polylength,
+  4. **Drops on runs** (1.16.3): vertical lengths (drops, rises) at chosen points of a Polylength,
      counted in its total, shown on the markup and in the summary (conduit, wire, pipe).
-  5. **A quantity per count, and waste**: items per counted item with their own units ("each
+  5. **A quantity per count, and waste** (1.16.3): items per counted item with their own units ("each
      fixture = 2 boxes + 1 whip"), and a waste or extra percentage for a group or
      measurement; the summary and the Excel export show counts and resulting quantities.
-  6. **Slope for roof areas**: a pitch on an Area (6:12, or degrees) turning the plan area into
+  6. **Slope for roof areas** (1.16.3): a pitch on an Area (6:12, or degrees) turning the plan area into
      the sloped area.
   7. **Find similar symbols** (as Bluebeam's VisualSearch): one symbol picked, its matches
      found on the page or the whole set and placed as Count markers in a group, for the
@@ -234,6 +234,13 @@ The owner sets this list; nothing below is promised until it's here.
    Foundation application was declined as too new; see CODE_SIGNING_POLICY.md).
 
 ## Standing decisions
+- **A release can go out without the Mac version** (owner, 23 Nov: "We update this so often,
+  we can skip a build for Mac with no issues"). GitHub's Mac machines are sometimes all taken:
+  a macOS job that never got one is cancelled after 15 minutes without running a step, and the
+  release then goes out with Windows and Linux only (the publish job's "Did the Mac build
+  run?" asks GitHub). A Mac build that failed, or started and was cancelled, still publishes
+  nothing. On a Mac, the update check offers only releases that have the disk image
+  (`updates.up_to_one_with`).
 - **No slop** (owner, 13 Nov: "please add a search for slop in future testing"; what AI tools
   leave behind): `tools/slop_check.py`, its hard rules in every build (tests/test_slop.py), its
   soft report read before each release (see AGENTS.md).

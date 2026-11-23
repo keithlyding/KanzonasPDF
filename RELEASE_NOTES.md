@@ -9,6 +9,54 @@ Spanish translation under `## <version> (es)`. The Windows build fails without t
 translation under `## <version> (it)` is shown to Italian users (since 1.13); without one they
 see the English.
 
+## 1.16.3
+
+**New**
+- Wall area from a length: give a Length or Polylength measurement a Height in Properties, and it shows the wall area too (length × height), for drywall, paint, insulation or masonry. The Measurement summary and the Excel takeoff list it as a Wall area.
+- Crop pages: the box snaps to the page's corners and edges with Snap to page on (and to the grid and objects, as shapes do).
+- Print: the paper size is on the Print window (the printer's own sizes; Page setup is for the margins), and each document remembers what it was last printed with: printer, paper, copies, pages and the other settings.
+- Drops and rises on runs: right-click near a point of a Polylength measurement > Add drop or rise..., for conduit, wire and pipe runs. Its total includes the vertical runs the plan doesn't show; each drop is named at its point, and the Measurement summary, the Excel takeoff and legends count the total.
+- A quantity per count, and waste: for a Count group, Properties > Quantities and waste... sets what each counted item stands for (each fixture = 2 boxes + 1 whip, with their units) and a waste percent; lengths, areas and volumes have their own Waste / extra. The Measurement summary and the Excel takeoff show the counts, the resulting quantities and the quantities with waste.
+- Slope for roof areas: type a pitch (6:12, or 30°) in an Area measurement's Slope in Properties, and it shows, sums and exports the sloped area, for roofing and framing.
+
+**Fixed**
+- Callouts made in another program (Bluebeam, Acrobat): changing their text size or resizing their box sent their arrow to the corner of the page; they're now read as callouts and their arrows stay where they point.
+- The page's text moved together with a markup by the arrow keys stays selected when it reaches other text (it was unselected after the first press).
+- Properties for the page's own text show its strikethrough and underline also when other, smaller text crosses the same line (they read as missing).
+- Mac: when GitHub has no Mac free to build a version, it goes out without the Mac download; KanzonasPDF on a Mac tells you only about versions that have one.
+
+## 1.16.3 (es)
+
+**Novedades**
+- Área de muro desde una longitud: dé a una medición de Longitud o Longitud de polilínea una Altura en Propiedades, y muestra también el área del muro (longitud × altura), para paneles de yeso, pintura, aislamiento o mampostería. El Resumen de mediciones y la medición en Excel la muestran como Área de muro.
+- Recortar páginas: el cuadro se ajusta a las esquinas y bordes de la página con Ajustar a la página activado (y a la cuadrícula y los objetos, como las formas).
+- Imprimir: el tamaño del papel está en la ventana Imprimir (los tamaños de la impresora; Configurar página es para los márgenes), y cada documento recuerda con qué se imprimió la última vez: impresora, papel, copias, páginas y los demás ajustes.
+- Bajadas y subidas en recorridos: clic derecho cerca de un punto de una medición de Longitud de polilínea > Agregar bajada o subida..., para recorridos de tubo, cable y tubería. Su total incluye los tramos verticales que el plano no muestra; cada bajada se nombra en su punto, y el Resumen de mediciones, la medición en Excel y las leyendas cuentan el total.
+- Una cantidad por conteo, y desperdicio: para un grupo de Conteo, Propiedades > Cantidades y desperdicio... define lo que representa cada elemento contado (cada aparato = 2 cajas + 1 latiguillo, con sus unidades) y un porcentaje de desperdicio; las longitudes, áreas y volúmenes tienen su propio Desperdicio / extra. El Resumen de mediciones y la medición en Excel muestran los conteos, las cantidades resultantes y las cantidades con desperdicio.
+- Pendiente para áreas de cubierta: escriba una pendiente (6:12, o 30°) en la Pendiente de una medición de Área en Propiedades, y muestra, suma y exporta el área inclinada, para cubiertas y estructura.
+
+**Correcciones**
+- Llamadas hechas en otro programa (Bluebeam, Acrobat): cambiar el tamaño del texto o del cuadro mandaba su flecha a la esquina de la página; ahora se leen como llamadas y sus flechas se quedan donde apuntan.
+- El texto de la página movido junto con una marca con las flechas sigue seleccionado al llegar a otro texto (se deseleccionaba tras la primera pulsación).
+- Las Propiedades del texto de la página muestran el tachado y el subrayado también cuando otro texto, más pequeño, cruza la misma línea (antes aparecían como ausentes).
+- Mac: cuando GitHub no tiene un Mac libre para crear una versión, esta sale sin la descarga para Mac; KanzonasPDF en un Mac solo avisa de las versiones que la tienen.
+
+## 1.16.3 (it)
+
+**Novità**
+- Area della parete da una lunghezza: dai a una misura di Lunghezza o Lunghezza polilinea un'Altezza in Proprietà, e mostra anche l'area della parete (lunghezza × altezza), per cartongesso, pittura, isolamento o muratura. Il Riepilogo misure e il computo in Excel la elencano come Area parete.
+- Ritaglia pagine: il riquadro si aggancia agli angoli e ai bordi della pagina con Aggancia alla pagina attivo (e alla griglia e agli oggetti, come le forme).
+- Stampa: il formato della carta è nella finestra Stampa (i formati della stampante; Imposta pagina è per i margini), e ogni documento ricorda con cosa è stato stampato l'ultima volta: stampante, carta, copie, pagine e le altre impostazioni.
+- Discese e risalite sui percorsi: clic destro vicino a un punto di una misura di Lunghezza polilinea > Aggiungi discesa o risalita..., per percorsi di tubi, cavi e tubazioni. Il totale comprende i tratti verticali che la pianta non mostra; ogni discesa è indicata al suo punto, e il Riepilogo misure, il computo in Excel e le legende contano il totale.
+- Una quantità per conteggio, e sfrido: per un gruppo di Conteggio, Proprietà > Quantità e sfrido... imposta cosa rappresenta ogni elemento contato (ogni apparecchio = 2 scatole + 1 cavo, con le loro unità) e una percentuale di sfrido; lunghezze, aree e volumi hanno il proprio Sfrido / extra. Il Riepilogo misure e il computo in Excel mostrano i conteggi, le quantità risultanti e le quantità con lo sfrido.
+- Pendenza per le aree di copertura: digita una pendenza (6:12, o 30°) nella Pendenza di una misura di Area in Proprietà, e mostra, somma ed esporta l'area inclinata, per coperture e carpenteria.
+
+**Correzioni**
+- Richiami fatti in un altro programma (Bluebeam, Acrobat): cambiare la dimensione del testo o del riquadro mandava la freccia nell'angolo della pagina; ora sono letti come richiami e le frecce restano dove puntano.
+- Il testo della pagina spostato insieme a un'annotazione con i tasti freccia resta selezionato quando arriva su altro testo (veniva deselezionato dopo la prima pressione).
+- Le Proprietà del testo della pagina mostrano barrato e sottolineato anche quando altro testo, più piccolo, attraversa la stessa riga (prima risultavano assenti).
+- Mac: quando GitHub non ha un Mac libero per creare una versione, questa esce senza il download per Mac; KanzonasPDF su un Mac avvisa solo delle versioni che lo hanno.
+
 ## 1.16.2
 
 **New**

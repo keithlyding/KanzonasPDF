@@ -267,7 +267,9 @@ KanzonasPDF menu.
 
 **Updating:** KanzonasPDF tells you when a new version is out (Help > Check for updates...), but
 on a Mac it doesn't replace itself: download the new disk image, drag KanzonasPDF to
-Applications and choose **Replace**. Your settings are kept.
+Applications and choose **Replace**. Your settings are kept. Now and then a release has no Mac
+download (GitHub had no Mac free to build it on); on a Mac, KanzonasPDF tells you only about
+releases that have one.
 
 **Where your things are:** settings in `~/Library/Preferences/com.kanzonaspdf.KanzonasPDF.plist`;
 signatures, stamp pictures, your certificate and backups in

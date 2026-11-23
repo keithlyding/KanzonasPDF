@@ -135,10 +135,10 @@ class Workbook(unittest.TestCase):
         ws = self.wb["Items"]
         rows = cells(ws)
         self.assertEqual(rows[0], ["Sheet", "Space", "Type", "Group", "Subject", "Quantity",
-                                   "Unit"])
+                                   "Unit", "Waste %", "With waste"])
         self.assertEqual(len(rows) - 1, 7)
-        self.assertEqual(ws.auto_filter.ref, "A1:G8")
-        self.assertIn(["A-101 (Page 1)", "Kitchen", "Area", "", "", 15.0, "sq ft"], rows)
+        self.assertEqual(ws.auto_filter.ref, "A1:I8")
+        self.assertIn(["A-101 (Page 1)", "Kitchen", "Area", "", "", 15.0, "sq ft", "", ""], rows)
 
 
 class InTheDialog(unittest.TestCase):

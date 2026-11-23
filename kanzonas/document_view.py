@@ -5050,6 +5050,67 @@ class DocumentView(QScrollArea):
                 new.pop("holes")
         self.commit_model(index, xref, new)
 
+    # ---- a Count group's quantities per item and waste (takeoff.group_setup) ----------
+    def set_count_setup(self, group, items, waste):
+        """Give Count group its quantities per counted item ([(name, qty, unit)]) and waste
+        (percent), kept in the document (takeoff.set_group_setup); one undo step."""
+        from . import takeoff
+        return bool(self.modify(lambda: takeoff.set_group_setup(self.doc, group, items, waste),
+                                [], permission=pymupdf.PDF_PERM_ANNOTATE))
+
+    # ---- drops and rises on a Polylength (measure.drops_m) ----------------------------
+    def poly_point_at(self, index, xref, pt, tol=None):
+        """The number of the selected Polylength's point nearest pt (within tol page points,
+        12 pixels by default), or None."""
+        page = self.doc[index]          # (kept alive while its markup is read)
+        found = annotations.load_annots(page, [xref])
+        m = annotations.read(found[xref]) if xref in found else None
+        if not m or m["kind"] != "m_poly":
+            return None
+        tol = tol if tol is not None else 12.0 / max(self.zoom, 0.05)
+        best = min(range(len(m["points"])), key=lambda k: abs(m["points"][k] - pt),
+                   default=None)
+        if best is None or abs(m["points"][best] - pt) > tol:
+            return None
+        return best
+
+    def ask_drop(self, default):
+        """The length of a drop or rise, typed (meters), or None. (Tests replace it.)"""
+        from PySide6.QtWidgets import QInputDialog
+        from . import measure, measure_ui
+        unit = measure.get_scale(self.doc[self.selection[0]])[1] if self.selection else "ft"
+        text, ok = QInputDialog.getText(
+            self, tr("Drop or rise"), tr("Vertical length at this point (12'-6\", 3.5...):"),
+            text=default)
+        while ok:
+            try:
+                metres = measure_ui.parse_length(text, unit)
+                if metres > 0:
+                    return metres
+            except ValueError:
+                pass                    # (not a length: asked again, saying so)
+            text, ok = QInputDialog.getText(
+                self, tr("Drop or rise"), tr("Couldn't read that length. Try 12'-6\" or 3.5:"),
+                text=text)
+        return None
+
+    def set_drop(self, index, xref, point, metres):
+        """Give point number point of a Polylength a drop or rise of metres (None or 0: take
+        it off), counted in its total; one undo step."""
+        from . import measure
+        page = self.doc[index]
+        found = annotations.load_annots(page, [xref])
+        m = annotations.read(found[xref]) if xref in found else None
+        if not m or m["kind"] != "m_poly" or m.get("locked"):
+            return False
+        new = annotations.copy(m)
+        drops = [[k, d] for k, d in measure.drops_m(m["props"], len(m["points"])) if k != point]
+        if metres:
+            drops.append([int(point), float(metres)])
+        new["props"]["drops"] = sorted(drops)
+        self.commit_model(index, xref, new)
+        return True
+
     # ---- spaces (spaces.py) ----------------------------------------------------------
     def ask_space_name(self, default, title=None):
         """The name for a space (None: cancelled). (Tests replace it.)"""
@@ -6619,7 +6680,8 @@ class DocumentView(QScrollArea):
         base = annotations.DEFAULTS[tool]
         props = dict(annotations.tool_props(tool))
         for k, v in self.selected_model["props"].items():
-            if k in base and k != "rotation" and annotations._fits(base[k], v):
+            # (a Polylength's drops are where its own points are: not a style for the next)
+            if k in base and k not in ("rotation", "drops") and annotations._fits(base[k], v):
                 props[k] = v
         annotations.set_tool_props(tool, props)
         self.toolDefaultsChanged.emit(tool)
@@ -8406,14 +8468,20 @@ class DocumentView(QScrollArea):
 
     def _reselect_objects(self, index, items):
         """Select again the objects items (read before the page changed) as the page is read
-        now: shapes and pictures by their place in the drawing order, text by its spot."""
+        now: shapes and pictures by their place in the drawing order, text by its own lines
+        where they are (or by its spot)."""
         objs = self.content_objects(index)
         by_n = {it["n"]: it for it in (objs.items if objs else [])}
         texts = self.text_objects(index) if any(it["kind"] == "text" for it in items) else []
         again = []
-        for it in items:
+        for k, it in enumerate(items):
             if it["kind"] == "text":
-                found = _text_at(texts, it["rect"])
+                # (by its own lines, _text_again: text moved onto other text is read with it as
+                # one paragraph, and an item of just its own lines was selected. Looked for by
+                # its box, it was lost, or the other text came along: a markup moved with it
+                # by the arrow keys left it unselected after the first press, random battery,
+                # seed 12, tagged)
+                found = self._text_again(index, it, it["rect"], texts, k)
                 if found is not None and all(found is not t for t in again):
                     again.append(found)
             elif it["n"] in by_n:
@@ -12779,7 +12847,14 @@ class DocumentView(QScrollArea):
         # them, even one taken back. It then works on a copy (one more write, only then)
         journal = self._journal if self._journal is not None and self._journal.alive and \
             self._journal.doc is self.doc else None
-        keep_redo = journal is not None and any(isinstance(s, _JStep) for s in self._redo)
+        # Fonts cut down (subset_fonts) go on a copy too: cut down in the document, between
+        # edits, the change joined the journal's latest entry, which isn't the latest edit's
+        # when that edit has none of its own (it changed nothing the journal keeps: nothing,
+        # or only the document's info): undoing that edit left the fonts cut down, and the
+        # one before took them back to whole (random battery, seed 41). The document keeps
+        # its whole fonts; each save cuts them down in what it writes.
+        keep_redo = journal is not None and (
+            any(isinstance(s, _JStep) for s in self._redo) or self._fonts_added)
         real = self.doc
         if keep_redo:
             self.doc = self._open_snapshot(self._snapshot())

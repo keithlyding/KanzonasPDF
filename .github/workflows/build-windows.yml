@@ -677,7 +677,9 @@ jobs:
         env:
           QT_QPA_PLATFORM: offscreen
         run: |
-          python -X faulthandler -m unittest discover -s tests -p "test_*.py" -t .
+          # (--durations: the slowest tests named in the log; this job's tests have taken from
+          # 52 to 90 minutes since 1.15.20, 2.5 times Linux's, against a 120-minute limit)
+          python -X faulthandler -m unittest discover -s tests -p "test_*.py" -t . --durations 40
           # (macOS keeps settings for programs itself, where tests can't put them aside as on
           # Linux: what they left, and the files they left in the app's data folder, go before
           # the app is tested: a backup left there would be offered at the app's start)
@@ -801,17 +803,28 @@ jobs:
 
   # ---------------------------------------------------------------------------------------
   # Publishing, once every build and its tests have passed (a failed Windows, Linux or macOS
-  # build publishes nothing). A push to main with a version that has no release yet publishes a
+  # build publishes nothing). GitHub's Macs are sometimes all taken: a macOS job that never
+  # got one is cancelled after 15 minutes without running a step, and then the release goes
+  # out without the Mac version (the owner, 23 Nov 2026: releases are frequent, the next one
+  # has it); a macOS build that started and didn't finish publishes nothing. A push to main with a version that has no release yet publishes a
   # draft unless the repository variable AUTO_RELEASE is 'true' (then it is a real
   # release). Tag builds (refs/tags/v*) of a commit on main are always real releases. AUTO_RELEASE=false
   # skips publishing (create a release or tag v<version> by hand; that builds and
   # publishes). Builds of other branches don't run this job.
   publish:
     needs: [build, linux, macos]
-    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+    # (always(): without it a cancelled macOS job stops this one before "Did the Mac build
+    # run?" can tell a Mac never found from a build stopped halfway)
+    if: >-
+      always() &&
+      (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')) &&
+      needs.build.result == 'success' && needs.linux.result == 'success' &&
+      (needs.macos.result == 'success' || needs.macos.result == 'cancelled')
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      # (to read this run's jobs: did the macOS one ever get a Mac?)
+      actions: read
       # (the build-provenance attestations: a short-lived OIDC token to sign them, and the
       # right to store them with the repository; only this job has either)
       id-token: write
@@ -821,12 +834,56 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      - name: Did the Mac build run?
+        id: mac
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MAC_RESULT: ${{ needs.macos.result }}
+        run: |
+          if [ "$MAC_RESULT" = success ]; then
+            built=true
+          else
+            # the latest attempt of each job of this run: the macOS one with no runner and
+            # no step never started
+            job=$(gh api "repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/jobs?filter=latest&per_page=100" \
+              --jq '[.jobs[] | select(.name == "macos (arm64)") | {runner: (.runner_id // 0), steps: (.steps | length)}]')
+            echo "macOS job ($MAC_RESULT): $job"
+            if [ "$(echo "$job" | jq 'length == 1 and .[0].runner == 0 and .[0].steps == 0')" = true ]; then
+              built=false
+              echo "::warning::GitHub had no Mac free for this build: the release goes out without the Mac version"
+            else
+              echo "::error::The macOS build started and didn't finish ($MAC_RESULT): nothing is published"
+              exit 1
+            fi
+          fi
+          echo "built=$built" >> "$GITHUB_OUTPUT"
+          {
+            echo "text<<KZMAC"
+            if [ "$built" = true ]; then
+              cat <<'TEXT'
+          **Mac with Apple silicon (M1 or newer), macOS 14.4 (Sonoma) or newer:** download `KanzonasPDF-macos-arm64.dmg`,
+          open it and drag KanzonasPDF to Applications. (There's no version for Intel Macs yet.)
+          It isn't signed by Apple yet, so the first time macOS stops it ("Apple could not verify..."): click Done, then
+          open System Settings > Privacy & Security, click **Open Anyway** next to "KanzonasPDF was blocked" and confirm.
+          You do this once for each new version. To update, drag the new one to Applications and choose Replace.
+          TEXT
+            else
+              cat <<'TEXT'
+          **Mac:** this version has no Mac download (GitHub had no Mac free to build it on). Keep the version you have:
+          the next release has one again, and KanzonasPDF on a Mac only tells you about releases that have it.
+          TEXT
+            fi
+            echo "KZMAC"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Same version on Windows, Linux and macOS
         run: |
           echo "Windows ${{ needs.build.outputs.version }}, Linux ${{ needs.linux.outputs.version }}, macOS ${{ needs.macos.outputs.version }}"
           test -n "$VERSION"
           test "$VERSION" = "${{ needs.linux.outputs.version }}"
-          test "$VERSION" = "${{ needs.macos.outputs.version }}"
+          if [ "${{ steps.mac.outputs.built }}" = true ]; then
+            test "$VERSION" = "${{ needs.macos.outputs.version }}"
+          fi
 
       - name: Is this version already released?
         id: rel
@@ -859,6 +916,7 @@ jobs:
           path: release
 
       - uses: actions/download-artifact@v6
+        if: steps.mac.outputs.built == 'true'
         with:
           name: KanzonasPDF-v${{ needs.macos.outputs.version }}-macos-arm64
           path: release
@@ -869,8 +927,10 @@ jobs:
         run: |
           mv "dist-installer/KanzonasPDF-v$VERSION-setup.exe" .
           chmod +x KanzonasPDF-x86_64.AppImage
+          mac=""
+          if [ "${{ steps.mac.outputs.built }}" = true ]; then mac=KanzonasPDF-macos-arm64.dmg; fi
           sha256sum "KanzonasPDF-v$VERSION-setup.exe" KanzonasPDF-portable.zip KanzonasPDF-windows.zip \
-            KanzonasPDF-x86_64.AppImage KanzonasPDF-macos-arm64.dmg \
+            KanzonasPDF-x86_64.AppImage $mac \
             winget-manifests.zip > ../SHA256SUMS.txt
           cat ../SHA256SUMS.txt
           { echo "text<<KZSUMS"; cat ../SHA256SUMS.txt; echo "KZSUMS"; } >> "$GITHUB_OUTPUT"
@@ -887,6 +947,8 @@ jobs:
           echo "Published: $(wc -l < published.txt) releases, the newest $(sort -V published.txt | tail -1)"
           python3 tools/release_notes.py "$VERSION" --published published.txt --github-output
 
+      # (the disk image is named by a pattern, ".dm[g]": a path without one must be there, a
+      # pattern may find nothing, when the release goes out without the Mac version)
       # A signed record, for each file the release uploads, that it was built by this
       # workflow from this commit: anyone can check a download with
       # `gh attestation verify <file> --owner keithlyding`. Under the same condition as the
@@ -905,7 +967,7 @@ jobs:
             release/KanzonasPDF-portable.zip
             release/KanzonasPDF-windows.zip
             release/KanzonasPDF-x86_64.AppImage
-            release/KanzonasPDF-macos-arm64.dmg
+            release/KanzonasPDF-macos-arm64.dm[g]
             release/winget-manifests.zip
 
       - name: Publish release
@@ -929,11 +991,7 @@ jobs:
             **Linux (64-bit PC; Ubuntu 22.04, Debian 12, Fedora 36 or newer):** download `KanzonasPDF-x86_64.AppImage`,
             make it executable (`chmod +x KanzonasPDF-x86_64.AppImage`, or Properties > Allow executing) and run it.
             To update, replace the file with the new one.
-            **Mac with Apple silicon (M1 or newer), macOS 14.4 (Sonoma) or newer:** download `KanzonasPDF-macos-arm64.dmg`,
-            open it and drag KanzonasPDF to Applications. (There's no version for Intel Macs yet.)
-            It isn't signed by Apple yet, so the first time macOS stops it ("Apple could not verify..."): click Done, then
-            open System Settings > Privacy & Security, click **Open Anyway** next to "KanzonasPDF was blocked" and confirm.
-            You do this once for each new version. To update, drag the new one to Applications and choose Replace.
+            ${{ steps.mac.outputs.text }}
 
             ${{ steps.notes.outputs.notes }}
 
@@ -952,5 +1010,5 @@ jobs:
             release/KanzonasPDF-portable.zip
             release/KanzonasPDF-windows.zip
             release/KanzonasPDF-x86_64.AppImage
-            release/KanzonasPDF-macos-arm64.dmg
+            release/KanzonasPDF-macos-arm64.dm[g]
             release/winget-manifests.zip

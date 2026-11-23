@@ -40,7 +40,7 @@ las líneas se imprimen exactamente tan finas como son), las <b>Marcas de corte<
 <b>Dejarlas fuera</b> (solo se imprime la página, como en cualquier programa de PDF), <b>En la misma hoja</b> (la hoja
 abarca la página y lo que está junto a ella, así que la página se imprime más pequeña) o <b>En una hoja extra después de
 la página</b> (la página se imprime a su tamaño, así que un plano conserva su escala, y la hoja siguiente la muestra
-tenue con lo que está junto a ella en su lugar). <b>Configurar página…</b> define el tamaño del papel y los márgenes. Use las flechas
+tenue con lo que está junto a ella en su lugar). <b>Papel</b> muestra los tamaños de papel de la impresora (sin impresora, los tamaños de oficina y los de planos ANSI y Arquitectura); <b>Configurar página…</b> define los márgenes. Cada documento recuerda con qué se imprimió la última vez (impresora, papel, copias, páginas y lo demás) y abre la ventana Imprimir con ello. Use las flechas
 debajo de la vista previa para ver cada hoja. Las páginas se imprimen con la resolución de la impresora, hasta 600 ppp,
 y se procesan por franjas, de modo que incluso los planos grandes se imprimen nítidos sin usar mucha memoria.
 Las marcas y los campos de formulario siguen su propia opción de impresión, como en Acrobat: una hecha para verse
@@ -290,7 +290,7 @@ desde cualquier carpeta, pero guarda la configuración en el equipo, como la ver
 <li><b>La primera vez que lo abre (Abrir igualmente):</b> KanzonasPDF aún no está firmado ni notarizado por Apple, así que macOS lo detiene la primera vez y dice que Apple no pudo verificar que esté libre de malware. Cierre el aviso con <b>OK</b> o <b>Aceptar</b> (no con Trasladar a la Papelera). Luego abra Ajustes del Sistema &gt; <b>Privacidad y seguridad</b>, desplácese hasta Seguridad, donde dice que se bloqueó KanzonasPDF, haga clic en <b>Abrir igualmente</b>, confirme con su contraseña o Touch ID y vuelva a hacer clic en <b>Abrir igualmente</b>. Después se abre como cualquier otra aplicación. macOS vuelve a preguntar después de instalar una nueva versión. Hágalo solo con una imagen de disco de la página Releases de este proyecto; puede comprobarla antes en Terminal con <code>shasum -a 256 KanzonasPDF-macos-arm64.dmg</code>: el resultado debe coincidir con la línea del archivo en SHA256SUMS.txt de la versión.</li>
 <li><b>Abrir archivos PDF:</b> haga doble clic en un PDF, use Abrir con en el Finder, arrastre archivos PDF a KanzonasPDF en el Dock o use Archivo &gt; Abrir. Un PDF abierto mientras KanzonasPDF se ejecuta se abre como una nueva pestaña en la misma ventana. Para abrir todos los PDF con él: seleccione un PDF en el Finder, elija Archivo &gt; Obtener información, escoja KanzonasPDF en Abrir con y haga clic en <b>Cambiar todo...</b>.</li>
 <li><b>Teclas:</b> donde este manual dice Ctrl, pulse Comando (&#8984;), y donde dice Alt, pulse Opción (&#8997;): Ctrl+S es Comando-S, Ctrl+clic es Comando-clic, Alt+clic es Opción-clic, Ctrl+rueda es Comando con la rueda del ratón. Los menús, la información sobre herramientas y la tabla de métodos abreviados de teclado de este manual muestran las teclas del Mac. Acerca de, Preferencias (Comando-K) y <b>Salir</b> (Comando-Q, que cierra todas las ventanas y pregunta por los cambios sin guardar) están en el menú KanzonasPDF, a la izquierda de Archivo. Reemplazar texto es Comando-Opción-F (Comando-H oculta la aplicación en un Mac). Para las teclas de función (F1 este manual, F11 modo CAD, F12 modo nocturno...) mantenga pulsada fn en la mayoría de los teclados de Mac; si macOS usa una tecla para sí mismo, cámbiela en Ver &gt; Métodos abreviados de teclado o en Ajustes del Sistema &gt; Teclado. La tecla Eliminar (&#9003;) elimina lo seleccionado.</li>
-<li><b>Actualizar:</b> KanzonasPDF le avisa cuando hay una nueva versión (Ayuda &gt; Buscar actualizaciones); en un Mac no se reemplaza a sí mismo. <b>Descargar</b> abre la página de la versión: descargue la nueva imagen de disco, arrastre KanzonasPDF a Aplicaciones y elija Reemplazar. Su configuración se conserva. Si macOS detiene la nueva versión, vuelva a permitirla con Abrir igualmente (arriba).</li>
+<li><b>Actualizar:</b> KanzonasPDF le avisa cuando hay una nueva versión (Ayuda &gt; Buscar actualizaciones); en un Mac no se reemplaza a sí mismo. <b>Descargar</b> abre la página de la versión: descargue la nueva imagen de disco, arrastre KanzonasPDF a Aplicaciones y elija Reemplazar. Su configuración se conserva. Si macOS detiene la nueva versión, vuelva a permitirla con Abrir igualmente (arriba). De vez en cuando una versión no tiene descarga para Mac (GitHub no tenía un Mac libre para crearla); KanzonasPDF en un Mac solo le avisa de las versiones que la tienen, así que espera a la siguiente.</li>
 <li><b>Sus archivos:</b> la configuración se guarda en ~/Library/Preferences/com.kanzonaspdf.KanzonasPDF.plist; las firmas, las imágenes de sellos, su certificado y las copias de seguridad, en ~/Library/Application Support/KanzonasPDF/KanzonasPDF (Preferencias &gt; General muestra ambos).</li>
 <li><b>Fuentes:</b> Agregar texto y Editar texto usan las fuentes de /System/Library/Fonts, /Library/Fonts y su propia carpeta ~/Library/Fonts: las fuentes TrueType y OpenType y las colecciones TrueType (.ttc: la primera fuente del archivo) se incrustan; otros tipos (.dfont, Type 1) no, y se usa Helvetica en su lugar.</li>
 <li><b>Diferencias con Windows:</b> la primera opción de Ver &gt; Tema es <b>Igual que el sistema</b> (el aspecto claro u oscuro del Mac); la firma digital usa su certificado personal o un archivo .pfx/.p12 (no hay almacén de certificados de Windows y no se usa el llavero de macOS); la barra de menús está siempre en la parte superior de la pantalla, así que no se ofrece Ver &gt; Mostrar barra de menús; no hay versión portátil.</li>
@@ -1508,6 +1508,20 @@ una dimensión conocida después de leer las escalas, y use Calibrar cinta métr
 <li><b>Longitud</b> (Shift+M), <b>Longitud de polilínea</b>, <b>Área</b> con perímetro (Shift+A) y
 <b>Conteo</b> (Shift+C, con grupos con nombre, más abajo). Los valores se actualizan cuando edita la marca
 o cambia la escala.</li>
+<li><b>Área de muro desde una longitud:</b> Longitud y Longitud de polilínea tienen una <b>Altura</b> en
+Propiedades, en la unidad de la escala de la página (pies cuando la escala está en pies y pulgadas), "ninguno" al
+principio. Con una altura, la medición muestra también el área del muro (longitud &times; altura: "Área de muro
+120.00 sq ft"), para paneles de yeso, pintura, aislamiento o mampostería, y el Resumen de mediciones y la medición
+en Excel la muestran como un <b>Área de muro</b> propia junto a la longitud. Defínala antes de dibujar para las
+siguientes longitudes, o seleccione una longitud y cámbiela allí.</li>
+<li><b>Bajadas y subidas en recorridos:</b> para tubo, cable y tubería, una Longitud de polilínea puede contar
+los tramos verticales que el plano no muestra. Selecciónela, haga clic derecho cerca de uno de sus puntos &gt;
+<b>Agregar bajada o subida...</b> y escriba la longitud vertical (12'-6", o un número en la unidad de la página).
+Cada una se nombra en su punto ("Bajada 10.00 ft"), la medición muestra su total con ellas ("27.00 ft, incluidas
+2 bajadas, 12.00 ft"), y el Resumen de mediciones, la medición en Excel y las leyendas cuentan el total. Haga clic
+derecho de nuevo cerca del punto para <b>Cambiar esta bajada...</b> o <b>Quitar esta bajada</b>. Se quedan en sus
+puntos cuando el recorrido se mueve, se copia o se gira, y Establecer como predeterminado no las pasa a las
+siguientes Longitudes de polilínea.</li>
 <li><b>Conteo</b> (Shift+C): haga clic en cada elemento; cada clic pone un marcador con el siguiente número
 de su grupo. Prepárelo en Propiedades antes de hacer clic, con la herramienta Conteo elegida:
 <b>Grupo</b> (elija uno de los grupos del documento o escriba un nombre, como Detectores de humo: los
@@ -1573,6 +1587,19 @@ cada Espacio, en todos los planos, y lo que no está en ningún espacio); y <b>E
 propia fila: plano, espacio, tipo, grupo, asunto, cantidad y unidad, con filtros, para una tabla dinámica o su
 propio presupuesto). Los subtotales son fórmulas, así que una cantidad que cambie en Excel los cambia. Los nombres
 del PDF (espacios, grupos, asuntos) se escriben como texto, nunca como fórmulas.</li>
+<li><b>Una cantidad por conteo, y desperdicio:</b> con la herramienta Conteo elegida (o un marcador
+seleccionado), <b>Cantidades y desperdicio...</b> en Propiedades define lo que representa cada elemento contado
+de su grupo: una lista de artículos, cada uno con su cantidad por conteo y su unidad (cada aparato = 2 Caja ud + 1
+Latiguillo ud), y un porcentaje de <b>Desperdicio / extra</b> para el grupo. Las Longitudes, Longitudes de
+polilínea, Áreas, Perímetros y Volúmenes tienen su propio <b>Desperdicio / extra</b> en Propiedades. El Resumen
+de mediciones y la medición en Excel muestran entonces los conteos, una fila por artículo con su cantidad
+resultante (8 Caja ud para 4 aparatos) y una columna <b>Con desperdicio</b> con el desperdicio sumado. La
+configuración de un grupo se guarda en el PDF, y Ctrl+Z deshace un cambio en ella.</li>
+<li><b>Pendiente para áreas de cubierta:</b> un Área tiene una <b>Pendiente</b> en Propiedades: escriba la
+pendiente de una cubierta como subida a recorrido (6:12, 6/12) o en grados (30&deg;) y presione Enter. El área que
+muestra, suma y exporta es entonces el área inclinada, calculada a partir de su área en planta (neta de sus
+recortes): la etiqueta dice ambas ("Inclinada 1,341.64 sq ft", "En planta 1,200.00 sq ft a 6:12"). Déjela vacía para
+un área plana.</li>
 <li><b>Espacio</b> (pestaña Medir, grupo "Más", el menú Medir y el botón Medir de la pestaña
 CAD), como los Espacios de Bluebeam: un área con nombre de un plano (una habitación, una zona,
 un nivel). Haga clic en cada esquina, doble clic o pulse Enter, y escriba su nombre (se ofrece
@@ -1592,7 +1619,8 @@ espacio como un polígono con su nombre como comentario.</li>
 <h2 id="pages">Páginas</h2>
 <ul>
 <li><b>Girar página a la izquierda / Girar página a la derecha:</b> Ctrl+Shift+Minus / Ctrl+Shift+Plus.</li>
-<li><b>Recortar páginas</b> (menú Páginas, pestaña Páginas, menú Herramientas): arrastre un cuadro alrededor de lo que desea conservar y luego
+<li><b>Recortar páginas</b> (menú Páginas, pestaña Páginas, menú Herramientas): arrastre un cuadro alrededor de lo que desea conservar (se ajusta como las formas: con
+<b>Ajustar a la página</b> activado, a las esquinas y bordes de la página) y luego
 elija <b>Esta página</b> o <b>Todas las páginas</b> (en las demás páginas, el mismo cuadro se mide desde su
 esquina superior izquierda). Solo cambia la zona visible; no se elimina nada, así que <b>Quitar recorte...</b>
 (menú Páginas, pestaña Páginas) vuelve a mostrar la página entera, en esta página o en todas. Ctrl+Z deshace

@@ -37,7 +37,7 @@ le linee vengono stampate esattamente sottili come sono), <b>Segni di taglio</b>
 <b>Escludile</b> (viene stampata solo la pagina, come in qualsiasi programma PDF), <b>Sullo stesso foglio</b> (il foglio
 comprende la pagina e ciò che le sta accanto, quindi la pagina viene stampata più piccola) oppure <b>Su un foglio
 aggiuntivo dopo la pagina</b> (la pagina viene stampata alla sua dimensione, così un disegno resta in scala, e il foglio
-successivo la mostra sbiadita con ciò che le sta accanto al suo posto). <b>Imposta pagina...</b> imposta il formato della carta e i margini. Usa le frecce
+successivo la mostra sbiadita con ciò che le sta accanto al suo posto). <b>Carta</b> elenca i formati di carta della stampante (senza stampante, i formati da ufficio e quelli per disegni ANSI e Architettura); <b>Imposta pagina...</b> imposta i margini. Ogni documento ricorda con cosa è stato stampato l'ultima volta (stampante, carta, copie, pagine e il resto) e apre la finestra Stampa così. Usa le frecce
 sotto l'anteprima per vedere ogni foglio. Le pagine vengono stampate alla risoluzione della stampante fino a 600 dpi,
 elaborate una striscia alla volta, così anche i disegni grandi escono nitidi senza usare molta memoria.
 Annotazioni e campi modulo seguono la propria impostazione di stampa, come in Acrobat: quelli fatti per comparire
@@ -288,7 +288,7 @@ da qualsiasi cartella ma salva le impostazioni sul computer come la versione ins
 <li><b>La prima apertura (Apri comunque):</b> KanzonasPDF non è ancora firmato e autenticato da Apple, quindi la prima volta macOS lo blocca e avvisa che Apple non ha potuto verificare che sia privo di malware. Fai clic su <b>Fine</b> (non su Sposta nel Cestino). Poi apri Impostazioni di Sistema &gt; <b>Privacy e sicurezza</b>, scorri fino a Sicurezza, dove è indicato che KanzonasPDF è stato bloccato, fai clic su <b>Apri comunque</b>, conferma con la password o con Touch ID e fai clic ancora una volta su <b>Apri comunque</b>. Da quel momento si apre come qualsiasi altra app. macOS lo chiede di nuovo dopo l'installazione di una nuova versione. Fallo solo con un'immagine disco presa dalla pagina Releases di questo progetto; puoi verificarla prima nel Terminale con <code>shasum -a 256 KanzonasPDF-macos-arm64.dmg</code>: il risultato deve corrispondere alla riga del file in SHA256SUMS.txt della versione.</li>
 <li><b>Aprire i PDF:</b> fai doppio clic su un PDF, usa Apri con nel Finder, trascina i PDF su KanzonasPDF nel Dock oppure usa File &gt; Apri. Un PDF aperto mentre KanzonasPDF è in esecuzione si apre in una nuova scheda della stessa finestra. Per aprire tutti i PDF con KanzonasPDF: seleziona un PDF nel Finder, scegli File &gt; Ottieni informazioni, scegli KanzonasPDF in Apri con e fai clic su <b>Modifica tutto...</b>.</li>
 <li><b>Tasti:</b> dove questo manuale dice Ctrl, premi Comando (&#8984;), e dove dice Alt, premi Opzione (&#8997;): Ctrl+S è Comando-S, Ctrl+clic è Comando-clic, Alt+clic è Opzione-clic, Ctrl+rotellina è Comando con la rotellina del mouse. I menu, le descrizioni comando e la tabella Scorciatoie da tastiera di questo manuale mostrano i tasti del Mac. Informazioni, Preferenze (Comando-K) e <b>Esci</b> (Comando-Q, che chiude tutte le finestre chiedendo delle modifiche non salvate) si trovano nel menu KanzonasPDF, a sinistra di File. Sostituisci testo è Comando-Opzione-F (Comando-H nasconde l'app su un Mac). Per i tasti funzione (F1 questo manuale, F11 modalità CAD, F12 modalità notturna...) tieni premuto fn sulla maggior parte delle tastiere Mac; se macOS usa un tasto per sé, cambialo in Visualizza &gt; Scorciatoie da tastiera o in Impostazioni di Sistema &gt; Tastiera. Il tasto Elimina (&#9003;) elimina ciò che è selezionato.</li>
-<li><b>Aggiornare:</b> KanzonasPDF ti avvisa quando c'è una nuova versione (Guida &gt; Verifica aggiornamenti); su un Mac non si sostituisce da solo. <b>Scarica</b> apre la pagina della versione: scarica la nuova immagine disco, trascina KanzonasPDF su Applicazioni e scegli Sostituisci. Le impostazioni vengono mantenute. Se macOS blocca la nuova versione, consentila di nuovo con Apri comunque (vedi sopra).</li>
+<li><b>Aggiornare:</b> KanzonasPDF ti avvisa quando c'è una nuova versione (Guida &gt; Verifica aggiornamenti); su un Mac non si sostituisce da solo. <b>Scarica</b> apre la pagina della versione: scarica la nuova immagine disco, trascina KanzonasPDF su Applicazioni e scegli Sostituisci. Le impostazioni vengono mantenute. Se macOS blocca la nuova versione, consentila di nuovo con Apri comunque (vedi sopra). Ogni tanto una versione non ha il download per Mac (GitHub non aveva un Mac libero per crearla); KanzonasPDF su un Mac ti avvisa solo delle versioni che lo hanno, quindi aspetta la successiva.</li>
 <li><b>I tuoi file:</b> le impostazioni sono conservate in ~/Library/Preferences/com.kanzonaspdf.KanzonasPDF.plist; firme, immagini dei timbri, certificato e backup in ~/Library/Application Support/KanzonasPDF/KanzonasPDF (Preferenze &gt; Generale mostra entrambi i percorsi).</li>
 <li><b>Font:</b> Aggiungi testo e Modifica testo usano i font in /System/Library/Fonts, /Library/Fonts e nella tua ~/Library/Fonts: i font TrueType e OpenType e le raccolte TrueType (.ttc: il primo font del file) vengono incorporati; gli altri tipi (.dfont, Type 1) no, e al loro posto si usa Helvetica.</li>
 <li><b>Differenze rispetto a Windows:</b> la prima scelta di Visualizza &gt; Tema è <b>Come il sistema</b> (l'aspetto Chiaro o Scuro del Mac); la firma digitale usa il tuo certificato personale o un file .pfx/.p12 (non c'è l'archivio certificati di Windows e il portachiavi di macOS non viene usato); la barra dei menu è sempre in alto sullo schermo, quindi Visualizza &gt; Mostra barra dei menu non è disponibile; non esiste una versione portatile.</li>
@@ -1510,6 +1510,20 @@ una dimensione nota dopo aver letto le scale, e usa Calibra metro a nastro se no
 <li><b>Lunghezza</b> (Shift+M), <b>Lunghezza polilinea</b>, <b>Area</b> con perimetro (Shift+A) e
 <b>Conteggio</b> (Shift+C, con gruppi con nome, più avanti). I valori si aggiornano quando modifichi
 l'annotazione o cambi la scala.</li>
+<li><b>Area della parete da una lunghezza:</b> Lunghezza e Lunghezza polilinea hanno un'<b>Altezza</b> in
+Proprietà, nell'unità della scala della pagina (piedi quando la scala è in piedi e pollici), "nessuna" all'inizio.
+Con un'altezza, la misura mostra anche l'area della parete (lunghezza &times; altezza: "Area parete 120.00 sq ft"),
+per cartongesso, pittura, isolamento o muratura, e il Riepilogo misure e il computo in Excel la elencano come
+<b>Area parete</b> a sé accanto alla lunghezza. Impostala prima di disegnare per le lunghezze successive, o
+seleziona una lunghezza e cambiala lì.</li>
+<li><b>Discese e risalite sui percorsi:</b> per tubi, cavi e tubazioni, una Lunghezza polilinea può contare i
+tratti verticali che la pianta non mostra. Selezionala, fai clic destro vicino a uno dei suoi punti &gt;
+<b>Aggiungi discesa o risalita...</b> e digita la lunghezza verticale (12'-6", o un numero nell'unità della
+pagina). Ognuna è indicata al suo punto ("Discesa 10.00 ft"), la misura mostra il totale con esse ("27.00 ft,
+comprese 2 discese, 12.00 ft"), e il Riepilogo misure, il computo in Excel e le legende contano il totale. Fai
+clic destro di nuovo vicino al punto per <b>Cambia questa discesa...</b> o <b>Rimuovi questa discesa</b>.
+Restano ai loro punti quando il percorso viene spostato, copiato o ruotato, e Imposta come predefinito non le
+passa alle Lunghezze polilinea successive.</li>
 <li><b>Conteggio</b> (Shift+C): fai clic su ogni elemento; ogni clic mette un indicatore con il numero
 successivo del suo gruppo. Preparalo in Proprietà prima di fare clic, con lo strumento Conteggio scelto:
 <b>Gruppo</b> (scegli uno dei gruppi del documento o scrivi un nome, come Rilevatori di fumo: gli indicatori
@@ -1575,6 +1589,18 @@ Spazio, in tutte le tavole, e ciò che non è in nessuno spazio); ed <b>Elementi
 spazio, tipo, gruppo, oggetto, quantità e unità, con i filtri attivi, per una tabella pivot o il tuo computo). I
 subtotali sono formule, quindi una quantità cambiata in Excel li cambia. I nomi presi dal PDF (spazi, gruppi,
 oggetti) sono scritti come testo, mai come formule.</li>
+<li><b>Una quantità per conteggio, e sfrido:</b> con lo strumento Conteggio scelto (o un indicatore
+selezionato), <b>Quantità e sfrido...</b> in Proprietà imposta cosa rappresenta ogni elemento contato del suo
+gruppo: un elenco di articoli, ognuno con la sua quantità per conteggio e la sua unità (ogni apparecchio = 2
+Scatola pz + 1 Cavo pz), e una percentuale di <b>Sfrido / extra</b> per il gruppo. Lunghezze, Lunghezze
+polilinea, Aree, Perimetri e Volumi hanno il proprio <b>Sfrido / extra</b> in Proprietà. Il Riepilogo misure e
+il computo in Excel mostrano allora i conteggi, una riga per ogni articolo con la quantità risultante (8 Scatola
+pz per 4 apparecchi) e una colonna <b>Con sfrido</b> con lo sfrido aggiunto. L'impostazione di un gruppo è
+salvata nel PDF, e Ctrl+Z annulla una sua modifica.</li>
+<li><b>Pendenza per le aree di copertura:</b> un'Area ha una <b>Pendenza</b> in Proprietà: digita la pendenza di
+una copertura come alzata su base (6:12, 6/12) o in gradi (30&deg;) e premi Invio. L'area che mostra, somma ed
+esporta è allora l'area inclinata, calcolata dalla sua area in pianta (al netto dei ritagli): l'etichetta le dice
+entrambe ("Inclinata 1,341.64 sq ft", "In pianta 1,200.00 sq ft a 6:12"). Lasciala vuota per un'area piana.</li>
 <li><b>Spazio</b> (scheda Misure, gruppo "Altro", il menu Misure e il pulsante Misura della scheda CAD),
 come gli Spaces di Bluebeam: un'area con un nome in una tavola (una stanza, una zona, un piano). Fai clic su
 ogni angolo, doppio clic o premi Invio, e digita il suo nome (viene proposto Spazio 1, Spazio 2...). È un
@@ -1592,7 +1618,8 @@ suo nome come commento.</li>
 <h2 id="pages">Pagine</h2>
 <ul>
 <li><b>Ruota pagina a sinistra / Ruota pagina a destra:</b> Ctrl+Shift+Meno / Ctrl+Shift+Più.</li>
-<li><b>Ritaglia pagine</b> (menu Pagine, scheda Pagine, menu Strumenti): trascina un riquadro attorno a ciò che vuoi tenere, poi
+<li><b>Ritaglia pagine</b> (menu Pagine, scheda Pagine, menu Strumenti): trascina un riquadro attorno a ciò che vuoi tenere (si aggancia come le forme: con
+<b>Aggancia alla pagina</b> attivo, agli angoli e ai bordi della pagina), poi
 scegli <b>Questa pagina</b> o <b>Tutte le pagine</b> (sulle altre pagine lo stesso riquadro è misurato dal loro
 angolo superiore sinistro). Cambia solo l'area visibile; non viene eliminato nulla, quindi <b>Rimuovi ritaglio...</b>
 (menu Pagine, scheda Pagine) mostra di nuovo la pagina intera, su questa pagina o su tutte. Ctrl+Z annulla

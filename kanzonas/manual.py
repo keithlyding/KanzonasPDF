@@ -48,7 +48,7 @@ lines print exactly as thin as they are), <b>Crop marks</b> (see Print productio
 <b>Leave them out</b> (only the page prints, as in every PDF program), <b>On the same sheet</b>
 (the sheet takes in the page and what's beside it, so the page prints smaller), or <b>On an
 extra sheet after the page</b> (the page prints at its size, so a drawing stays at scale, and
-the next sheet shows it faint with what's beside it in place). <b>Page setup...</b> sets the paper size and margins. Use the arrows
+the next sheet shows it faint with what's beside it in place). <b>Paper</b> lists the printer's paper sizes (without a printer, the office sizes and the ANSI and Architect drawing sizes); <b>Page setup...</b> sets the margins. Each document remembers what it was last printed with (printer, paper, copies, pages and the rest) and opens the Print window with it. Use the arrows
 under the preview to see each sheet. Pages print at the printer's resolution up to 600 dpi,
 rendered a strip at a time so even large drawings print sharp without using much memory.
 Markups and form fields follow their own print setting, as in Acrobat: one made to show on
@@ -299,7 +299,7 @@ from any folder but stores settings on the computer like the installed version.<
 <li><b>The first time you open it (Open Anyway):</b> KanzonasPDF isn't signed and notarized by Apple yet, so macOS stops it the first time and says Apple could not verify it is free of malware. Click <b>Done</b> (not Move to Trash). Then open System Settings &gt; <b>Privacy &amp; Security</b>, scroll down to Security, where it says KanzonasPDF was blocked, click <b>Open Anyway</b>, confirm with your password or Touch ID, and click <b>Open Anyway</b> once more. After that it opens like any other app. macOS asks again after you install a new version. Only do this with a disk image from this project's Releases page; you can check it first in Terminal with <code>shasum -a 256 KanzonasPDF-macos-arm64.dmg</code>: the result must match the file's line in SHA256SUMS.txt on the release.</li>
 <li><b>Opening PDFs:</b> double-click a PDF, use Open With in Finder, drag PDFs onto KanzonasPDF in the Dock, or use File &gt; Open. A PDF opened while KanzonasPDF runs opens as a new tab in the same window. To open every PDF with it: select a PDF in Finder, choose File &gt; Get Info, pick KanzonasPDF under Open with and click <b>Change All...</b>.</li>
 <li><b>Keys:</b> where this manual says Ctrl, press Command (&#8984;), and where it says Alt, press Option (&#8997;): Ctrl+S is Command-S, Ctrl+click is Command-click, Alt+click is Option-click, Ctrl+wheel is Command with the mouse wheel. The menus, the tool tips and the Keyboard shortcuts table of this manual show the Mac's keys. About, Preferences (Command-K) and <b>Quit</b> (Command-Q, which closes every window, asking about unsaved changes) are in the KanzonasPDF menu, left of File. Replace text is Command-Option-F (Command-H hides the app on a Mac). For the function keys (F1 this manual, F11 CAD mode, F12 night mode...) hold fn on most Mac keyboards; if macOS uses a key for itself, change it in View &gt; Keyboard shortcuts or in System Settings &gt; Keyboard. The Delete key (&#9003;) deletes what's selected.</li>
-<li><b>Update:</b> KanzonasPDF tells you when there's a new version (Help &gt; Check for updates); on a Mac it doesn't replace itself. <b>Download</b> opens the release page: download the new disk image, drag KanzonasPDF onto Applications and choose Replace. Your settings are kept. If macOS stops the new version, allow it again with Open Anyway (above).</li>
+<li><b>Update:</b> KanzonasPDF tells you when there's a new version (Help &gt; Check for updates); on a Mac it doesn't replace itself. <b>Download</b> opens the release page: download the new disk image, drag KanzonasPDF onto Applications and choose Replace. Your settings are kept. If macOS stops the new version, allow it again with Open Anyway (above). Now and then a release has no Mac download (GitHub had no Mac free to build it on); KanzonasPDF on a Mac tells you only about releases that have one, so it waits for the next.</li>
 <li><b>Your files:</b> settings are kept in ~/Library/Preferences/com.kanzonaspdf.KanzonasPDF.plist; signatures, stamp pictures, your certificate and backups in ~/Library/Application Support/KanzonasPDF/KanzonasPDF (Preferences &gt; General shows both).</li>
 <li><b>Fonts:</b> Add text and Edit text use the fonts in /System/Library/Fonts, /Library/Fonts and your own ~/Library/Fonts: TrueType and OpenType fonts and TrueType collections (.ttc: the first font in the file) are embedded; other kinds (.dfont, Type 1) aren't, and Helvetica is used instead.</li>
 <li><b>Differences from Windows:</b> View &gt; Theme's first choice is <b>Match system</b> (the Mac's Light or Dark appearance); digital signing uses your personal certificate or a .pfx/.p12 file (there's no Windows certificate store, and the macOS keychain isn't used); the menu bar is always at the top of the screen, so View &gt; Show menu bar isn't offered; there's no portable version.</li>
@@ -1524,6 +1524,20 @@ one known dimension after reading the scales, and use Calibrate Tape Measure if 
 <li><b>Length</b> (Shift+M), <b>Polylength</b>, <b>Area</b> with perimeter (Shift+A), and
 <b>Count</b> (Shift+C, with named groups, below). Values update when you edit the markup or
 change the scale.</li>
+<li><b>Wall area from a length:</b> Length and Polylength have a <b>Height</b> in Properties, in
+the page's scale unit (feet when the scale is in feet and inches), "none" at first. With a height,
+the measurement shows the wall area as well (length &times; height: "Wall area 120.00 sq ft"),
+for drywall, paint, insulation or masonry, and the Measurement summary and the Excel takeoff list
+it as a <b>Wall area</b> of its own next to the length. Set it before drawing for the next
+lengths, or select a length and change it there.</li>
+<li><b>Drops and rises on runs:</b> for conduit, wire and pipe, a Polylength can count the
+vertical runs the plan doesn't show. Select it, right-click near one of its points &gt;
+<b>Add drop or rise...</b> and type the vertical length (12'-6", or a number in the page's unit).
+Each one is named at its point ("Drop 10.00 ft"), the measurement shows its total with them
+("27.00 ft, including 2 drops, 12.00 ft"), and the Measurement summary, the Excel takeoff and
+legends count the total. Right-click near the point again to <b>Change this drop...</b> or
+<b>Remove this drop</b>. They stay at their points when the run is moved, copied or turned, and
+Set as Default doesn't pass them on to the next Polylengths.</li>
 <li><b>Count</b> (Shift+C): click each item; each click places a marker with the next number of
 its group. Set it up in Properties before you click, with the Count tool picked:
 <b>Group</b> (pick one of the document's groups or type a name, such as Smoke detectors:
@@ -1591,6 +1605,18 @@ what's in no space); and <b>Items</b> (every measurement on its own row: sheet, 
 group, subject, quantity and unit, with filters on, for a pivot table or your own bill of
 quantities). Subtotals are formulas, so a quantity you change in Excel changes them. Names from
 the PDF (spaces, groups, subjects) are written as plain text, never as formulas.</li>
+<li><b>A quantity per count, and waste:</b> with the Count tool picked (or a marker selected),
+<b>Quantities and waste...</b> in Properties sets what each counted item of its group stands
+for: a list of items, each with its quantity per count and its unit (each fixture = 2 Box ea +
+1 Whip ea), and a <b>Waste / extra</b> percent for the group. Lengths, Polylengths, Areas,
+Perimeters and Volumes have their own <b>Waste / extra</b> in Properties. The Measurement summary
+and the Excel takeoff then show the counts, a row for each item with its resulting quantity (8
+Box ea for 4 fixtures), and a <b>With waste</b> column with the waste added. A group's setup is
+kept in the PDF, and Ctrl+Z undoes a change to it.</li>
+<li><b>Slope for roof areas:</b> an Area has a <b>Slope</b> in Properties: type a roof's pitch as
+rise to run (6:12, 6/12) or in degrees (30&deg;) and press Enter. The area it shows, sums and
+exports is then the sloped area, worked out from its plan area (net of its cut-outs): the label
+says both ("Sloped 1,341.64 sq ft", "Plan 1,200.00 sq ft at 6:12"). Empty it for a flat area.</li>
 <li><b>Space</b> (Measure tab, "More" group, the Measure menu and the CAD tab's Measure
 button), like Bluebeam's Spaces: a named area of a sheet (a room, a zone, a level). Click each
 corner, double-click or press Enter, and type its name (Space 1, Space 2... is offered). It is
@@ -1608,7 +1634,8 @@ comment.</li>
 <h2 id="pages">Pages</h2>
 <ul>
 <li><b>Rotate page left / Rotate page right:</b> Ctrl+Shift+Minus / Ctrl+Shift+Plus.</li>
-<li><b>Crop pages</b> (Pages menu, Pages tab, Tools menu): drag a box around what to keep, then
+<li><b>Crop pages</b> (Pages menu, Pages tab, Tools menu): drag a box around what to keep (it snaps as shapes do: with
+<b>Snap to page</b> on, to the page's corners and edges), then
 choose <b>This page</b> or <b>All pages</b> (on other pages the same box is measured from their
 top left corner). Only the visible area changes; nothing is deleted, so <b>Remove crop...</b>
 (Pages menu, Pages tab) shows the whole page again, on this page or all pages. Ctrl+Z undoes

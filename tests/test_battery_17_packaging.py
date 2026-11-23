@@ -16,6 +16,7 @@
 import hashlib
 import http.server
 import os
+import re
 import shutil
 import stat
 import subprocess
@@ -355,8 +356,10 @@ class Workflow(unittest.TestCase):
                                 "write", job)
         # (and, for the build-provenance attestations of the release files, a token to sign
         # them and the right to store them: those too only in the publish job)
+        # (and actions: read, to see whether the macOS job ever got a Mac)
         self.assertEqual(self.jobs["publish"]["permissions"],
-                         {"contents": "write", "id-token": "write", "attestations": "write"})
+                         {"contents": "write", "actions": "read", "id-token": "write",
+                          "attestations": "write"})
         for job in ("build", "linux", "macos"):
             perms = self.jobs[job].get("permissions") or {}
             self.assertNotIn("id-token", perms, job)
@@ -374,7 +377,8 @@ class Workflow(unittest.TestCase):
         sums = steps["Checksums (SHA-256) of the downloads"]
         files = steps["Publish release"]["with"]["files"]
         for line in files.strip().splitlines():
-            name = os.path.basename(line.strip())
+            # (a name may be a pattern of one letter, the disk image's ".dm[g]")
+            name = re.sub(r"\[(.)\]", r"\1", os.path.basename(line.strip()))
             if name != "SHA256SUMS.txt":
                 self.assertIn(name.replace("${{ env.VERSION }}", "$VERSION"), sums["run"], name)
 

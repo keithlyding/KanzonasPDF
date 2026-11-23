@@ -546,6 +546,29 @@ class Underlines(Fixture):
         self.assertEqual(struck.strip("_"), "materials")
         self.assertEqual(len(st.decor), 1)
 
+    def test_strike_line_over_text_crossing_smaller_text_on_its_baseline(self):
+        # (other text, smaller, on the same baseline and crossing this one's words: their
+        # letters were put in one row and this line read short, its strikethrough then
+        # longer than its letters and taken for a rule; random battery, seed 77)
+        d = pymupdf.open()
+        p = d.new_page()
+        big = "The contractor agreed to deliver"
+        p.insert_text((72, 100), big, fontsize=20)
+        x_to = 72 + pymupdf.get_text_length(big[:big.index("to")], fontsize=20)
+        p.insert_text((x_to - 4, 100), "s by the end of the month. Every one", fontsize=11)
+        x1 = 72 + pymupdf.get_text_length(big, fontsize=20)
+        p.draw_rect(pymupdf.Rect(72, 100 - 5.7, x1, 100 - 4.7), color=None, fill=(0, 0, 0))
+        ln = [ln for _r, ln in text_edit.text_lines(p)
+              if text_edit.line_text(ln).startswith("The contractor")][0]
+        st = text_styles.read_lines(p, [ln])[0]
+        self.assertEqual(st.text, big)
+        self.assertTrue(all(k.strike for c, k in zip(st.text, st.keys) if not c.isspace()))
+        self.assertEqual(len(st.decor), 1)
+        # (the smaller text has none)
+        small = [ln for _r, ln in text_edit.text_lines(p)
+                 if text_edit.line_text(ln).startswith("s by")][0]
+        self.assertFalse(any(k.strike for k in text_styles.read_lines(p, [small])[0].keys))
+
     def test_table_border_and_long_rule_are_not_underlines(self):
         def border(p):
             # a table cell around the paragraph: its bottom border just under the last line

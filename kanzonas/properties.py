@@ -80,6 +80,7 @@ class PropertiesPanel(QWidget):
     countLayer = Signal(object)      # a count's layer picked: None (as the Layers tab), 0 (no
     #                                  layer), a layer's xref, or "new"
     newCountGroup = Signal()         # the Count tool: start a new group ("New count")
+    countSetup = Signal(str)         # a Count group's quantities per item and waste (takeoff)
     renumberCount = Signal(str)      # a count group with gaps or repeats: number it again
 
     def __init__(self):
@@ -151,6 +152,15 @@ class PropertiesPanel(QWidget):
         self.depth.setKeyboardTracking(False)
         self.depth.setToolTip(tr("Volume = area \u00d7 depth. The depth is in the page's scale "
                                  "unit (feet when the scale is in feet and inches)."))
+        # a Length's or Polylength's height: its wall area shown too (0: none)
+        self.height = QDoubleSpinBox()
+        self.height.setRange(0, 1_000_000)
+        self.height.setDecimals(3)
+        self.height.setKeyboardTracking(False)
+        self.height.setSpecialValueText(tr("none"))
+        self.height.setToolTip(tr("Wall area = length \u00d7 height, for drywall, paint, "
+                                  "insulation or masonry. The height is in the page's scale unit "
+                                  "(feet when the scale is in feet and inches); 0 for none."))
         self.opacity = QSlider(Qt.Horizontal)
         self.opacity.setRange(10, 100)
         self.head = QComboBox()
@@ -312,6 +322,28 @@ class PropertiesPanel(QWidget):
         gl.setContentsMargins(0, 0, 0, 0)
         gl.addWidget(self.gaps, 1)
         gl.addWidget(self.renumber)
+        # a Count group's quantities per counted item and its waste (takeoff.group_setup)
+        self.count_setup = QPushButton(tr("Quantities and waste..."))
+        self.count_setup.setToolTip(tr("What each counted item stands for (each fixture = 2 "
+                                       "boxes + 1 whip), with their units, and a waste or "
+                                       "extra percent: the Measurement summary and the Excel "
+                                       "takeoff show the resulting quantities"))
+        self.count_setup.clicked.connect(
+            lambda: self.countSetup.emit(self._props.get("group") or ""))
+        # a roof Area's pitch: its value is the sloped area (measure.slope_factor)
+        self.slope = QLineEdit()
+        self.slope.setPlaceholderText(tr("6:12 or 30\u00b0"))
+        self.slope.setToolTip(tr("A roof's pitch, rise to run (6:12) or in degrees (30\u00b0): the "
+                                 "area shown, summed and exported is then the sloped area. "
+                                 "Empty for a flat area."))
+        # a measurement's waste or extra percent (the takeoff adds it)
+        self.waste = QDoubleSpinBox()
+        self.waste.setRange(0, 1000)
+        self.waste.setDecimals(1)
+        self.waste.setSuffix(" %")
+        self.waste.setKeyboardTracking(False)
+        self.waste.setToolTip(tr("Waste or extra: the Measurement summary and the Excel takeoff "
+                                 "show the quantity with it added"))
         self.layer = QComboBox()
         self.layer.setToolTip(tr("The layer the markers go on (Layers tab: show or hide a "
                                  "layer's markups)"))
@@ -338,6 +370,9 @@ class PropertiesPanel(QWidget):
                               ("order", "", self.order),
                               ("gaps", "", gaps_row),
                               ("layer", tr("Layer"), self.layer),
+                              ("setup", tr("Takeoff"), self.count_setup),
+                              ("waste", tr("Waste / extra"), self.waste),
+                              ("slope", tr("Slope"), self.slope),
                               ("side", tr("Position"), self.side),
                               ("inside", "", self.inside),
                               ("font", tr("Font"), font_row),
@@ -352,6 +387,7 @@ class PropertiesPanel(QWidget):
                               ("mid", tr("Middle arrow"), self.mid),
                               ("dash", tr("Line style"), self.dash),
                               ("depth", tr("Depth"), self.depth),
+                              ("height", tr("Height"), self.height),
                               ("rotation", tr("Rotation"), self.rotation),
                               ("turn", tr("Rotate by"), self.turn),
                               ("opacity", tr("Opacity"), self.opacity)):
@@ -372,6 +408,9 @@ class PropertiesPanel(QWidget):
         self.width.valueChanged.connect(self._emit)
         self.fontsize.valueChanged.connect(self._emit)
         self.depth.valueChanged.connect(self._emit)
+        self.height.valueChanged.connect(self._emit)
+        self.waste.valueChanged.connect(self._emit)
+        self.slope.editingFinished.connect(self._emit)
         self.opacity.sliderReleased.connect(self._emit)
         # (a click on the slider's track or the arrow keys move it without a release: they
         # apply too; a drag applies once, when it's let go)
@@ -534,6 +573,12 @@ class PropertiesPanel(QWidget):
                 combo.setCurrentIndex(max(0, combo.findData(props[key])))
         if "depth" in props:
             self.depth.setValue(float(props["depth"] or 0))
+        if "height" in props:
+            self.height.setValue(float(props["height"] or 0))
+        if "waste" in props:
+            self.waste.setValue(float(props["waste"] or 0))
+        if "slope" in props:
+            self.slope.setText(str(props["slope"] or ""))
         if "label" in props:
             self._fill_labels(props["label"])
         if "date" in props:
@@ -631,6 +676,8 @@ class PropertiesPanel(QWidget):
         self.layer.setCurrentIndex(i if i >= 0 else 0)
         for w in self.rows["layer"]:
             w.setVisible(True)
+        for w in self.rows["setup"]:
+            w.setVisible(not self.read_only_counts)
         if next_n is not None:
             self.hint.setText(self.hint.text() + "\n" + tr(
                 "The next marker: {group} #{n}").format(group=self._props.get("group") or "",
@@ -951,6 +998,12 @@ class PropertiesPanel(QWidget):
                 p[key] = combo.currentData()
         if "depth" in p:
             p["depth"] = self.depth.value()
+        if "height" in p:
+            p["height"] = self.height.value()
+        if "waste" in p:
+            p["waste"] = self.waste.value()
+        if "slope" in p:
+            p["slope"] = self.slope.text().strip()
         if "markup" in p:
             p["markup"] = A.COMMENT_STYLES[self.markup.currentIndex()]
         if "label" in p:

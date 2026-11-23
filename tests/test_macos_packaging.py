@@ -344,12 +344,43 @@ class Workflow(unittest.TestCase):
         rel = steps["Publish release"]["with"]
         name = "KanzonasPDF-macos-arm64.dmg"
         self.assertIn(name, sums)
-        self.assertIn("release/" + name, rel["files"])
-        self.assertIn(name, rel["body"])
+        # (a pattern: the release can go out without it, below)
+        self.assertIn("release/KanzonasPDF-macos-arm64.dm[g]", rel["files"])
         self.assertNotIn("x86_64.dmg", self.text)
-        for word in ("Apple silicon (M1 or newer)", "14.4", "no version for Intel Macs",
-                     "Open Anyway", "Privacy & Security", "shasum -a 256"):
-            self.assertIn(word, rel["body"])
+        # the Mac paragraph of the release text, from "Did the Mac build run?"
+        mac = steps["Did the Mac build run?"]["run"]
+        self.assertIn("${{ steps.mac.outputs.text }}", rel["body"])
+        for word in (name, "Apple silicon (M1 or newer)", "14.4", "no version for Intel Macs",
+                     "Open Anyway", "Privacy & Security"):
+            self.assertIn(word, mac)
+        self.assertIn("shasum -a 256", rel["body"])
+
+    def test_a_mac_never_found_skips_the_mac_version_only(self):
+        # GitHub's Macs are sometimes all taken: the macOS job is cancelled after 15 minutes
+        # without a runner or a step, and the release goes out without the Mac version (the
+        # owner, 23 Nov 2026). A Mac build that failed, or started and was cancelled, still
+        # publishes nothing.
+        pub = self.jobs["publish"]
+        cond = " ".join(pub["if"].split())
+        self.assertIn("needs.build.result == 'success' && needs.linux.result == 'success'", cond)
+        self.assertIn("(needs.macos.result == 'success' || needs.macos.result == 'cancelled')",
+                      cond)
+        self.assertNotIn("failure", cond)
+        steps = {s.get("name"): s for s in pub["steps"]}
+        names = [s.get("name") for s in pub["steps"]]
+        self.assertEqual(names.index("Did the Mac build run?"), 1)     # (before anything else)
+        mac = steps["Did the Mac build run?"]["run"]
+        self.assertIn("filter=latest", mac)
+        self.assertIn(".runner == 0 and .[0].steps == 0", mac)
+        self.assertIn("exit 1", mac)
+        self.assertEqual(steps["Did the Mac build run?"]["env"]["MAC_RESULT"],
+                         "${{ needs.macos.result }}")
+        dl = [s for s in pub["steps"] if "download-artifact" in s.get("uses", "")
+              and "macos" in str(s.get("with"))][0]
+        self.assertEqual(dl["if"], "steps.mac.outputs.built == 'true'")
+        self.assertIn('if [ "${{ steps.mac.outputs.built }}" = true ]',
+                      steps["Same version on Windows, Linux and macOS"]["run"])
+        self.assertIn("no Mac download", mac)
 
 
 class Readme(unittest.TestCase):

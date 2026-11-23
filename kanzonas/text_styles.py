@@ -213,9 +213,9 @@ def _area(lines):
 def _read_area(page, area):
     """The letters around area as MuPDF reads them with their drawing styles, and the thin
     straight drawings nearby: ({(char, x, y): (row, index)} by each letter's origin, where
-    row is the letters on that baseline in order along it, each [char, flags, shear, a0,
-    a1]; the drawings). (MuPDF splits a line where its letters' style changes: the letters
-    are put in order along their baseline again.)"""
+    row is the letters of one size on that baseline in order along it, each [char, flags,
+    shear, a0, a1]; the drawings). (MuPDF splits a line where its letters' style changes:
+    the letters are put in order along their baseline again.)"""
     tp, flags = te.page_textpage(page, _FLAGS, clip=area)
     rows = {}
     for b in tp.this:
@@ -236,7 +236,10 @@ def _read_area(page, area):
                 except (ValueError, OverflowError):
                     char = "\ufffd"
                 ox, oy = c.origin.x, c.origin.y
-                key = (round(dx, 2), round(dy, 2), round(oy * dx - ox * dy, 2))
+                # (by size too: other text on the same baseline, over or under this, would
+                # come between its letters, and a span, which has one size, be read short)
+                key = (round(dx, 2), round(dy, 2), round(oy * dx - ox * dy, 2),
+                       round(c.size, 1))
                 rows.setdefault(key, []).append(
                     [char, c.flags, (vx * dx + vy * dy) / h, min(a0, a1), max(a0, a1),
                      ox * dx + oy * dy, ox, oy])

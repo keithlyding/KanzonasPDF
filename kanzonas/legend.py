@@ -161,11 +161,13 @@ def _item(page, a, scale):
     if m["kind"] in LENGTHS + ("m_area", "m_volume") and pts:
         f, unit = scale[0], scale[1]
         if m["kind"] in ("m_length", "m_poly"):
-            item["m"] = M.length(pts) * f
+            item["m"] = M.length(pts) * f + (sum(d for _k, d in M.drops_m(m["props"], len(pts)))
+                                             if m["kind"] == "m_poly" else 0.0)   # (its drops)
         elif m["kind"] == "m_perimeter":
             item["m"] = M.length(pts + pts[:1]) * f
         elif m["kind"] == "m_area":
-            item["m2"] = M.net_area(pts, m.get("holes")) * f * f       # (less its cut-outs)
+            item["m2"] = M.net_area(pts, m.get("holes")) * f * f * \
+                M.slope_factor(m["props"].get("slope"))[0]      # (less its cut-outs; sloped)
         elif len(pts) >= 3:
             item["m3"] = M.net_area(pts, m.get("holes")) * f * f * M.depth_m(m["props"], unit)
     return item
