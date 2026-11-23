@@ -5,7 +5,7 @@ tests/test_battery_151_view's theme change, after tests that left such dialogs b
 
 The collector is turned on for the test (a window turns Python's automatic collector off,
 gc_main), at a collection to nearly every new object for its first FIRST_COLLECTIONS: with
-2,000 closed dialogs that crashes the old code every time, and the fixed code passes in a
+300 closed dialogs that crashes the old code every time (200 did, 100 didn't), and the fixed code passes in a
 few seconds. (With it off, nothing was collected and the old code passed too; left at one a
 new object for the whole change, the test took 23 minutes in the Mac build's full suite.)
 
@@ -34,7 +34,7 @@ class Garbage:
     pass
 
 
-def leave_closed_dialogs(n=2000):
+def leave_closed_dialogs(n=300):
     """Dialogs only a reference cycle keeps (freed at the next collection), each with Qt's
     own child widgets (scroll bars, headers) that Python has no object for yet: making the
     list of widgets makes those objects, and that can start a collection."""
@@ -80,12 +80,20 @@ class ThemeAndCollector(unittest.TestCase):
             gc.set_threshold(1)             # (a collection at nearly every new object)
         gc.callbacks.append(counted)
         self.addCleanup(gc.callbacks.remove, counted)
+        import time
         for mode in ("dark", "light"):
+            t = time.perf_counter()
             try:
                 with mock.patch.object(theme, "apply", apply_then_leave_garbage):
                     w.set_theme(mode)
             finally:
                 gc.set_threshold(*before)
+            # (in the log: what this costs in a full suite, with the widgets and windows the
+            # tests before left; the Mac build's took 20 minutes)
+            sys.stderr.write("test_theme_gc: %s theme %.1f s, %d widgets, %d windows, "
+                             "%d collections\n" % (mode, time.perf_counter() - t,
+                                                   len(QApplication.allWidgets()),
+                                                   len(main_window.windows()), collections[0]))
             self.assertTrue(w.theme_actions[mode].isChecked())
             self.assertGreaterEqual(collections[0], 1)      # (a collection did come)
 
