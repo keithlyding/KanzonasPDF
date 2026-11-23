@@ -1096,6 +1096,11 @@ herramienta. (En el modo CAD, como en AutoCAD, lo que dibuja no queda selecciona
 predeterminado de su herramienta, para las próximas que haga con ella (como Set as Default de Bluebeam).</li>
 <li>El control <b>Opacidad</b> se aplica al soltarlo, al hacer clic en su guía o al pulsar las flechas del teclado
 sobre él. Las imágenes, también las capturas pegadas de Capturar área, admiten una opacidad.</li>
+<li><b>Opacidad del relleno</b> (cuadros de texto, llamadas, rectángulos, elipses, polígonos, nubes, Área,
+Perímetro y Volumen): cuán sólido es el relleno, de 100 (sólido) a 0 (ninguno), mientras el contorno y el
+texto conservan la <b>Opacidad</b>; el relleno se dibuja con ambas a la vez (una opacidad del relleno de 50 en
+una marca con opacidad 50 queda sólida en una cuarta parte). Se dibuja en la propia marca, así que otros
+visores de PDF también la muestran.</li>
 <li>Color de línea, relleno (o <b>Sin relleno</b>), <b>Sin borde</b> para cuadros y formas, color del texto,
 grosor de línea, tamaño de fuente, puntas de flecha, borde de nube, opacidad.</li>
 <li>Líneas (Línea, Flecha, Polilínea, Arco, Curva): <b>Punta de flecha inicial</b> y <b>Punta de flecha final</b>,

@@ -1109,6 +1109,11 @@ the tool's style again. (In CAD mode, as in AutoCAD, what you draw isn't selecte
 for the next ones you make with that tool (as Bluebeam's Set as Default).</li>
 <li>The <b>Opacity</b> slider applies when you let go of it, click its track, or press the
 arrow keys on it. Pictures, including Capture area's pasted captures, take an opacity too.</li>
+<li><b>Fill opacity</b> (text boxes, callouts, rectangles, ellipses, polygons, clouds, Area,
+Perimeter and Volume): how solid the fill is, from 100 (solid) to 0 (none), while the outline
+and the text keep the <b>Opacity</b>; the fill is drawn at both together (a fill opacity of
+50 on a markup at an opacity of 50 is a quarter solid). It's drawn in the markup itself, so
+other PDF viewers show it too.</li>
 <li>Line color, fill (or <b>No fill</b>), <b>No border</b> for boxes and shapes, text color,
 line width, font size, arrowheads, cloud border, opacity.</li>
 <li>Lines (Line, Arrow, Polyline, Arc, Curve): <b>Start arrowhead</b> and <b>End arrowhead</b>,

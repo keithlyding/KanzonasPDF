@@ -11907,3 +11907,9 @@ msgstr "La pendiente de una cubierta, subida a recorrido (6:12) o en grados (30�
 
 msgid "Slope"
 msgstr "Pendiente"
+
+msgid "Fill opacity"
+msgstr "Opacidad del relleno"
+
+msgid "How solid the fill is (100: solid, 0: none). The outline and text keep the Opacity below."
+msgstr "Cuán sólido es el relleno (100: sólido, 0: ninguno). El contorno y el texto conservan la Opacidad de abajo."

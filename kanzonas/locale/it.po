@@ -11971,3 +11971,9 @@ msgstr "La pendenza di una copertura, alzata su base (6:12) o in gradi (30°): l
 
 msgid "Slope"
 msgstr "Pendenza"
+
+msgid "Fill opacity"
+msgstr "Opacità del riempimento"
+
+msgid "How solid the fill is (100: solid, 0: none). The outline and text keep the Opacity below."
+msgstr "Quanto è pieno il riempimento (100: pieno, 0: nessuno). Il contorno e il testo mantengono l'Opacità qui sotto."

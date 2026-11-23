@@ -1097,6 +1097,11 @@ strumento. (In modalità CAD, come in AutoCAD, ciò che disegni non resta selezi
 suo strumento, per le prossime che crei con esso (come Set as Default di Bluebeam).</li>
 <li>Il cursore <b>Opacità</b> si applica quando lo rilasci, quando fai clic sulla sua guida o quando premi le frecce
 della tastiera su di esso. Anche le immagini, comprese le catture incollate da Cattura area, hanno un'opacità.</li>
+<li><b>Opacità del riempimento</b> (caselle di testo, richiami, rettangoli, ellissi, poligoni, nuvole, Area,
+Perimetro e Volume): quanto è pieno il riempimento, da 100 (pieno) a 0 (nessuno), mentre il contorno e il
+testo mantengono l'<b>Opacità</b>; il riempimento è disegnato con entrambe insieme (un'opacità del
+riempimento di 50 su un'annotazione con opacità 50 è piena per un quarto). È disegnata nell'annotazione
+stessa, quindi anche gli altri visualizzatori PDF la mostrano.</li>
 <li>Colore della linea, riempimento (o <b>Nessun riempimento</b>), <b>Nessun bordo</b> per riquadri e forme, colore del testo,
 spessore della linea, dimensione del carattere, punte di freccia, bordo a nuvola, opacità.</li>
 <li>Linee (Linea, Freccia, Polilinea, Arco, Curva): <b>Punta di freccia iniziale</b> e <b>Punta di freccia finale</b>,

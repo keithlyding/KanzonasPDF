@@ -163,6 +163,12 @@ class PropertiesPanel(QWidget):
                                   "(feet when the scale is in feet and inches); 0 for none."))
         self.opacity = QSlider(Qt.Horizontal)
         self.opacity.setRange(10, 100)
+        # the fill's own opacity, on top of the markup's (annotations._fill_opacity): the box or
+        # shape see-through while its outline and text stay as they are
+        self.fill_opacity = QSlider(Qt.Horizontal)
+        self.fill_opacity.setRange(0, 100)
+        self.fill_opacity.setToolTip(tr("How solid the fill is (100: solid, 0: none). The "
+                                        "outline and text keep the Opacity below."))
         self.head = QComboBox()
         self._heads = None
         self._fill_heads(None)
@@ -380,6 +386,7 @@ class PropertiesPanel(QWidget):
                               ("text_back", tr("Text background"), back_row),
                               ("stroke", tr("Line color"), stroke_row),
                               ("fill", tr("Fill"), fill_row),
+                              ("fill_opacity", tr("Fill opacity"), self.fill_opacity),
                               ("width", tr("Line width"), self.width),
                               ("fontsize", tr("Font size"), self.fontsize),
                               ("head_start", tr("Start arrowhead"), self.head_start),
@@ -411,11 +418,12 @@ class PropertiesPanel(QWidget):
         self.height.valueChanged.connect(self._emit)
         self.waste.valueChanged.connect(self._emit)
         self.slope.editingFinished.connect(self._emit)
-        self.opacity.sliderReleased.connect(self._emit)
         # (a click on the slider's track or the arrow keys move it without a release: they
         # apply too; a drag applies once, when it's let go)
-        self.opacity.valueChanged.connect(
-            lambda _v: None if self.opacity.isSliderDown() else self._emit())
+        for slider in (self.opacity, self.fill_opacity):
+            slider.sliderReleased.connect(self._emit)
+            slider.valueChanged.connect(
+                lambda _v, sl=slider: None if sl.isSliderDown() else self._emit())
         self.head.currentIndexChanged.connect(self._emit)
         for c in (self.head_start, self.mid, self.dash):
             c.currentIndexChanged.connect(self._emit)
@@ -592,6 +600,8 @@ class PropertiesPanel(QWidget):
                                         if props["markup"] in A.COMMENT_STYLES else 0)
         if "opacity" in props:
             self.opacity.setValue(int(round(float(props["opacity"]) * 100)))
+        if "fill_opacity" in props:
+            self.fill_opacity.setValue(int(round(float(props["fill_opacity"]) * 100)))
         if "for" in props:
             self.for_who.setCurrentIndex(max(0, self.for_who.findData(props["for"])))
         if "title" in props:
@@ -1019,6 +1029,8 @@ class PropertiesPanel(QWidget):
             p["cloud"] = self.cloud.isChecked()
         if "opacity" in p:
             p["opacity"] = self.opacity.value() / 100
+        if "fill_opacity" in p:
+            p["fill_opacity"] = self.fill_opacity.value() / 100
         if "for" in p:
             p["for"] = self.for_who.currentData()
         if "font" in p:
