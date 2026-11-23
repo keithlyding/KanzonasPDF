@@ -105,23 +105,26 @@ DEFAULTS = {
     "opencloud": {"stroke": "#d00000", "width": 1.5, "opacity": 1.0},
     "callout": {"text_color": "#000000", "stroke": "#d00000", "fill": "#ffffd0", "width": 1.0,
                 "fontsize": 11, "head": "open", "opacity": 1.0, "fit": True},
+    # waste: a waste or extra percent the takeoff adds (takeoff.with_waste).
     # height: a wall's (or any vertical face's), in the page's unit; 0 for none (measure.py:
     # the label shows length x height too, the summary and the takeoff a Wall area)
     "m_length": {"stroke": "#d00000", "width": 1.0, "fontsize": 9, "opacity": 1.0,
-                 "height": 0.0},
+                 "height": 0.0, "waste": 0.0},
     # a dimension (dimensions.py): its arrowheads are one of dimensions.HEADS
     "m_dim": {"stroke": "#d00000", "width": 1.0, "fontsize": 9, "head": "closed",
               "opacity": 1.0},
     # drops: vertical lengths (drops, rises) at its points, [[point number, meters]]: in its
     # total (measure.drops_m)
     "m_poly": {"stroke": "#d00000", "width": 1.0, "fontsize": 9, "opacity": 1.0,
-               "height": 0.0, "drops": []},
-    "m_area": {"stroke": "#d00000", "fill": None, "width": 1.0, "fontsize": 9, "opacity": 1.0},
+               "height": 0.0, "drops": [], "waste": 0.0},
+    "m_area": {"stroke": "#d00000", "fill": None, "width": 1.0, "fontsize": 9, "opacity": 1.0,
+               "waste": 0.0},
     "m_angle": {"stroke": "#d00000", "width": 1.0, "fontsize": 9, "opacity": 1.0},
     "m_radius": {"stroke": "#d00000", "width": 1.0, "fontsize": 9, "opacity": 1.0},
-    "m_perimeter": {"stroke": "#d00000", "fill": None, "width": 1.0, "fontsize": 9, "opacity": 1.0},
+    "m_perimeter": {"stroke": "#d00000", "fill": None, "width": 1.0, "fontsize": 9, "opacity": 1.0,
+                    "waste": 0.0},
     "m_volume": {"stroke": "#d00000", "fill": None, "width": 1.0, "fontsize": 9, "depth": 1.0,
-                 "opacity": 1.0},
+                 "opacity": 1.0, "waste": 0.0},
     "m_count": {"stroke": "#0050ff", "fontsize": 9, "group": "Count 1", "opacity": 1.0,
                 "order": True},
     # a dot (dots.py): filled or outlined, its number and/or its text beside it ("side") or

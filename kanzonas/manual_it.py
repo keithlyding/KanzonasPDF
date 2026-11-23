@@ -1589,6 +1589,14 @@ Spazio, in tutte le tavole, e ciò che non è in nessuno spazio); ed <b>Elementi
 spazio, tipo, gruppo, oggetto, quantità e unità, con i filtri attivi, per una tabella pivot o il tuo computo). I
 subtotali sono formule, quindi una quantità cambiata in Excel li cambia. I nomi presi dal PDF (spazi, gruppi,
 oggetti) sono scritti come testo, mai come formule.</li>
+<li><b>Una quantità per conteggio, e sfrido:</b> con lo strumento Conteggio scelto (o un indicatore
+selezionato), <b>Quantità e sfrido...</b> in Proprietà imposta cosa rappresenta ogni elemento contato del suo
+gruppo: un elenco di articoli, ognuno con la sua quantità per conteggio e la sua unità (ogni apparecchio = 2
+Scatola pz + 1 Cavo pz), e una percentuale di <b>Sfrido / extra</b> per il gruppo. Lunghezze, Lunghezze
+polilinea, Aree, Perimetri e Volumi hanno il proprio <b>Sfrido / extra</b> in Proprietà. Il Riepilogo misure e
+il computo in Excel mostrano allora i conteggi, una riga per ogni articolo con la quantità risultante (8 Scatola
+pz per 4 apparecchi) e una colonna <b>Con sfrido</b> con lo sfrido aggiunto. L'impostazione di un gruppo è
+salvata nel PDF, e Ctrl+Z annulla una sua modifica.</li>
 <li><b>Spazio</b> (scheda Misure, gruppo "Altro", il menu Misure e il pulsante Misura della scheda CAD),
 come gli Spaces di Bluebeam: un'area con un nome in una tavola (una stanza, una zona, un piano). Fai clic su
 ogni angolo, doppio clic o premi Invio, e digita il suo nome (viene proposto Spazio 1, Spazio 2...). È un

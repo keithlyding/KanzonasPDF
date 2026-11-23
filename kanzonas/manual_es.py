@@ -1587,6 +1587,14 @@ cada Espacio, en todos los planos, y lo que no está en ningún espacio); y <b>E
 propia fila: plano, espacio, tipo, grupo, asunto, cantidad y unidad, con filtros, para una tabla dinámica o su
 propio presupuesto). Los subtotales son fórmulas, así que una cantidad que cambie en Excel los cambia. Los nombres
 del PDF (espacios, grupos, asuntos) se escriben como texto, nunca como fórmulas.</li>
+<li><b>Una cantidad por conteo, y desperdicio:</b> con la herramienta Conteo elegida (o un marcador
+seleccionado), <b>Cantidades y desperdicio...</b> en Propiedades define lo que representa cada elemento contado
+de su grupo: una lista de artículos, cada uno con su cantidad por conteo y su unidad (cada aparato = 2 Caja ud + 1
+Latiguillo ud), y un porcentaje de <b>Desperdicio / extra</b> para el grupo. Las Longitudes, Longitudes de
+polilínea, Áreas, Perímetros y Volúmenes tienen su propio <b>Desperdicio / extra</b> en Propiedades. El Resumen
+de mediciones y la medición en Excel muestran entonces los conteos, una fila por artículo con su cantidad
+resultante (8 Caja ud para 4 aparatos) y una columna <b>Con desperdicio</b> con el desperdicio sumado. La
+configuración de un grupo se guarda en el PDF, y Ctrl+Z deshace un cambio en ella.</li>
 <li><b>Espacio</b> (pestaña Medir, grupo "Más", el menú Medir y el botón Medir de la pestaña
 CAD), como los Espacios de Bluebeam: un área con nombre de un plano (una habitación, una zona,
 un nivel). Haga clic en cada esquina, doble clic o pulse Enter, y escriba su nombre (se ofrece

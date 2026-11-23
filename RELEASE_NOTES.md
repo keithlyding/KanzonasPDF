@@ -9,6 +9,21 @@ Spanish translation under `## <version> (es)`. The Windows build fails without t
 translation under `## <version> (it)` is shown to Italian users (since 1.13); without one they
 see the English.
 
+## 1.16.5
+
+**New**
+- A quantity per count, and waste: for a Count group, Properties > Quantities and waste... sets what each counted item stands for (each fixture = 2 boxes + 1 whip, with their units) and a waste percent; lengths, areas and volumes have their own Waste / extra. The Measurement summary and the Excel takeoff show the counts, the resulting quantities and the quantities with waste.
+
+## 1.16.5 (es)
+
+**Novedades**
+- Una cantidad por conteo, y desperdicio: para un grupo de Conteo, Propiedades > Cantidades y desperdicio... define lo que representa cada elemento contado (cada aparato = 2 cajas + 1 latiguillo, con sus unidades) y un porcentaje de desperdicio; las longitudes, áreas y volúmenes tienen su propio Desperdicio / extra. El Resumen de mediciones y la medición en Excel muestran los conteos, las cantidades resultantes y las cantidades con desperdicio.
+
+## 1.16.5 (it)
+
+**Novità**
+- Una quantità per conteggio, e sfrido: per un gruppo di Conteggio, Proprietà > Quantità e sfrido... imposta cosa rappresenta ogni elemento contato (ogni apparecchio = 2 scatole + 1 cavo, con le loro unità) e una percentuale di sfrido; lunghezze, aree e volumi hanno il proprio Sfrido / extra. Il Riepilogo misure e il computo in Excel mostrano i conteggi, le quantità risultanti e le quantità con lo sfrido.
+
 ## 1.16.4
 
 **New**

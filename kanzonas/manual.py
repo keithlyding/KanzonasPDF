@@ -1605,6 +1605,14 @@ what's in no space); and <b>Items</b> (every measurement on its own row: sheet, 
 group, subject, quantity and unit, with filters on, for a pivot table or your own bill of
 quantities). Subtotals are formulas, so a quantity you change in Excel changes them. Names from
 the PDF (spaces, groups, subjects) are written as plain text, never as formulas.</li>
+<li><b>A quantity per count, and waste:</b> with the Count tool picked (or a marker selected),
+<b>Quantities and waste...</b> in Properties sets what each counted item of its group stands
+for: a list of items, each with its quantity per count and its unit (each fixture = 2 Box ea +
+1 Whip ea), and a <b>Waste / extra</b> percent for the group. Lengths, Polylengths, Areas,
+Perimeters and Volumes have their own <b>Waste / extra</b> in Properties. The Measurement summary
+and the Excel takeoff then show the counts, a row for each item with its resulting quantity (8
+Box ea for 4 fixtures), and a <b>With waste</b> column with the waste added. A group's setup is
+kept in the PDF, and Ctrl+Z undoes a change to it.</li>
 <li><b>Space</b> (Measure tab, "More" group, the Measure menu and the CAD tab's Measure
 button), like Bluebeam's Spaces: a named area of a sheet (a room, a zone, a level). Click each
 corner, double-click or press Enter, and type its name (Space 1, Space 2... is offered). It is

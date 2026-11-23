@@ -5050,6 +5050,14 @@ class DocumentView(QScrollArea):
                 new.pop("holes")
         self.commit_model(index, xref, new)
 
+    # ---- a Count group's quantities per item and waste (takeoff.group_setup) ----------
+    def set_count_setup(self, group, items, waste):
+        """Give Count group its quantities per counted item ([(name, qty, unit)]) and waste
+        (percent), kept in the document (takeoff.set_group_setup); one undo step."""
+        from . import takeoff
+        return bool(self.modify(lambda: takeoff.set_group_setup(self.doc, group, items, waste),
+                                [], permission=pymupdf.PDF_PERM_ANNOTATE))
+
     # ---- drops and rises on a Polylength (measure.drops_m) ----------------------------
     def poly_point_at(self, index, xref, pt, tol=None):
         """The number of the selected Polylength's point nearest pt (within tol page points,

@@ -171,8 +171,80 @@ def summary_rows(doc):
     return takeoff.summary(takeoff.items(doc))
 
 
+class CountSetupDialog(QDialog):
+    """A Count group's quantities per counted item (each fixture = 2 boxes + 1 whip: each row
+    an item, its quantity per counted item and its unit) and its waste or extra percent, for
+    the Measurement summary and the Excel takeoff (takeoff.group_setup)."""
+
+    def __init__(self, parent, group, items, waste):
+        super().__init__(parent)
+        from PySide6.QtWidgets import QDoubleSpinBox
+        self.setWindowTitle(tr("Quantities and waste: {group}").format(group=group))
+        self.resize(460, 320)
+        lay = QVBoxLayout(self)
+        lay.addWidget(QLabel(tr("Each item counted in {group} stands for:").format(group=group)))
+        self.table = QTableWidget(0, 3)
+        self.table.setHorizontalHeaderLabels([tr("Item"), tr("Per count"), tr("Unit")])
+        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.table.verticalHeader().hide()
+        lay.addWidget(self.table)
+        for name, qty, unit in items:
+            self.add_row(name, qty, unit)
+        row = QHBoxLayout()
+        add = QPushButton(tr("Add item"))
+        add.clicked.connect(lambda: self.add_row("", 1, ""))
+        remove = QPushButton(tr("Remove item"))
+        remove.clicked.connect(lambda: self.table.removeRow(self.table.currentRow())
+                               if self.table.currentRow() >= 0 else None)
+        row.addWidget(add)
+        row.addWidget(remove)
+        row.addStretch(1)
+        lay.addLayout(row)
+        form = QFormLayout()
+        self.waste = QDoubleSpinBox()
+        self.waste.setRange(0, 1000)
+        self.waste.setDecimals(1)
+        self.waste.setSuffix(" %")
+        self.waste.setValue(float(waste or 0))
+        form.addRow(tr("Waste / extra"), self.waste)
+        lay.addLayout(form)
+        btns = QHBoxLayout()
+        ok = QPushButton(tr("OK"))
+        ok.setDefault(True)
+        ok.clicked.connect(self.accept)
+        cancel = QPushButton(tr("Cancel"))
+        cancel.clicked.connect(self.reject)
+        btns.addStretch(1)
+        btns.addWidget(ok)
+        btns.addWidget(cancel)
+        lay.addLayout(btns)
+
+    def add_row(self, name, qty, unit):
+        r = self.table.rowCount()
+        self.table.insertRow(r)
+        self.table.setItem(r, 0, QTableWidgetItem(str(name)))
+        self.table.setItem(r, 1, QTableWidgetItem(("%g" % float(qty)) if qty != "" else ""))
+        self.table.setItem(r, 2, QTableWidgetItem(str(unit)))
+
+    def values(self):
+        """([(name, qty, unit)], waste percent): rows with no name or no positive number
+        left out."""
+        items = []
+        for r in range(self.table.rowCount()):
+            cell = [self.table.item(r, c) for c in range(3)]
+            name, qty, unit = [(c.text().strip() if c is not None else "") for c in cell]
+            try:
+                q = float(qty.replace(",", "."))
+            except ValueError:
+                continue
+            if name and q > 0:
+                items.append((name, q, unit))
+        return items, self.waste.value()
+
+
 class SummaryDialog(QDialog):
-    COLS = [tr("Type"), tr("Group"), tr("Pages"), tr("Items"), tr("Total"), tr("Unit")]
+    COLS = [tr("Type"), tr("Group"), tr("Pages"), tr("Items"), tr("Total"), tr("Unit"),
+            tr("With waste")]
 
     def __init__(self, parent, doc):
         super().__init__(parent)
@@ -191,7 +263,7 @@ class SummaryDialog(QDialog):
         for r, row in enumerate(self.rows):
             for c, v in enumerate(row):
                 it = QTableWidgetItem(f"{v:,}" if isinstance(v, float) else str(v))
-                if c in (3, 4):
+                if c in (3, 4, 6):
                     it.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
                 t.setItem(r, c, it)
         lay.addWidget(t)

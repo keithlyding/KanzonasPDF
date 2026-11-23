@@ -168,7 +168,7 @@ The owner sets this list; nothing below is promised until it's here.
      showing length x height as well (drywall, paint, insulation, masonry).
   4. **Drops on runs** (1.16.4): vertical lengths (drops, rises) at chosen points of a Polylength,
      counted in its total, shown on the markup and in the summary (conduit, wire, pipe).
-  5. **A quantity per count, and waste**: items per counted item with their own units ("each
+  5. **A quantity per count, and waste** (1.16.5): items per counted item with their own units ("each
      fixture = 2 boxes + 1 whip"), and a waste or extra percentage for a group or
      measurement; the summary and the Excel export show counts and resulting quantities.
   6. **Slope for roof areas**: a pitch on an Area (6:12, or degrees) turning the plan area into
