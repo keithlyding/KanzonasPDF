@@ -57,6 +57,33 @@ class TextPageClip(unittest.TestCase):
         self.assertIn("inside the page", got)
         self.assertNotIn("below the page", got)
 
+    def test_a_line_running_past_the_edge_is_read_whole(self):
+        # (a label running past the edge of a page cropped close: MuPDF's page box clip
+        # dropped its letters outside, "SHEET NO: R-3" read as "SHEET NO R 3", and Text
+        # style in Properties wrote it again without them; random battery, seed 41)
+        d = pymupdf.open()
+        pg = d.new_page(width=300, height=300)
+        pg.insert_text((230, 50), "SHEET NO: R-3", fontsize=12)
+        pg.insert_text((150, 120), "SHEET NO: R-3", fontsize=12, rotate=90)
+        pg.set_cropbox(pymupdf.Rect(0, 0, 300, 118))
+        got = sorted(text_edit.line_text(ln) for _r, ln in text_edit.text_lines(pg))
+        self.assertEqual(got, ["SHEET NO: R-3", "SHEET NO: R-3"])
+
+    def test_restyled_past_the_edge_keeps_its_letters(self):
+        import collections
+        d = pymupdf.open()
+        pg = d.new_page(width=300, height=300)
+        pg.insert_text((230, 50), "SHEET NO: R-3", fontsize=12)
+
+        def letters():
+            tp = pg.get_textpage(clip=pymupdf.INFINITE_RECT())
+            return collections.Counter(c for c in pg.get_text("text", textpage=tp)
+                                       if not c.isspace())
+        before = letters()
+        lines = [ln for _r, ln in text_edit.text_lines(pg)]
+        text_edit.restyle_lines(pg, [lines], lambda k: k._replace(italic=True))
+        self.assertEqual(letters(), before)
+
     def test_a_clip_asked_for_stays_inside_the_page(self):
         tp, _flags = text_edit.page_textpage(self.page, pymupdf.TEXTFLAGS_DICT,
                                              clip=pymupdf.Rect(400, 440, 2000, 500))

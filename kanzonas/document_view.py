@@ -2335,7 +2335,12 @@ class DocumentView(QScrollArea):
                 # (a markup or object being dragged: the selection it moves goes below)
                 w._edit = w._obj_edit = None
                 w.update()
-        self.clear_selection()
+        keep = tool == "m_cutout" and self.selection is not None and not self.extra and \
+            len(self.selected_xrefs()) == 1 and \
+            all(m["kind"] in annotations.CUT_KINDS for _x, m in self.selected_models())
+        if not keep:
+            # (the Cut-out tool keeps the Area or Volume selected: its cut-outs go in it)
+            self.clear_selection()
         self.clear_object_selection()
         self.clear_text_selection()
         self._tool_cursor()
@@ -4958,6 +4963,9 @@ class DocumentView(QScrollArea):
             self._create(index, {"kind": "polygon", "props": self.tool_props(tool),
                                  "points": pts, "rect": pymupdf.Rect(), "text": name})
             return
+        if tool == "m_cutout":
+            self.add_cutout(index, pts)
+            return
         if tool == "m_dim":
             # (its two measured points, and its dimension line's middle: dimensions.py)
             from . import dimensions
@@ -4966,6 +4974,81 @@ class DocumentView(QScrollArea):
             pts = dimensions.normalized(pts)
         self._create(index, {"kind": tool, "props": self.tool_props(tool), "points": pts,
                              "rect": pymupdf.Rect()})
+
+    # ---- cut-outs: openings taken out of an Area or Volume (measure.cut_area) ----------
+    def _cut_target(self, index, pts):
+        """The Area or Volume a cut-out drawn at pts goes into: the one selected, else the
+        smallest one on the page its middle is in. (xref, model) or None."""
+        from . import measure
+        if self.selection is not None and self.selection[0] == index:
+            got = [(x, m) for x, m in self.selected_models()
+                   if m["kind"] in annotations.CUT_KINDS]
+            if len(got) == 1:
+                return got[0]
+        mid = pymupdf.Point(sum(q.x for q in pts) / len(pts), sum(q.y for q in pts) / len(pts))
+        page = self.doc[index]
+        best = None
+        for a in annotations.each_annot(page):
+            if not a.vertices or len(a.vertices) < 3 or not a.rect.contains(mid):
+                continue
+            m = annotations.read(a)
+            if m is None or m["kind"] not in annotations.CUT_KINDS or \
+                    not self._in_polygon(mid, [(q.x, q.y) for q in m["points"]]):
+                continue
+            size = abs(measure.area(m["points"]))
+            if best is None or size < best[0]:
+                best = (size, a.xref, m)
+        return (best[1], best[2]) if best else None
+
+    def add_cutout(self, index, pts):
+        """The Cut-out tool: the outline drawn (page points) taken out of the Area or Volume
+        selected, or the one it's drawn in, as one undo step; that measurement stays
+        selected, its value net of its cut-outs."""
+        pts = [pymupdf.Point(q) for q in pts]
+        if len(pts) < 3:
+            return False
+        got = self._cut_target(index, pts)
+        if got is None:
+            self.statusMessage.emit(tr("Draw a cut-out inside an Area or Volume measurement, "
+                                       "or select one first"))
+            return False
+        xref, model = got
+        if model.get("locked"):
+            self.statusMessage.emit(tr("That measurement is locked"))
+            return False
+        new = annotations.copy(model)
+        new["holes"] = list(new.get("holes") or []) + [pts]
+        self.select_xref(index, xref)
+        self.commit_model(index, xref, new)
+        self.statusMessage.emit(tr("Cut-out added (Ctrl+Z undoes it)"))
+        return True
+
+    def cutout_at(self, index, xref, pt):
+        """The number of the selected Area's or Volume's cut-out at pt, or None."""
+        page = self.doc[index]          # (kept alive while its markup is read)
+        found = annotations.load_annots(page, [xref])
+        m = annotations.read(found[xref]) if xref in found else None
+        for k, h in enumerate((m or {}).get("holes") or ()):
+            if self._in_polygon(pymupdf.Point(pt), [(q.x, q.y) for q in h]):
+                return k
+        return None
+
+    def remove_cutouts(self, index, xref, which=None):
+        """Take out the cut-out number which of an Area or Volume (None: all of them), so
+        that part counts again; one undo step."""
+        page = self.doc[index]          # (kept alive while its markup is read)
+        found = annotations.load_annots(page, [xref])
+        m = annotations.read(found[xref]) if xref in found else None
+        if not m or not m.get("holes"):
+            return
+        new = annotations.copy(m)
+        if which is None:
+            new.pop("holes", None)
+        else:
+            new["holes"] = [h for k, h in enumerate(new["holes"]) if k != which]
+            if not new["holes"]:
+                new.pop("holes")
+        self.commit_model(index, xref, new)
 
     # ---- spaces (spaces.py) ----------------------------------------------------------
     def ask_space_name(self, default, title=None):

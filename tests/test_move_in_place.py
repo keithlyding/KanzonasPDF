@@ -67,6 +67,9 @@ def every_kind(rotation):
     add(p, "image", rect=pymupdf.Rect(500, 300, 560, 360), image_bytes=pix.tobytes("png"))
     add(p, "m_length", points=[P(50, 450), P(200, 450)])
     add(p, "m_area", points=[P(250, 420), P(350, 420), P(350, 500), P(250, 500)])
+    add(p, "m_area", points=[P(230, 520), P(400, 520), P(400, 590), P(230, 590)],
+        holes=[[P(250, 535), P(300, 535), P(300, 575), P(250, 575)]],      # (a cut-out)
+        props={"fill": "#ffcc00"})
     add(p, "m_radius", points=[P(450, 600), P(500, 600)])
     add(p, "m_count", points=[P(450, 450)], n=1)
     add(p, "dot", points=[P(420, 380)], text="dot text",                # (dots.py)

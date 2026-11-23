@@ -45,7 +45,10 @@ from .i18n import tr
 SHEAR = 0.21                    # tan(~12 degrees): a slanted (synthetic) italic
 STROKE = 0.03                   # a thickened (synthetic) bold's stroke, x font size
 _FILLED, _STROKED = 16, 32      # MuPDF's letter flags (FZ_STEXT_FILLED, FZ_STEXT_STROKED)
-_FLAGS = ((pymupdf.TEXTFLAGS_DICT & ~pymupdf.TEXT_PRESERVE_IMAGES) |
+# (not cut at the page's edges: the letters of a line running past one are its letters, as
+# text_edit.text_lines reads them)
+_FLAGS = ((pymupdf.TEXTFLAGS_DICT & ~pymupdf.TEXT_PRESERVE_IMAGES &
+           ~pymupdf.TEXT_MEDIABOX_CLIP) |
           pymupdf.TEXT_COLLECT_STYLES | pymupdf.TEXT_COLLECT_VECTORS)
 _KEEP_FLAGS = 2 | 4 | 8 | 16    # italic, serif, mono, bold (not superscript)
 
@@ -1001,12 +1004,25 @@ def write_row(shape, origin, rotate, row_pieces, fonts):
 def _bar(shape, at, kind, group, fonts):
     while group and group[-1][0].isspace() and len(group) > 1:
         group = group[:-1]              # (not under the spaces a row ends with)
+    while group and group[0][0].isspace() and len(group) > 1:
+        # (nor the ones it starts with: a bar from a space on isn't read back as the
+        # letters', " . . . ." struck through read as not; random battery, seed 41)
+        group = group[1:]
     k = group[0][1]
     size = max(p[1].size for p in group)
     under, thick, strike = deco_metrics(fonts[k])
     mid = under * size if kind == "underline" else -strike * size
     half = thick * size / 2
     a0, a1 = group[0][2], group[-1][3]
+    # (a piece's own spaces at the ends left out too: the bar runs from the first letter to
+    # the last, as it's read back)
+    first, last = group[0], group[-1]
+    lead = len(first[0]) - len(first[0].lstrip())
+    if 0 < lead < len(first[0]):
+        a0 += _width(fonts, first[1], first[0][:lead])
+    trail = len(last[0]) - len(last[0].rstrip())
+    if 0 < trail < len(last[0]):
+        a1 -= _width(fonts, last[1], last[0][len(last[0]) - trail:])
     pts = [at(a0, mid - half), at(a1, mid - half), at(a0, mid + half), at(a1, mid + half)]
     r = pymupdf.Rect(min(p.x for p in pts), min(p.y for p in pts),
                      max(p.x for p in pts), max(p.y for p in pts))

@@ -1553,6 +1553,18 @@ raggio (R) e il diametro (&Oslash;).
 <b>Volume</b>: fai clic sui vertici dell'area, poi fai doppio clic o premi Invio; mostra area
 &times; profondità. Imposta la <b>Profondità</b> nel pannello Proprietà, nell'unità della scala della pagina (piedi
 quando la scala è in piedi e pollici); cambiarla aggiorna la misura selezionata.</li>
+<li><b>Ritaglio</b> (scheda Misure, gruppo "Altro", e il menu Misure): toglie un'apertura da un'Area o un
+Volume, come il vano di una scala da un solaio, finestre e porte da una parete o un pilastro da una soletta.
+Seleziona l'Area o il Volume (o fai clic destro su di esso &gt; <b>Aggiungi ritaglio</b>), scegli Ritaglio, fai
+clic sui vertici dell'apertura e fai doppio clic o premi Invio; disegnane quanti ne servono, e ognuno va in quella
+misura. Senza nulla di selezionato, un ritaglio va nell'Area o nel Volume in cui è disegnato. La misura mostra
+allora la sua area <b>netta</b> (o il volume netto), con una riga che dice cosa è stato tolto da cosa ("2 ritagli
+da 1,200 sq ft"), e il Riepilogo misure e le legende sommano i valori netti. I ritagli disegnati uno sull'altro o
+oltre il bordo della misura vengono tolti una sola volta, e solo dove la coprono. Un ritaglio fa parte della sua
+misura: si sposta, si copia, si capovolge, si annulla e si salva con essa, e il riempimento della misura lo lascia
+vuoto. Per rimetterlo, fai clic destro al suo interno &gt; <b>Rimuovi questo ritaglio</b>, o <b>Rimuovi tutti i
+ritagli</b>. Gli altri visualizzatori PDF mostrano la misura con le sue aperture e il valore netto nel suo commento
+(uno che ridisegna le annotazioni da zero la mostra senza).</li>
 <li><b>Riepilogo misure</b> somma tutto ed esporta in CSV.</li>
 <li><b>Spazio</b> (scheda Misure, gruppo "Altro", il menu Misure e il pulsante Misura della scheda CAD),
 come gli Spaces di Bluebeam: un'area con un nome in una tavola (una stanza, una zona, un piano). Fai clic su

@@ -25,7 +25,7 @@ SHAPE_TOOLS = {"textbox", "rect", "ellipse", "circle", "mask", "line", "arrow", 
                "callout", "m_length", "m_calibrate", "m_radius", "image", "placeholder",
                "erasecontent", "capture", "crop", "link", "legend"}
 POLY_TOOLS = {"polygon", "polyline", "m_poly", "m_area", "m_angle", "m_perimeter", "m_volume",
-              "arc", "curve", "m_dim", "space"}
+              "arc", "curve", "m_dim", "space", "m_cutout"}
 # three clicks: Arc = start, a point it passes through, end; Curve = start, end, the bend
 CURVE_TOOLS = {"arc", "curve"}
 # three clicks, the last one ends it: an angle's end, corner, end; a dimension's two points
@@ -1139,7 +1139,7 @@ class PageWidget(QWidget):
             else:
                 for a_, b_ in zip(pts, pts[1:]):
                     p.drawLine(a_, b_)
-            if tool in ("polygon", "space") + A.CLOSED_MEASURES and len(pts) > 2:
+            if tool in ("polygon", "space", "m_cutout") + A.CLOSED_MEASURES and len(pts) > 2:
                 p.setPen(QPen(self.view.tool_color(tool), 1, Qt.DashLine))
                 p.drawLine(pts[-1], pts[0])
             if tool in MEASURE_TOOLS:
@@ -2192,6 +2192,21 @@ class PageWidget(QWidget):
                         menu.addAction(act)
             if v.selected_space() is not None and not v.read_only:
                 menu.addAction(tr("Rename space..."), v.rename_space)      # (spaces.py)
+            cuts = [(x, m) for x, m in v.selected_models()
+                    if m["kind"] in A.CUT_KINDS] if not v.read_only else []
+            if len(cuts) == 1 and not v.extra:
+                # (an Area's or Volume's openings: measure.cut_area)
+                x, m = cuts[0]
+                menu.addAction(tr("Add cut-out"), lambda: win.set_tool("m_cutout")
+                               if win is not None else None)
+                k = v.cutout_at(self.index, x, pdf) if m.get("holes") else None
+                # (x and k bound now: the Layer menu below uses x for its own)
+                if k is not None:
+                    menu.addAction(tr("Remove this cut-out"),
+                                   lambda x=x, k=k: v.remove_cutouts(self.index, x, k))
+                if m.get("holes"):
+                    menu.addAction(tr("Remove all cut-outs"),
+                                   lambda x=x: v.remove_cutouts(self.index, x))
             if win is not None and hasattr(win, "new_markup_layer") and not v.read_only:
                 # (1.12) the layer the selected markups are on: none, one of the document's,
                 # or a new one
@@ -3132,7 +3147,7 @@ class PageWidget(QWidget):
         tool = self.view.tool
         self._dim_press = None
         if cancel or len(pts) < 2 or (tool in ("polygon", "m_angle", "m_volume", "arc", "m_dim",
-                                               "space") and len(pts) < 3):
+                                               "space", "m_cutout") and len(pts) < 3):
             return
         self.view.apply_poly(self.index, tool, [self.to_pdf(q) for q in pts])
 

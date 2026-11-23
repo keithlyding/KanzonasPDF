@@ -9,6 +9,33 @@ Spanish translation under `## <version> (es)`. The Windows build fails without t
 translation under `## <version> (it)` is shown to Italian users (since 1.13); without one they
 see the English.
 
+## 1.16.1
+
+**New**
+- Cut-outs: take openings out of an Area or Volume measurement (a stair shaft from a floor, windows and doors from a wall, a column from a slab) with Measure > Cut-out. The measurement shows its net area or volume, and the Measurement summary and legends total the net values.
+
+**Fixed**
+- Text running past the edge of a page (a label on a page cropped close) kept the letters beyond the edge when edited or restyled; they were deleted.
+- Underline and strikethrough on text starting with a space (a contents row's dot leader) now show as on in Properties.
+
+## 1.16.1 (es)
+
+**Novedades**
+- Recortes: quite aberturas de una medición de Área o Volumen (el hueco de una escalera de un piso, ventanas y puertas de un muro, una columna de una losa) con Medir > Recorte. La medición muestra su área o volumen neto, y el Resumen de mediciones y las leyendas suman los valores netos.
+
+**Correcciones**
+- El texto que pasa del borde de una página (una etiqueta en una página recortada muy justa) conserva las letras de más allá del borde al editarlo o cambiar su estilo; se borraban.
+- El subrayado y el tachado en texto que empieza con un espacio (la línea de puntos de un índice) ahora aparecen activados en Propiedades.
+
+## 1.16.1 (it)
+
+**Novità**
+- Ritagli: togli aperture da una misura di Area o Volume (il vano di una scala da un solaio, finestre e porte da una parete, un pilastro da una soletta) con Misure > Ritaglio. La misura mostra l'area o il volume netto, e il Riepilogo misure e le legende sommano i valori netti.
+
+**Correzioni**
+- Il testo che va oltre il bordo di una pagina (un'etichetta su una pagina ritagliata stretta) mantiene le lettere oltre il bordo quando lo modifichi o ne cambi lo stile; venivano cancellate.
+- Sottolineatura e barrato su testo che inizia con uno spazio (i puntini di un indice) ora risultano attivi in Proprietà.
+
 ## 1.16
 
 **New**
