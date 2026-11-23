@@ -9047,6 +9047,7 @@ class DocumentView(QScrollArea):
                     have[it["n"]] = it
             items = sorted(have.values(), key=lambda it: it["n"])
         self.obj_sel = (index, list(items)) if items else None
+        self._turned = None             # (selected again: Rotate by starts at 0)
         self._note_picks()
         for i in {old[0] if old else None, index}:
             if i is not None and 0 <= i < len(self.pages):
@@ -9239,8 +9240,29 @@ class DocumentView(QScrollArea):
             if mine:
                 links.transform(pg, mine, turn)
             return bool(mine)
+        before, key = self.revision, self._turn_key()
         self._objects_edit(tr("Rotated"), lambda pg, ns: page_objects.rotate(pg, ns, rect, degrees, objs),
                            links_fn=turn_links)
+        if self.obj_sel is not None and self.revision != before:
+            # how far they've turned since they were selected (Properties > Rotate by shows
+            # it; counterclockwise as shown, -180 to 180)
+            total = (self._turned[1] if self._turned and self._turned[0] == key else 0.0)
+            total = (total - degrees + 180.0) % 360.0 - 180.0
+            self._turned = (self._turn_key(), round(total, 6) + 0.0)
+
+    _turned = None                      # (_turn_key(), degrees) for objects_turned
+
+    def _turn_key(self):
+        if self.obj_sel is None:
+            return None
+        return (self.obj_sel[0], tuple(sorted(it["n"] for it in self.obj_sel[1])))
+
+    def objects_turned(self):
+        """How far the selected pictures and shapes have been turned since they were selected
+        (degrees counterclockwise as shown, -180 to 180): Properties > Rotate by shows it."""
+        if self._turned is None or self._turned[0] != self._turn_key():
+            return 0.0
+        return self._turned[1]
 
     _turn_typed = 15.0                  # the angle Rotate by an angle... offers (the last one)
 
@@ -9409,6 +9431,59 @@ class DocumentView(QScrollArea):
         if not widths:
             return None
         return widths.pop() if len(widths) == 1 else ""
+
+    def object_style(self):
+        """For Properties: what the selected shapes are drawn with ({"stroke", "fill",
+        "dash"}: the outlined ones' color and Line style, the filled ones' fill color) and the
+        arrowheads of the open lines among them ({"start", "end", "mid"}); each value "" when
+        they differ, and a key left out when none of them has it."""
+        from . import page_objects as P
+        if self.obj_sel is None:
+            return {}
+        index, items = self.obj_sel
+        objs = self._obj_cache.get(index)
+        if objs is None or not objs.found:
+            return {}
+        vals = {k: set() for k in ("stroke", "fill", "dash", "start", "end", "mid")}
+        for it in items:
+            if it["kind"] != "shape" or it["n"] >= len(objs.found):
+                continue
+            d = objs.found[it["n"]]
+            st = P.style_of(d)
+            if st["stroke"]:
+                vals["stroke"].add(st["stroke"])
+                vals["dash"].add(st["dash"])
+            if st["fill"]:
+                vals["fill"].add(st["fill"])
+            h = P.heads_of(objs.data, d)
+            body = P._split(objs.data[d["start"]:d["end"]])[1]
+            if st["stroke"] and P.can_have_heads(body, h[3] if h else 0):
+                h = h or ("none", "none", "none", 0)
+                for k, v in zip(("start", "end", "mid"), h):
+                    vals[k].add(v)
+        return {k: (v.pop() if len(v) == 1 else "") for k, v in vals.items() if v}
+
+    def style_objects(self, stroke=None, fill=None, dash=None, heads=None):
+        """Properties on the page's own shapes: Line color / Fill color (#rrggbb), Line style
+        (a key of page_objects.DASHES) and arrowheads ({"start", "end", "mid"} -> none, open
+        or closed, on open lines), in one undo step; they stay selected."""
+        from . import page_objects
+        if self.obj_sel is None or (stroke is None and fill is None and dash is None and
+                                    not heads):
+            return
+
+        def rgb(h):
+            from PySide6.QtGui import QColor
+            c = QColor(h)
+            return (c.redF(), c.greenF(), c.blueF())
+        cache = self._obj_cache.get(self.obj_sel[0])
+        self._objects_edit(
+            tr("Arrowheads changed") if heads else tr("Line style changed") if dash else
+            tr("Color changed"),
+            lambda page, ns: page_objects.recolor(
+                page, ns, stroke=rgb(stroke) if stroke else None,
+                fill=rgb(fill) if fill else None, objs=cache, dash=dash, heads=heads),
+            takes_text=False)
 
     def set_object_width(self, width):
         """Properties > Line width on the page's own objects: the selected shapes' lines drawn

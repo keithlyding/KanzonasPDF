@@ -2,12 +2,15 @@
 
 Properties (Edit objects, and CAD mode): one picture or group selected shows its Rotation
 (counterclockwise as the page is shown), and typing an angle turns it to that angle; lines and
-shapes (or several objects) keep no angle, so Rotate by turns them by what's typed and goes back
-to 0. Text is moved, not turned. Snapping: a picture's corners, edge middles and center, also
+shapes (or several objects) keep no angle, so Rotate by shows how far they've turned since they
+were selected, and a number typed (or stepped with the arrows) turns them by the difference; it
+starts at 0 for each new selection. Text is moved, not turned. Snapping: a picture's corners, edge middles and center, also
 when it's turned, as a CAD command's points snap to them.
 
 The owner, 16 Nov 2026: "I would like rotate to show up in the properties panel. Also, snap to
 isn't working when in cad mode to click on a point on the image I'm trying to rotate".
+The owner, 22 Nov 2026: "when I use the up/down arrows to rotate a line, the number just stays
+at 0" (it went back to 0 after each turn).
 
     QT_QPA_PLATFORM=offscreen python -m unittest tests.test_rotation_props_snap
 """
@@ -137,7 +140,35 @@ class ShapesRotateBy(Window):
         box = self.v.doc[0].get_drawings()[0]["rect"]
         self.assertAlmostEqual(box.width, 0, 0)                # (upright now)
         self.assertAlmostEqual(box.height, 200, 0)
-        self.assertEqual(self.props.turn.value(), 0)           # (ready for the next turn)
+        self.assertEqual(self.props.turn.value(), 90)          # (how far it has turned)
+        self.props.turn.setValue(45)                           # (back 45: half as far)
+        APP.processEvents()
+        self.assertEqual(self.props.turn.value(), 45)
+        box = self.v.doc[0].get_drawings()[0]["rect"]
+        self.assertAlmostEqual(box.width, box.height, 0)
+        self.v.undo()
+        APP.processEvents()
+        self.assertAlmostEqual(self.v.doc[0].get_drawings()[0]["rect"].width, 0, 0)
+
+    def test_the_arrows_step_it_and_it_starts_at_0_selected_again(self):
+        from PySide6.QtCore import Qt
+        from PySide6.QtTest import QTest
+        self.select(self.items("shape"))
+        self.props.turn.setFocus()
+        for k in range(1, 4):
+            QTest.keyClick(self.props.turn, Qt.Key_Up)
+            APP.processEvents()
+            self.assertEqual(self.props.turn.value(), 5 * k)
+            self.assertAlmostEqual(self.v.objects_turned(), 5 * k)
+        QTest.keyClick(self.props.turn, Qt.Key_Down)
+        APP.processEvents()
+        self.assertEqual(self.props.turn.value(), 10)
+        box = self.v.doc[0].get_drawings()[0]["rect"]
+        import math
+        self.assertAlmostEqual(box.height, 200 * math.sin(math.radians(10)), 0)
+        self.v.clear_object_selection()
+        self.select(self.items("shape"))
+        self.assertEqual(self.props.turn.value(), 0)
 
     def test_several_objects_turn_by_too(self):
         self.select(self.items("shape") + self.items("picture"))

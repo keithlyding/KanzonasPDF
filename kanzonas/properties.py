@@ -17,6 +17,8 @@ HEAD_NAMES = {"open": tr("open"), "closed": tr("closed"), "open (reversed)": tr(
               "square": tr("square"), "diamond": tr("diamond"), "bar": tr("bar"),
               # a dimension's (dimensions.HEADS): an architect's slash, a dot, or none
               "slash": tr("slash"), "dot": tr("dot"), "none": tr("none")}
+DASH_NAMES = {"solid": tr("solid"), "dash": tr("dashed"), "dot": tr("dotted"),
+              "dashdot": tr("dash-dot")}
 MARKUP_NAMES = {"highlight": tr("Highlight"), "underline": tr("Underline"),
                 "strikeout": tr("Strikeout"), "squiggly": tr("Squiggly")}
 
@@ -61,7 +63,9 @@ class PropertiesPanel(QWidget):
     resetRequested = Signal()
     objectsTurn = Signal(float)      # the page's selected objects: turn by degrees (counterclockwise)
     objectsWidth = Signal(float)     # the page's selected objects: their line width (points)
+    objectsStyle = Signal(dict)      # their colors, Line style or arrowheads: what changed
     _obj_width = None                # their line width shown ("" when they differ)
+    _obj_style = {}                  # their colors, Line style and arrowheads shown
     countLayer = Signal(object)      # a count's layer picked: None (as the Layers tab), 0 (no
     #                                  layer), a layer's xref, or "new"
     newCountGroup = Signal()         # the Count tool: start a new group ("New count")
@@ -105,6 +109,7 @@ class PropertiesPanel(QWidget):
         self.width.setRange(0, 50)
         self.width.setSingleStep(0.5)
         self.width.setSuffix(" pt")
+        self.width.setKeyboardTracking(False)       # (a number typed applies on Enter, once)
         self.fontsize = QDoubleSpinBox()
         self.fontsize.setRange(4, 144)
         self.fontsize.setSuffix(" pt")
@@ -119,6 +124,17 @@ class PropertiesPanel(QWidget):
         self.head = QComboBox()
         self._heads = None
         self._fill_heads(None)
+        # a line's start arrowhead, middle arrow and line style (A.LINE_KINDS, and the page's
+        # own lines: show_objects)
+        self.head_start = QComboBox()
+        for key in A.HEADS:
+            self.head_start.addItem(HEAD_NAMES.get(key, key), key)
+        self.mid = QComboBox()
+        for key in A.MIDS:
+            self.mid.addItem(HEAD_NAMES.get(key, key), key)
+        self.dash = QComboBox()
+        for key in A.DASHES:
+            self.dash.addItem(DASH_NAMES[key], key)
         self.label = QComboBox()            # stamp choice
         self.label.setEditable(True)
         self.label.setInsertPolicy(QComboBox.NoInsert)
@@ -136,7 +152,8 @@ class PropertiesPanel(QWidget):
         # the page's own lines and shapes keep no angle: they're turned by what's typed here,
         # and it goes back to 0 (each arrow click turns them 5 degrees more)
         self.turn = QDoubleSpinBox()
-        self.turn.setRange(-360, 360)
+        self.turn.setRange(-180, 180)
+        self.turn.setWrapping(True)
         self.turn.setDecimals(1)
         self.turn.setSingleStep(5)
         self.turn.setSuffix("\u00b0")
@@ -289,7 +306,10 @@ class PropertiesPanel(QWidget):
                               ("fill", tr("Fill"), fill_row),
                               ("width", tr("Line width"), self.width),
                               ("fontsize", tr("Font size"), self.fontsize),
+                              ("head_start", tr("Start arrowhead"), self.head_start),
                               ("head", tr("Arrowhead"), self.head),
+                              ("mid", tr("Middle arrow"), self.mid),
+                              ("dash", tr("Line style"), self.dash),
                               ("depth", tr("Depth"), self.depth),
                               ("rotation", tr("Rotation"), self.rotation),
                               ("turn", tr("Rotate by"), self.turn),
@@ -316,6 +336,8 @@ class PropertiesPanel(QWidget):
         self.opacity.valueChanged.connect(
             lambda _v: None if self.opacity.isSliderDown() else self._emit())
         self.head.currentIndexChanged.connect(self._emit)
+        for c in (self.head_start, self.mid, self.dash):
+            c.currentIndexChanged.connect(self._emit)
         self.markup.currentIndexChanged.connect(self._emit)
         self.for_who.currentIndexChanged.connect(self._emit)
         self.label.activated.connect(self._emit)
@@ -406,7 +428,9 @@ class PropertiesPanel(QWidget):
                                            else tr("Line color"))
         if "fill" in props:
             self.fill.set_color(props["fill"])
+            self.no_fill.setVisible(True)           # (hidden for the page's own shapes)
             self.no_fill.setChecked(props["fill"] is None)
+            self.rows["fill"][0].setText(tr("Fill"))
         if "text_color" in props:
             self.text_color.set_color(props["text_color"])
         if "width" in props:
@@ -423,6 +447,17 @@ class PropertiesPanel(QWidget):
         if "head" in props:
             self._fill_heads(kind)
             self.head.setCurrentIndex(max(0, self.head.findData(props["head"])))
+            self.rows["head"][0].setText(tr("End arrowhead") if kind in A.LINE_KINDS
+                                         else tr("Arrowhead"))
+        if "head_start" in props and self.head_start.count() != len(A.HEADS):
+            # (the page's own lines have fewer: see show_objects)
+            self.head_start.clear()
+            for key in A.HEADS:
+                self.head_start.addItem(HEAD_NAMES.get(key, key), key)
+        for key, combo in (("head_start", self.head_start), ("mid", self.mid),
+                           ("dash", self.dash)):
+            if key in props:
+                combo.setCurrentIndex(max(0, combo.findData(props[key])))
         if "depth" in props:
             self.depth.setValue(float(props["depth"] or 0))
         if "label" in props:
@@ -550,8 +585,9 @@ class PropertiesPanel(QWidget):
 
     def _fill_heads(self, kind):
         """The arrowheads the kind of markup can have (a dimension's own set)."""
-        from . import dimensions
-        keys = tuple(dimensions.HEADS) if kind == "m_dim" else tuple(A.HEADS)
+        from . import dimensions, page_objects
+        keys = tuple(dimensions.HEADS) if kind == "m_dim" else \
+            tuple(page_objects.HEAD_KINDS) if kind == "objects" else tuple(A.HEADS)
         if keys != self._heads:
             self.head.clear()
             for key in keys:
@@ -601,18 +637,24 @@ class PropertiesPanel(QWidget):
         self._loading = False
         self._emit()
 
-    def show_objects(self, what, angle=None, text=False, width=None):
+    _turn_at = 0.0                   # Rotate by: how far they've turned since selected
+
+    def show_objects(self, what, angle=None, text=False, width=None, style=None, turned=0.0):
         """The page's own objects selected (Edit objects, CAD mode): their rotation, and their
         line width. what: what is selected ("1 picture"). angle: the one picture's or group's
         angle as shown (counterclockwise): Rotation turns it to the angle typed; None (lines
         and shapes keep no angle, or several): Rotate by turns them by what's typed. text: text
         is among them (moved, not turned). width: the line width of the shapes with an outline
-        among them (points on the page), "" when they differ, None when none has one."""
+        among them (points on the page), "" when they differ, None when none has one.
+        style: DocumentView.object_style() (their colors, Line style, arrowheads).
+        turned: how far they've turned since they were selected (Rotate by shows it, and a
+        new number turns them by the difference)."""
         self._loading = True
         self._kind = "objects"
         self._props = {}
         self._obj_angle = angle
         self._obj_width = width
+        self._obj_style = dict(style or {})
         self.title.setText(tr("Selected: {name}").format(name=what))
         self.title.setStyleSheet("font-weight: bold; padding: 3px 5px; border-radius: 3px; "
                                  "background: rgba(45, 108, 223, 0.28);")
@@ -634,10 +676,43 @@ class PropertiesPanel(QWidget):
                 w.show()
         else:
             self.hint.setText(tr("Rotate by turns them about their middle (counterclockwise), "
-                                 "as their round handle does."))
-            self.turn.setValue(0)
+                                 "as their round handle does. It shows how far they've turned "
+                                 "since you selected them."))
+            self._turn_at = float(turned or 0.0)
+            self.turn.setValue(self._turn_at)
             for w in self.rows["turn"]:
                 w.show()
+        style = self._obj_style
+        # their colors, Line style and the open lines' arrowheads (several that differ:
+        # shown blank, and what's picked goes to all)
+        from . import page_objects as P
+        for key, row, button in (("stroke", "stroke", self.stroke), ("fill", "fill", self.fill)):
+            if key in style:
+                button.set_color(style[key] or None)
+                for w in self.rows[row]:
+                    w.show()
+        self.no_stroke.setVisible(False)
+        self.no_fill.setVisible(False)
+        if "stroke" in style:
+            self.rows["stroke"][0].setText(tr("Line color"))
+        if "fill" in style:
+            self.rows["fill"][0].setText(tr("Fill color"))
+        if "dash" in style:
+            self.dash.setCurrentIndex(self.dash.findData(style["dash"]))
+            for w in self.rows["dash"]:
+                w.show()
+        if "start" in style:
+            self._fill_heads("objects")
+            for key, row, combo in (("start", "head_start", self.head_start),
+                                    ("end", "head", self.head), ("mid", "mid", self.mid)):
+                if combo is self.head_start:
+                    combo.clear()
+                    for k in P.HEAD_KINDS:
+                        combo.addItem(HEAD_NAMES.get(k, k), k)
+                combo.setCurrentIndex(combo.findData(style[key]))
+                for w in self.rows[row]:
+                    w.show()
+            self.rows["head"][0].setText(tr("End arrowhead"))
         if width is not None:
             # (several of different widths: shown blank, and the width typed goes to all)
             self.rows["width"][0].setText(tr("Line width"))
@@ -648,12 +723,14 @@ class PropertiesPanel(QWidget):
         self._loading = False
 
     def _turn_by(self, value):
-        if self._loading or self._kind != "objects" or not value:
+        """Rotate by: turned by the difference to the number shown before (the arrows step
+        it 5 degrees at a time; past 180 it goes on from -180)."""
+        if self._loading or self._kind != "objects":
             return
-        self._loading = True
-        self.turn.setValue(0)
-        self._loading = False
-        self.objectsTurn.emit(value)
+        delta = (value - self._turn_at + 180.0) % 360.0 - 180.0
+        self._turn_at = value
+        if abs(delta) > 1e-9:
+            self.objectsTurn.emit(delta)
 
     def _inside_toggled(self, on):
         """The number put inside a filled dot reads white on it: a black text color (the
@@ -667,6 +744,19 @@ class PropertiesPanel(QWidget):
         if self._loading or self._kind is None:
             return
         if self._kind == "objects":
+            # (colors, Line style, arrowheads: what was changed goes to the selected shapes)
+            style, changed = self._obj_style, {}
+            for key, value in (("stroke", self.stroke.color()), ("fill", self.fill.color()),
+                               ("dash", self.dash.currentData()),
+                               ("start", self.head_start.currentData()),
+                               ("end", self.head.currentData()),
+                               ("mid", self.mid.currentData())):
+                if key in style and value and value != style[key]:
+                    changed[key] = value
+            if changed:
+                style.update(changed)
+                self.objectsStyle.emit(changed)
+                return
             # (Line width: given to the selected shapes when it's another than they have)
             if self._obj_width is not None and self.rows["width"][1].isVisible():
                 w = round(self.width.value(), 3)
@@ -704,6 +794,10 @@ class PropertiesPanel(QWidget):
             p["fontsize"] = self.fontsize.value()
         if "head" in p:
             p["head"] = self.head.currentData() or self.head.currentText()
+        for key, combo in (("head_start", self.head_start), ("mid", self.mid),
+                           ("dash", self.dash)):
+            if key in p:
+                p[key] = combo.currentData()
         if "depth" in p:
             p["depth"] = self.depth.value()
         if "markup" in p:

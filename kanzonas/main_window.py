@@ -1909,6 +1909,7 @@ class MainWindow(QMainWindow):
             lambda deg: self.view() is not None and self.view().rotate_objects(-deg))
         self.props.objectsWidth.connect(
             lambda w: self.view() is not None and self.view().set_object_width(w))
+        self.props.objectsStyle.connect(self._objects_style)
         self.props.resetRequested.connect(self._reset_tool_defaults)
         self.props.countLayer.connect(self._count_layer_picked)
         self.props.newCountGroup.connect(self._new_count_group)
@@ -2865,7 +2866,8 @@ class MainWindow(QMainWindow):
             items = v.obj_sel[1]
             self.props.show_objects(v.describe_objects(items), v.objects_angle(),
                                     text=any(it["kind"] == "text" for it in items),
-                                    width=v.object_line_width())
+                                    width=v.object_line_width(), style=v.object_style(),
+                                    turned=v.objects_turned())
         elif (self.tool in annotations.DEFAULTS and self.tool != "image") or \
                 self.tool in annotations.PAGE_TEXT_TOOLS:
             # (the Image tool writes into the page: no markup settings apply; Add text and
@@ -6048,6 +6050,15 @@ class MainWindow(QMainWindow):
                 v.redraw_pages()
         self.statusBar().showMessage(tr("Thin lines drawn at least a pixel wide") if on else
                                      tr("Lines drawn at their true width"), 3000)
+
+    def _objects_style(self, changed):
+        """Properties on the page's own shapes: a color, the Line style or an arrowhead."""
+        v = self.view()
+        if v is None:
+            return
+        heads = {k: changed[k] for k in ("start", "end", "mid") if k in changed}
+        v.style_objects(stroke=changed.get("stroke"), fill=changed.get("fill"),
+                        dash=changed.get("dash"), heads=heads or None)
 
     def _toggle_line_weights(self):
         on = self.a_line_weights.isChecked()
