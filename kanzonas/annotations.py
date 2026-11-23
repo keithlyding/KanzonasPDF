@@ -100,16 +100,18 @@ DEFAULTS = {
     "space": {"stroke": "#1f6fd0", "fill": "#1f6fd0", "width": 1.5, "cloud": False,
               "opacity": 0.2, "fill_opacity": 1.0, "space": True},
     "polyline": {"stroke": "#0050ff", "width": 2.0, "opacity": 1.0, "head_start": "none",
-                 "head": "none", "mid": "none", "dash": "solid"},
+                 "head": "none", "mid": "none", "dash": "solid", "head_size": 1.0},
     "arc": {"stroke": "#0050ff", "width": 2.0, "opacity": 1.0, "head_start": "none",
-            "head": "none", "mid": "none", "dash": "solid"},
+            "head": "none", "mid": "none", "dash": "solid", "head_size": 1.0},
     # the Curve tool draws a bent line (kind "line" with a "bend" point): its own style
     "curve": {"stroke": "#0050ff", "width": 2.0, "opacity": 1.0, "rotation": 0,
-              "head_start": "none", "head": "none", "mid": "none", "dash": "solid"},
+              "head_start": "none", "head": "none", "mid": "none", "dash": "solid",
+              "head_size": 1.0},
     # a cloud with part of it trimmed away (clouds.py): drawn along an open polyline
     "opencloud": {"stroke": "#d00000", "width": 1.5, "opacity": 1.0},
     "callout": {"text_color": "#000000", "stroke": "#d00000", "fill": "#ffffd0", "width": 1.0,
-                "fontsize": 11, "head": "open", "opacity": 1.0, "fill_opacity": 1.0, "fit": True},
+                "fontsize": 11, "head": "open", "head_size": 1.0, "opacity": 1.0,
+                "fill_opacity": 1.0, "fit": True},
     # waste: a waste or extra percent the takeoff adds (takeoff.with_waste).
     # height: a wall's (or any vertical face's), in the page's unit; 0 for none (measure.py:
     # the label shows length x height too, the summary and the takeoff a Wall area)
@@ -117,7 +119,7 @@ DEFAULTS = {
                  "height": 0.0, "waste": 0.0},
     # a dimension (dimensions.py): its arrowheads are one of dimensions.HEADS
     "m_dim": {"stroke": "#d00000", "width": 1.0, "fontsize": 9, "head": "closed",
-              "opacity": 1.0},
+              "head_size": 1.0, "opacity": 1.0},
     # drops: vertical lengths (drops, rises) at its points, [[point number, meters]]: in its
     # total (measure.drops_m)
     "m_poly": {"stroke": "#d00000", "width": 1.0, "fontsize": 9, "opacity": 1.0,
@@ -144,9 +146,9 @@ DEFAULTS = {
     # the stamp word is printed on the page: in the user's language (a placed stamp keeps its own)
     "stamp": {"label": tr("APPROVED"), "stroke": "#c00000", "name": True, "date": True, "opacity": 1.0},
     "line": {"stroke": "#0050ff", "width": 2.0, "opacity": 1.0, "head_start": "none",
-             "head": "none", "mid": "none", "dash": "solid"},
+             "head": "none", "mid": "none", "dash": "solid", "head_size": 1.0},
     "arrow": {"stroke": "#d00000", "width": 2.0, "head": "open", "opacity": 1.0,
-              "head_start": "none", "mid": "none", "dash": "solid"},
+              "head_start": "none", "mid": "none", "dash": "solid", "head_size": 1.0},
     "ink": {"stroke": "#0050ff", "width": 2.0, "opacity": 1.0},
     "image": {"opacity": 1.0},
     "redact": {},
@@ -629,16 +631,107 @@ def _along(points):
     return None, None
 
 
-def mid_arrow(points, width, style):
+def mid_arrow(points, width, style, scale=1.0):
     """A middle arrow's points (page coordinates) for a line through points, pointing the
-    way it's drawn: [back left, tip, back right]. Its length grows with the line's width."""
+    way it's drawn: [back left, tip, back right]. Its length grows with the line's width,
+    times scale (the markup's Arrowhead size, head_scale)."""
     mid, u = _along([pymupdf.Point(q) for q in points])
     if mid is None:
         return None
-    length = max(6.0, 3.0 * float(width) + 3.0)
+    length = max(6.0, 3.0 * float(width) + 3.0) * scale
     n = pymupdf.Point(-u.y, u.x)
     tip, back = mid + u * (length / 2), mid - u * (length / 2)
     return [back + n * (length * 0.45), tip, back - n * (length * 0.45)]
+
+
+HEAD_SCALES = (0.25, 5.0)          # the Arrowhead size's range (25% to 500%)
+
+
+def head_scale(p):
+    """A markup's Arrowhead size (props "head_size"): its heads' size against the size its
+    line width gives (1 = that size), within HEAD_SCALES."""
+    try:
+        v = float(p.get("head_size", 1) or 1)
+    except (TypeError, ValueError):
+        return 1.0
+    return min(HEAD_SCALES[1], max(HEAD_SCALES[0], v))
+
+
+_M_LINE = re.compile(rb"^[-+.\d]+\s+[-+.\d]+\s+m$")
+_ANY_PAINT = re.compile(rb"^[bBfFsS]\*?$")
+
+
+def _scale_heads(doc, annot, scale, width):
+    """A line's or callout's arrowheads (or other ends) scaled by scale about the end of the
+    line each one is at (the owner, 23 Nov: "be able to change arrowhead sizes"). MuPDF
+    draws a line markup's ends in its appearance after the line itself, each a path of its
+    own, sized by the line's width: those paths are scaled, their lines as wide as before,
+    and the markup's box grows to hold them. The PDF's line endings (/LE) stay, so other
+    programs know what its ends are; one that draws the markup anew draws them at the size
+    its width gives."""
+    typ, val = doc.xref_get_key(annot.xref, "AP/N")
+    if typ != "xref":
+        return
+    ap = int(val.split()[0])
+    lines = doc.xref_stream(ap).split(b"\n")
+    blocks, start = [], None
+    for i, ln in enumerate(lines):
+        t = ln.strip()
+        if start is None and _M_LINE.match(t):
+            start = i
+        elif start is not None and _ANY_PAINT.match(t):
+            blocks.append((start, i))
+            start = None
+    if len(blocks) < 2:
+        return
+
+    def pairs(i0, i1):
+        nums = [float(x) for ln in lines[i0:i1] for x in _NUMBER.findall(ln.decode("latin-1"))]
+        return [pymupdf.Point(nums[k], nums[k + 1]) for k in range(0, len(nums) - 1, 2)]
+    path = pairs(*blocks[0])            # the line itself: its two ends
+    if len(path) < 2:
+        return
+    ends = (path[0], path[-1])
+    reach = 30 + 12 * max(1.0, float(width or 1))
+    grown = None
+    for i0, i1 in blocks[1:]:
+        pts = pairs(i0, i1)
+        if not pts:
+            continue
+        mid = pymupdf.Point(sum(q.x for q in pts) / len(pts), sum(q.y for q in pts) / len(pts))
+        end = min(ends, key=lambda e: abs(e - mid))
+        if abs(end - mid) > reach:      # (not one of its ends)
+            continue
+        for k in range(i0, i1):
+            lines[k] = _scaled_pairs(lines[k], end, scale)
+        for q in pts:
+            q2 = end + (q - end) * scale
+            grown = pymupdf.Rect(q2, q2) if grown is None else grown | q2
+    if grown is None:
+        return
+    doc.update_stream(ap, b"\n".join(lines))
+    pad = float(width or 0) / 2 + 1
+    grown = grown + (-pad, -pad, pad, pad)
+    for x, key in ((ap, "BBox"), (annot.xref, "Rect")):
+        k, v = doc.xref_get_key(x, key)
+        if k == "array":
+            box = pymupdf.Rect([float(t) for t in v.strip("[]").split()]) | grown
+            doc.xref_set_key(x, key, "[%g %g %g %g]" % tuple(box))
+
+
+_NUMBER_B = re.compile(rb"[-+]?(?:\d+\.?\d*|\.\d+)")
+
+
+def _scaled_pairs(line, about, scale):
+    """A content line's numbers, taken as x y pairs, scaled by scale about the point about
+    (each path operator's line holds whole pairs)."""
+    k = [0]
+
+    def one(m):
+        c = about.x if k[0] % 2 == 0 else about.y
+        k[0] += 1
+        return ("%.3f" % (c + (float(m.group(0)) - c) * scale)).encode()
+    return _NUMBER_B.sub(one, line)
 
 
 def _solid_ends(doc, annot):
@@ -661,7 +754,7 @@ def _draw_mid_arrow(page, annot, p, stroke, width):
     that draws the markup anew from its settings leaves it out."""
     doc = page.parent
     pts = [pymupdf.Point(q) for q in (annot.vertices or [])]
-    wing = mid_arrow(pts, width, p.get("mid"))
+    wing = mid_arrow(pts, width, p.get("mid"), head_scale(p))
     if wing is None:
         return
     kind, val = doc.xref_get_key(annot.xref, "AP/N")
@@ -910,6 +1003,8 @@ def write(page, model):
             pymupdf.mupdf.pdf_update_annot(a.this)
             if dashes(p, width):
                 _solid_ends(page.parent, a)
+    if kind in LINE_KINDS + ("callout",) and head_scale(p) != 1:
+        _scale_heads(page.parent, a, head_scale(p), width)
     if kind in LINE_KINDS and p.get("mid") in ("open", "closed"):
         _draw_mid_arrow(page, a, p, stroke, width)
     if kind in CUT_KINDS and model.get("holes"):

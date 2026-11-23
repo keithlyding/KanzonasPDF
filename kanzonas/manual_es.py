@@ -1103,6 +1103,10 @@ una marca con opacidad 50 queda sólida en una cuarta parte). Se dibuja en la pr
 visores de PDF también la muestran.</li>
 <li>Color de línea, relleno (o <b>Sin relleno</b>), <b>Sin borde</b> para cuadros y formas, color del texto,
 grosor de línea, tamaño de fuente, puntas de flecha, borde de nube, opacidad.</li>
+<li><b>Tamaño de punta de flecha</b> (líneas, flechas, polilíneas, arcos, curvas, llamadas y cotas): sus puntas de
+flecha y otros extremos de línea, y su flecha central, del 25% al 500% del tamaño que da su grosor de línea (100%), para
+que una línea fina pueda tener puntas grandes. Otros programas PDF conocen sus extremos; uno que vuelva a dibujar la marca
+a partir de sus ajustes los dibuja al tamaño habitual.</li>
 <li>Líneas (Línea, Flecha, Polilínea, Arco, Curva): <b>Punta de flecha inicial</b> y <b>Punta de flecha final</b>,
 cada una de su propio tipo (abierta, cerrada, invertida, círculo, cuadrado, rombo, barra o ninguna), para que una línea
 pueda apuntar en ambos sentidos; <b>Flecha central</b> (abierta o cerrada), a mitad de la línea, en el sentido en que se dibujó;

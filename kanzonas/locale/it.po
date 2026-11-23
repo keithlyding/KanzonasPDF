@@ -11977,3 +11977,9 @@ msgstr "Opacità del riempimento"
 
 msgid "How solid the fill is (100: solid, 0: none). The outline and text keep the Opacity below."
 msgstr "Quanto è pieno il riempimento (100: pieno, 0: nessuno). Il contorno e il testo mantengono l'Opacità qui sotto."
+
+msgid "Arrowhead size"
+msgstr "Dimensione punta di freccia"
+
+msgid "The arrowheads' size: 100% is the size the line width gives; bigger heads keep the line as thin."
+msgstr "La dimensione delle punte di freccia: 100% è la dimensione data dallo spessore della linea; punte più grandi lasciano la linea sottile come prima."

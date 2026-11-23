@@ -1116,6 +1116,10 @@ and the text keep the <b>Opacity</b>; the fill is drawn at both together (a fill
 other PDF viewers show it too.</li>
 <li>Line color, fill (or <b>No fill</b>), <b>No border</b> for boxes and shapes, text color,
 line width, font size, arrowheads, cloud border, opacity.</li>
+<li><b>Arrowhead size</b> (lines, arrows, polylines, arcs, curves, callouts and dimensions): its
+arrowheads and other line ends, and its middle arrow, from 25% to 500% of the size its line width
+gives (100%), so a thin line can have big heads. Other PDF programs know its ends; one that draws
+the markup anew from its settings draws them at the usual size.</li>
 <li>Lines (Line, Arrow, Polyline, Arc, Curve): <b>Start arrowhead</b> and <b>End arrowhead</b>,
 each its own kind (open, closed, reversed, circle, square, diamond, bar, or none), so a line can
 point both ways; <b>Middle arrow</b> (open or closed), halfway along it, pointing the way it was

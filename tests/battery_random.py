@@ -1111,7 +1111,7 @@ class Battery:
             return "none"
         v = self.v
         props = v.selected_model["props"]
-        choices = [k for k in ("stroke", "fill", "width", "opacity", "fill_opacity",
+        choices = [k for k in ("stroke", "fill", "width", "opacity", "fill_opacity", "head_size",
                                "fontsize", "text_color",
                                "head_start", "head", "mid", "dash", "height", "depth",
                                "waste", "slope")
@@ -1127,6 +1127,7 @@ class Battery:
                  "opacity": self.rnd.choice([0.4, 0.7, 1.0]),
                  # (1.16.4: the fill's own opacity)
                  "fill_opacity": self.rnd.choice([0.0, 0.3, 0.6, 1.0]),
+                 "head_size": self.rnd.choice([0.5, 1.0, 2.0, 4.0]),
                  "fontsize": self.rnd.choice([8, 11, 14, 20]),
                  "text_color": self.color(),
                  # (1.15.21: a line's ends, middle arrow and Line style)

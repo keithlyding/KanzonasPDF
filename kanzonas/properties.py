@@ -177,6 +177,15 @@ class PropertiesPanel(QWidget):
         self.head_start = QComboBox()
         for key in A.HEADS:
             self.head_start.addItem(HEAD_NAMES.get(key, key), key)
+        # the size of a line's or callout's heads against the size its width gives
+        # (annotations.head_scale): 100% as before
+        self.head_size = QSpinBox()
+        self.head_size.setRange(int(A.HEAD_SCALES[0] * 100), int(A.HEAD_SCALES[1] * 100))
+        self.head_size.setSingleStep(25)
+        self.head_size.setSuffix(" %")
+        self.head_size.setKeyboardTracking(False)
+        self.head_size.setToolTip(tr("The arrowheads' size: 100% is the size the line width "
+                                     "gives; bigger heads keep the line as thin."))
         self.mid = QComboBox()
         for key in A.MIDS:
             self.mid.addItem(HEAD_NAMES.get(key, key), key)
@@ -391,6 +400,7 @@ class PropertiesPanel(QWidget):
                               ("fontsize", tr("Font size"), self.fontsize),
                               ("head_start", tr("Start arrowhead"), self.head_start),
                               ("head", tr("Arrowhead"), self.head),
+                              ("head_size", tr("Arrowhead size"), self.head_size),
                               ("mid", tr("Middle arrow"), self.mid),
                               ("dash", tr("Line style"), self.dash),
                               ("depth", tr("Depth"), self.depth),
@@ -425,6 +435,7 @@ class PropertiesPanel(QWidget):
             slider.valueChanged.connect(
                 lambda _v, sl=slider: None if sl.isSliderDown() else self._emit())
         self.head.currentIndexChanged.connect(self._emit)
+        self.head_size.valueChanged.connect(self._emit)
         for c in (self.head_start, self.mid, self.dash):
             c.currentIndexChanged.connect(self._emit)
         self.markup.currentIndexChanged.connect(self._emit)
@@ -602,6 +613,8 @@ class PropertiesPanel(QWidget):
             self.opacity.setValue(int(round(float(props["opacity"]) * 100)))
         if "fill_opacity" in props:
             self.fill_opacity.setValue(int(round(float(props["fill_opacity"]) * 100)))
+        if "head_size" in props:
+            self.head_size.setValue(int(round(A.head_scale(props) * 100)))
         if "for" in props:
             self.for_who.setCurrentIndex(max(0, self.for_who.findData(props["for"])))
         if "title" in props:
@@ -1031,6 +1044,8 @@ class PropertiesPanel(QWidget):
             p["opacity"] = self.opacity.value() / 100
         if "fill_opacity" in p:
             p["fill_opacity"] = self.fill_opacity.value() / 100
+        if "head_size" in p:
+            p["head_size"] = self.head_size.value() / 100
         if "for" in p:
             p["for"] = self.for_who.currentData()
         if "font" in p:

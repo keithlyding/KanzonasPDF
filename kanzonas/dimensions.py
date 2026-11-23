@@ -188,7 +188,7 @@ def finish(page, annot, model):
         line(B, B2 + e)
     # the dimension line and its heads (outside the extension lines when it's too short for
     # them inside, as CAD programs draw them)
-    s = head_size(width)
+    s = head_size(width) * annotations.head_scale(p)       # (times its Arrowhead size)
     u = B2 - A2
     length = abs(u)
     t = u / length if length > 1e-9 else pymupdf.Point(1, 0)

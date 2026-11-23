@@ -1104,6 +1104,10 @@ riempimento di 50 su un'annotazione con opacità 50 è piena per un quarto). È 
 stessa, quindi anche gli altri visualizzatori PDF la mostrano.</li>
 <li>Colore della linea, riempimento (o <b>Nessun riempimento</b>), <b>Nessun bordo</b> per riquadri e forme, colore del testo,
 spessore della linea, dimensione del carattere, punte di freccia, bordo a nuvola, opacità.</li>
+<li><b>Dimensione punta di freccia</b> (linee, frecce, polilinee, archi, curve, richiami e quote): le sue punte di
+freccia e le altre estremità di linea, e la sua freccia centrale, dal 25% al 500% della dimensione data dal suo spessore
+di linea (100%), così una linea sottile può avere punte grandi. Gli altri programmi PDF conoscono le sue estremità; uno
+che ridisegna l'annotazione dalle sue impostazioni le disegna alla dimensione solita.</li>
 <li>Linee (Linea, Freccia, Polilinea, Arco, Curva): <b>Punta di freccia iniziale</b> e <b>Punta di freccia finale</b>,
 ciascuna del proprio tipo (aperta, chiusa, invertita, cerchio, quadrato, rombo, barra o nessuna), così una linea può
 puntare in entrambi i sensi; <b>Freccia centrale</b> (aperta o chiusa), a metà della linea, nel senso in cui è stata
