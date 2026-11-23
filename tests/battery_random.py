@@ -279,6 +279,11 @@ REFUSALS = (
     # Edit objects / Edit text on a page with redaction marks not applied: taking text out
     # of a page applies every redaction mark on it (text_edit.py)
     "Apply or remove the redaction marks on this page before",
+    # Mark as decorative on an object tagged in one sequence with other content (text, other
+    # objects): it can't become decoration alone without untagging the rest
+    # (accessibility.mark_artifacts; random battery, seed 41, once Auto-tag and a group had
+    # put a shape and words in one tag)
+    "A selected object is tagged together with other content",
 )
 
 
