@@ -115,6 +115,9 @@ class Incremental(unittest.TestCase):
         self.assertEqual(own, b"0.3 w 1 0 0 RG")
 
 
+ROUNDS = 40         # turns of the event loop the idle read is given at least
+
+
 class Prepared(unittest.TestCase):
     def test_cad_mode_reads_the_page_while_nothing_happens(self):
         old = DocumentView.cad_select, DocumentView.PREP_WAIT
@@ -131,11 +134,15 @@ class Prepared(unittest.TestCase):
         v.show()
         v._cad_prepare_soon()
         end = time.monotonic() + 5
-        while time.monotonic() < end:
-            # (waited as Qt's tests wait, timers given their turn: on the Mac build, a loop of
-            # bare processEvents() left the idle read's timer waiting the whole 5 s twice,
-            # nothing read; here the read takes 10 ms)
+        rounds = 0
+        while time.monotonic() < end or rounds < ROUNDS:
+            # (5 s, and at least ROUNDS turns of the event loop: late in the full suite one
+            # turn took the whole 5 s, work the tests before had left (a full collection of
+            # their garbage), and the read's timer, due after 10 ms, never had its turn: the
+            # Linux, Windows and Mac builds of 1.16.3 failed it so, and it read the page in
+            # 10 ms run alone)
             QTest.qWait(5)
+            rounds += 1
             objs = v._obj_cache.get(0)
             if objs is not None and all("lines" in it for it in objs.items
                                         if it["kind"] == "shape"):
