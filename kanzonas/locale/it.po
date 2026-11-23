@@ -11887,3 +11887,87 @@ msgstr "La carta su cui stampare (i formati di questa stampante)"
 
 msgid "Margins and other paper settings for this printer"
 msgstr "Margini e altre impostazioni della carta per questa stampante"
+
+msgid "Drop {length}"
+msgstr "Discesa {length}"
+
+msgid "Drop or rise"
+msgstr "Discesa o risalita"
+
+msgid "Vertical length at this point (12'-6\", 3.5...):"
+msgstr "Lunghezza verticale in questo punto (12'-6\", 3.5...):"
+
+msgid "Couldn't read that length. Try 12'-6\" or 3.5:"
+msgstr "Impossibile leggere quella lunghezza. Prova 12'-6\" o 3.5:"
+
+msgid "including 1 drop of {length}"
+msgstr "compresa 1 discesa di {length}"
+
+msgid "including {n} drops, {length}"
+msgstr "comprese {n} discese, {length}"
+
+msgid "Change this drop..."
+msgstr "Cambia questa discesa..."
+
+msgid "Add drop or rise..."
+msgstr "Aggiungi discesa o risalita..."
+
+msgid "Remove this drop"
+msgstr "Rimuovi questa discesa"
+
+msgid "With waste"
+msgstr "Con sfrido"
+
+msgid "Add item"
+msgstr "Aggiungi articolo"
+
+msgid "Remove item"
+msgstr "Rimuovi articolo"
+
+msgid "Waste / extra"
+msgstr "Sfrido / extra"
+
+msgid "OK"
+msgstr "OK"
+
+msgid "Item"
+msgstr "Articolo"
+
+msgid "Per count"
+msgstr "Per conteggio"
+
+msgid "Quantities and waste: {group}"
+msgstr "Quantità e sfrido: {group}"
+
+msgid "Each item counted in {group} stands for:"
+msgstr "Ogni elemento contato in {group} rappresenta:"
+
+msgid "Quantities and waste..."
+msgstr "Quantità e sfrido..."
+
+msgid "What each counted item stands for (each fixture = 2 boxes + 1 whip), with their units, and a waste or extra percent: the Measurement summary and the Excel takeoff show the resulting quantities"
+msgstr "Cosa rappresenta ogni elemento contato (ogni apparecchio = 2 scatole + 1 cavo), con le loro unità, e una percentuale di sfrido o extra: il Riepilogo misure e il computo in Excel mostrano le quantità risultanti"
+
+msgid "Waste or extra: the Measurement summary and the Excel takeoff show the quantity with it added"
+msgstr "Sfrido o extra: il Riepilogo misure e il computo in Excel mostrano la quantità con lo sfrido aggiunto"
+
+msgid "Takeoff"
+msgstr "Computo"
+
+msgid "Waste %"
+msgstr "Sfrido %"
+
+msgid "Sloped {area}"
+msgstr "Inclinata {area}"
+
+msgid "Plan {area} at {slope}"
+msgstr "In pianta {area} a {slope}"
+
+msgid "6:12 or 30°"
+msgstr "6:12 o 30°"
+
+msgid "A roof's pitch, rise to run (6:12) or in degrees (30°): the area shown, summed and exported is then the sloped area. Empty for a flat area."
+msgstr "La pendenza di una copertura, alzata su base (6:12) o in gradi (30°): l'area mostrata, sommata ed esportata è allora l'area inclinata. Vuota per un'area piana."
+
+msgid "Slope"
+msgstr "Pendenza"
