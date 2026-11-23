@@ -1120,6 +1120,15 @@ line width, font size, arrowheads, cloud border, opacity.</li>
 arrowheads and other line ends, and its middle arrow, from 25% to 500% of the size its line width
 gives (100%), so a thin line can have big heads. Other PDF programs know its ends; one that draws
 the markup anew from its settings draws them at the usual size.</li>
+<li><b>Picking a color</b>: every color button and color command (Properties, Edit objects'
+<b>Line color...</b>, <b>Fill color...</b> and <b>Text color...</b>, the text editing box,
+<b>Bookmark color...</b>, Watermark, Background, Batch processing) opens the same color window. Above the usual color
+chooser it has two rows of swatches: <b>Recent</b>, the last 12 colors you picked anywhere in
+KanzonasPDF, newest first (still there after a restart), and <b>In this document</b>, the
+colors the open document's markups use (their line, fill and text colors), the most used first.
+Click a swatch to pick its color; point at it to see its value (#rrggbb). Any color you pick,
+from a swatch or from the chooser, moves to the front of Recent. A row shows only when it has
+colors (no document open: no In this document row).</li>
 <li>Lines (Line, Arrow, Polyline, Arc, Curve): <b>Start arrowhead</b> and <b>End arrowhead</b>,
 each its own kind (open, closed, reversed, circle, square, diamond, bar, or none), so a line can
 point both ways; <b>Middle arrow</b> (open or closed), halfway along it, pointing the way it was

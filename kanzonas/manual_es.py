@@ -1107,6 +1107,15 @@ grosor de línea, tamaño de fuente, puntas de flecha, borde de nube, opacidad.<
 flecha y otros extremos de línea, y su flecha central, del 25% al 500% del tamaño que da su grosor de línea (100%), para
 que una línea fina pueda tener puntas grandes. Otros programas PDF conocen sus extremos; uno que vuelva a dibujar la marca
 a partir de sus ajustes los dibuja al tamaño habitual.</li>
+<li><b>Elegir un color</b>: cada botón y orden de color (Propiedades, <b>Color de línea...</b>,
+<b>Color de relleno...</b> y <b>Color del texto...</b> de Editar objetos, el cuadro de edición de texto,
+<b>Color del marcador...</b>, Marca de agua, Fondo, Procesamiento por lotes) abre la misma ventana de color. Encima del selector
+de color habitual tiene dos filas de muestras: <b>Recientes</b>, los últimos 12 colores que eligió en cualquier
+parte de KanzonasPDF, el más reciente primero (se conservan al reiniciar), y <b>En este documento</b>, los colores
+que usan las marcas del documento abierto (sus colores de línea, relleno y texto), el más usado primero. Haga clic
+en una muestra para elegir su color; apunte a ella para ver su valor (#rrggbb). Cualquier color que elija, desde
+una muestra o desde el selector, pasa al principio de Recientes. Una fila aparece solo cuando tiene colores (sin
+documento abierto: sin la fila En este documento).</li>
 <li>Líneas (Línea, Flecha, Polilínea, Arco, Curva): <b>Punta de flecha inicial</b> y <b>Punta de flecha final</b>,
 cada una de su propio tipo (abierta, cerrada, invertida, círculo, cuadrado, rombo, barra o ninguna), para que una línea
 pueda apuntar en ambos sentidos; <b>Flecha central</b> (abierta o cerrada), a mitad de la línea, en el sentido en que se dibujó;

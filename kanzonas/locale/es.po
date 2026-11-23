@@ -11919,3 +11919,9 @@ msgstr "Tamaño de punta de flecha"
 
 msgid "The arrowheads' size: 100% is the size the line width gives; bigger heads keep the line as thin."
 msgstr "El tamaño de las puntas de flecha: 100% es el tamaño que da el grosor de línea; las puntas más grandes mantienen la línea igual de fina."
+
+msgid "Recent"
+msgstr "Recientes"
+
+msgid "In this document"
+msgstr "En este documento"
