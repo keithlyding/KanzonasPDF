@@ -1769,12 +1769,20 @@ class Battery:
             return None
         mine = {(text_edit.line_text(ln), round(r.x0), round(r.y0))
                 for it in picked if it["kind"] == "text" for r, ln in it["lines"]}
+        # (a picked line can be pieces joined on one baseline, a contents row's "Third",
+        # its dots and its "4": text_edit.text_blocks joins them, text_lines keeps them
+        # apart; each piece is the picked line's)
+        joined = [(pymupdf.Rect(r) + (-0.5, -0.5, 0.5, 0.5), ln["dir"], text_edit._baseline(ln))
+                  for it in picked if it["kind"] == "text" for r, ln in it["lines"]]
         boxes = [pymupdf.Rect(it["rect"]) + (-1, -1, 1, 1) for it in picked
                  if it["kind"] != "text"] if inside else []
         out = collections.Counter()
         for r, ln in text_edit.text_lines(self.v.doc[i]):
             if (text_edit.line_text(ln), round(r.x0), round(r.y0)) in mine or \
-                    any(b.contains(r) for b in boxes):
+                    any(b.contains(r) for b in boxes) or any(
+                        jr.contains(r) and abs(jd[0] - ln["dir"][0]) < 0.01 and
+                        abs(jd[1] - ln["dir"][1]) < 0.01 and
+                        abs(jb - text_edit._baseline(ln)) < 0.3 for jr, jd, jb in joined):
                 continue
             out.update(c for c in text_edit.line_text(ln) if not c.isspace())
         return out
