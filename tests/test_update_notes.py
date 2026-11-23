@@ -242,5 +242,60 @@ class UpdateBox(unittest.TestCase):
         self.assertIn("latest version", w.statusBar().currentMessage())
 
 
+class MacWithoutDiskImage(unittest.TestCase):
+    """A release can go out without the Mac disk image when GitHub has no Mac free to build
+    it on (the owner, 23 Nov 2026): a Mac neither offers it nor counts it as the newest."""
+
+    DMG = "KanzonasPDF-macos-arm64.dmg"
+
+    def with_dmg(self, version):
+        r = release(version)
+        r["assets"] = [{"name": self.DMG}, {"name": "KanzonasPDF-x86_64.AppImage"}]
+        return r
+
+    def without_dmg(self, version):
+        r = release(version)
+        r["assets"] = [{"name": "KanzonasPDF-x86_64.AppImage"}]
+        return r
+
+    def test_only_up_to_the_newest_with_the_disk_image(self):
+        rels = [self.without_dmg("2.2"), self.with_dmg("2.1"), self.without_dmg("2.0.1"),
+                self.with_dmg("2.0"), self.with_dmg("2.3"), release("9.0", draft=True)]
+        rels[4]["draft"] = True                       # (a draft with one doesn't count)
+        kept = [r["tag_name"] for r in updates.up_to_one_with(rels, self.DMG)]
+        self.assertEqual(kept, ["v2.1", "v2.0.1", "v2.0"])
+        self.assertEqual(updates.newest(updates.up_to_one_with(rels, self.DMG), "2.0")[0], "2.1")
+        self.assertEqual(updates.up_to_one_with([self.without_dmg("2.2"), "odd"], self.DMG), [])
+        self.assertEqual(updates.up_to_one_with(None, self.DMG), [])
+
+    def answer(self, rels, platform):
+        import json
+        from PySide6.QtNetwork import QNetworkReply
+        reply = mock.Mock()
+        reply.error.return_value = QNetworkReply.NoError
+        reply.readAll.return_value = json.dumps(rels).encode()
+        c = updates.UpdateChecker(mock.Mock(value=lambda *a: "", setValue=lambda *a: None))
+        found, said = [], []
+        c.found.connect(lambda v, url: found.append(v))
+        c.result.connect(said.append)
+        with mock.patch.object(updates, "__version__", "2.0"), \
+                mock.patch.object(updates.sys, "platform", platform):
+            c._done(reply, manual=True)
+        return c, found, said
+
+    def test_the_check_on_a_mac(self):
+        rels = [self.without_dmg("2.2"), self.with_dmg("2.1"), self.with_dmg("2.0")]
+        c, found, _said = self.answer(rels, "darwin")
+        self.assertEqual(found, ["2.1"])
+        self.assertEqual([r["tag_name"] for r in c.releases], ["v2.1", "v2.0"])
+        # Windows and Linux are offered the newest release, Mac file or not
+        _c, found, _said = self.answer(rels, "linux")
+        self.assertEqual(found, ["2.2"])
+        # a Mac with only a newer release without the disk image has the latest it can get
+        _c, found, said = self.answer([self.without_dmg("2.2"), self.with_dmg("2.0")], "darwin")
+        self.assertEqual(found, [])
+        self.assertIn("latest version", said[0])
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -33,6 +33,7 @@ import math
 import os
 import re
 import shutil
+import sys
 import time
 import zipfile
 from urllib.parse import urlparse
@@ -173,6 +174,26 @@ def newest_release(releases, current=None):
         if best is None or v > best[0]:
             best = (v, r)
     return best[1] if best else None
+
+
+def up_to_one_with(releases, name):
+    """The releases no newer than the newest published one that has the file `name`.
+    On a Mac, a release that went out without the Mac disk image (GitHub had no Mac free to
+    build it on, the owner's choice of 23 Nov 2026) is neither offered nor counted: its notes
+    come with the next release that has the disk image."""
+    best = None
+    for r in releases or []:
+        if not isinstance(r, dict) or r.get("draft"):
+            continue
+        v = _order(version_tuple(r.get("tag_name", "")))
+        has = any(isinstance(a, dict) and a.get("name") == name
+                  for a in r.get("assets") or [])
+        if v and has and (best is None or v > best):
+            best = v
+    if best is None:
+        return []
+    return [r for r in releases if isinstance(r, dict)
+            and _order(version_tuple(r.get("tag_name", ""))) <= best]
 
 
 def _sha256_hex(asset):
@@ -577,6 +598,9 @@ class UpdateChecker(QObject):
                 self.result.emit(tr("GitHub sent an unexpected answer. Try again later."))
             return
         self.settings.setValue("update_last", time.time())
+        if sys.platform == "darwin":
+            from .macos import DMG
+            data = up_to_one_with(data, DMG)
         self.releases = data
         self.release = newest_release(data)
         hit = newest(data)
