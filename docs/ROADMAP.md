@@ -234,6 +234,14 @@ The owner sets this list; nothing below is promised until it's here.
    Foundation application was declined as too new; see CODE_SIGNING_POLICY.md).
 
 ## Standing decisions
+- **Main doesn't run the tests again for files its pull request already tested** (owner,
+  23 Nov: "do your efficiency changes"). A pull request squash-merged after main was merged
+  into it gives main exactly the files of its last commit, whose build ran every regression
+  test; the workflow's `tested` job (tools/tested_on_pr.py) checks that with GitHub, and the
+  Windows, Linux and macOS jobs skip their tests then, each only if its own passed there.
+  The apps are still built from main and self-tested, installed and updated. Main moved on
+  since, no pull request, a test that didn't pass, a tag or a run by hand: every test runs.
+  This saved about an hour and a half per release (the Mac's tests).
 - **A release can go out without the Mac version** (owner, 23 Nov: "We update this so often,
   we can skip a build for Mac with no issues"). GitHub's Mac machines are sometimes all taken:
   a macOS job that never got one is cancelled after 15 minutes without running a step, and the
