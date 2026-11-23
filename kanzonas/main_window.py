@@ -169,6 +169,26 @@ EXTRA_TOOLS = [  # tools reached from menus, not the toolbar
      tr("Placeholder: drag a box where a signature or initials go (choose which in Properties); "
         "then Apply all signature placeholders")),
 ]
+# what each tool makes, said first in its tooltip: a markup (on top of the page) or a change
+# to the page's own content (the owner, 22 Nov 2026: "there needs to be a way of
+# differentiating whether what's being edited and added is a markup vs a document change")
+PAGE_CONTENT_TOOLS = ("edittext", "image", "erasecontent", "addtext", "editobjects")
+MARKUP_TOOLS = ("highlight", "underline", "strikeout", "comment", "note", "textbox", "callout",
+                "dot", "rect", "ellipse", "cloud", "circle", "mask", "polygon", "line", "arrow",
+                "polyline", "arc", "curve", "ink", "stamp", "attach", "m_length", "m_dim",
+                "m_poly", "m_area", "m_angle", "m_radius", "m_perimeter", "m_volume", "m_count",
+                "space", "legend")
+
+
+def kind_tip(tid, tip):
+    """A tool's tooltip, said first whether it makes a markup or changes the page itself."""
+    if tid in PAGE_CONTENT_TOOLS:
+        return tr("Page content: {tip}").format(tip=tip)
+    if tid in MARKUP_TOOLS:
+        return tr("Markup: {tip}").format(tip=tip)
+    return tip
+
+
 EXPORTS = [  # (id, menu label, file filter, extension)
     ("word", tr("Microsoft &Word (.docx)..."), tr("Word document") + " (*.docx)", "docx"),
     ("excel", tr("Microsoft &Excel (.xlsx)..."), tr("Excel workbook") + " (*.xlsx)", "xlsx"),
@@ -1425,6 +1445,7 @@ class MainWindow(QMainWindow):
         for tid, label, sc, tip in TOOLS:
             a = QAction(label, self, checkable=True)
             a.setShortcut(QKeySequence(sc))
+            tip = kind_tip(tid, tip)
             a.setToolTip(tip)
             a.setStatusTip(tip)
             a.triggered.connect(lambda _=False, t=tid: self.set_tool(t))
@@ -1435,6 +1456,7 @@ class MainWindow(QMainWindow):
             a = QAction(label, self, checkable=True)
             if sc:
                 a.setShortcut(QKeySequence(sc))
+            tip = kind_tip(tid, tip)
             a.setToolTip(tip)
             a.setStatusTip(tip)
             a.triggered.connect(lambda _=False, t=tid: self.set_tool(t))
@@ -1910,6 +1932,8 @@ class MainWindow(QMainWindow):
         self.props.objectsWidth.connect(
             lambda w: self.view() is not None and self.view().set_object_width(w))
         self.props.objectsStyle.connect(self._objects_style)
+        self.props.objectsText.connect(
+            lambda ch: self.view() is not None and self.view().style_text_objects(ch))
         self.props.resetRequested.connect(self._reset_tool_defaults)
         self.props.countLayer.connect(self._count_layer_picked)
         self.props.newCountGroup.connect(self._new_count_group)
@@ -2867,7 +2891,8 @@ class MainWindow(QMainWindow):
             self.props.show_objects(v.describe_objects(items), v.objects_angle(),
                                     text=any(it["kind"] == "text" for it in items),
                                     width=v.object_line_width(), style=v.object_style(),
-                                    turned=v.objects_turned())
+                                    turned=v.objects_turned(),
+                                    text_style=v.object_text_style())
         elif (self.tool in annotations.DEFAULTS and self.tool != "image") or \
                 self.tool in annotations.PAGE_TEXT_TOOLS:
             # (the Image tool writes into the page: no markup settings apply; Add text and
@@ -2876,7 +2901,7 @@ class MainWindow(QMainWindow):
             if self.tool == "m_count" and v is not None:
                 self._show_count_rows(v, selected=False)
         else:
-            self.props.show_target(None, None)
+            self.props.show_target(None, None, tool=self.tool)
 
     def _show_count_rows(self, v, selected):
         """Properties for Count markers (issue #107): the document's groups, its layers, and
@@ -2965,8 +2990,10 @@ class MainWindow(QMainWindow):
         if fmt is None or self._editing_box() is None:
             self._refresh_props()           # (the tool's own settings)
             return
+        # (all the box's styles, Text color, Underline and Strikethrough too, also for Edit
+        # text, whose own settings have none of them: they're the words', not the tool's)
         props = dict(annotations.tool_props(self.tool))
-        shown = {k: v for k, v in fmt.items() if k in props}
+        shown = dict(fmt)
         props.update(shown)
         self._editor_shown = shown
         self.props.show_target(self.tool, props)
@@ -2976,8 +3003,9 @@ class MainWindow(QMainWindow):
         ed = self._editing_box()
         shown = getattr(self, "_editor_shown", None)
         if ed is not None and shown is not None:
-            # while the box is open, Bold, Italic, the size and the color change its selected
-            # words (all its text when none are selected), not the tool's settings
+            # while the box is open, Bold, Italic, Underline, Strikethrough, the size and the
+            # color change its selected words (all its text when none are selected), not the
+            # tool's settings
             changed = [k for k in shown if k in props and props[k] != shown[k]]
             for k in changed:
                 ed.apply_format(k, props[k])

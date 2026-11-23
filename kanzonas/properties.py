@@ -11,6 +11,9 @@ from . import annotations as A
 from . import stamps as ST
 from .i18n import tr
 
+# the tools that write into the page itself (not markups): Properties tags them "Page content"
+PAGE_TOOLS = frozenset(A.PAGE_TEXT_TOOLS) | {"image", "erasecontent", "editobjects"}
+
 # arrowhead and comment-mark names as shown (the stored values are the keys)
 HEAD_NAMES = {"open": tr("open"), "closed": tr("closed"), "open (reversed)": tr("open (reversed)"),
               "closed (reversed)": tr("closed (reversed)"), "circle": tr("circle"),
@@ -50,6 +53,12 @@ class ColorButton(QToolButton):
             self.setText(tr("none"))
         self.setIcon(QIcon(pm))
 
+    def set_mixed(self):
+        """Several colors (the page's text selected in several): shown as such; a color
+        picked goes to all of it."""
+        self.set_color("")
+        self.setText(tr("several"))
+
     def _pick(self):
         start = QColor(self._color) if self._color else QColor("#ffffff")
         c = QColorDialog.getColor(start, self, tr("Choose color"))
@@ -64,6 +73,8 @@ class PropertiesPanel(QWidget):
     objectsTurn = Signal(float)      # the page's selected objects: turn by degrees (counterclockwise)
     objectsWidth = Signal(float)     # the page's selected objects: their line width (points)
     objectsStyle = Signal(dict)      # their colors, Line style or arrowheads: what changed
+    objectsText = Signal(dict)       # the page's text selected: its font, size, style changed
+    _obj_text = None                 # its style shown (DocumentView.object_text_style)
     _obj_width = None                # their line width shown ("" when they differ)
     _obj_style = {}                  # their colors, Line style and arrowheads shown
     countLayer = Signal(object)      # a count's layer picked: None (as the Layers tab), 0 (no
@@ -79,6 +90,14 @@ class PropertiesPanel(QWidget):
         self._props = {}
         self._loading = False
         outer = QVBoxLayout(self)
+        # what's selected or about to be added: a markup (on top of the page; it can be
+        # hidden, moved, deleted, flattened) or the page's own content (it changes the page).
+        # The owner, 22 Nov 2026: "there needs to be a way of differentiating whether what's
+        # being edited and added is a markup vs a document change"
+        self.tag = QLabel()
+        self.tag.setWordWrap(True)
+        self.tag.hide()
+        outer.addWidget(self.tag)
         self.title = QLabel()
         self.title.setWordWrap(True)
         self.title.setStyleSheet("font-weight: bold;")
@@ -105,6 +124,18 @@ class PropertiesPanel(QWidget):
         fl.addWidget(self.fill)
         fl.addWidget(self.no_fill)
         self.text_color = ColorButton()
+        # Text background: the page's own text highlighted (a filled box drawn into the page
+        # behind its words), not a Highlight markup
+        self.text_back = ColorButton()
+        self.no_back = QCheckBox(tr("None"))
+        back_row = QWidget()
+        bl = QHBoxLayout(back_row)
+        bl.setContentsMargins(0, 0, 0, 0)
+        bl.addWidget(self.text_back)
+        bl.addWidget(self.no_back)
+        self.text_back.setToolTip(tr("The words highlighted in the page itself, as part of "
+                                     "it: not a Highlight markup, which sits on top and can "
+                                     "be hidden or deleted."))
         self.width = QDoubleSpinBox()
         self.width.setRange(0, 50)
         self.width.setSingleStep(0.5)
@@ -113,6 +144,7 @@ class PropertiesPanel(QWidget):
         self.fontsize = QDoubleSpinBox()
         self.fontsize.setRange(4, 144)
         self.fontsize.setSuffix(" pt")
+        self.fontsize.setKeyboardTracking(False)    # (a size typed applies on Enter, once)
         self.depth = QDoubleSpinBox()
         self.depth.setRange(0, 1_000_000)
         self.depth.setDecimals(3)
@@ -180,6 +212,8 @@ class PropertiesPanel(QWidget):
         self.font.setMaxVisibleItems(20)
         self.bold = QCheckBox(tr("Bold"))
         self.italic = QCheckBox(tr("Italic"))
+        self.underline = QCheckBox(tr("Underline"))
+        self.strike = QCheckBox(tr("Strikethrough"))
         font_row = QWidget()
         fr = QVBoxLayout(font_row)
         fr.setContentsMargins(0, 0, 0, 0)
@@ -189,6 +223,12 @@ class PropertiesPanel(QWidget):
         style_row.addWidget(self.italic)
         style_row.addStretch(1)
         fr.addLayout(style_row)
+        # (the page's text: drawn into the page as thin bars, not an Underline markup)
+        deco_row = QHBoxLayout()
+        deco_row.addWidget(self.underline)
+        deco_row.addWidget(self.strike)
+        deco_row.addStretch(1)
+        fr.addLayout(deco_row)
         self._font_kind = None
         # a legend's options (legend.py)
         self.title_edit = QLineEdit()
@@ -302,6 +342,7 @@ class PropertiesPanel(QWidget):
                               ("inside", "", self.inside),
                               ("font", tr("Font"), font_row),
                               ("text_color", tr("Text color"), self.text_color),
+                              ("text_back", tr("Text background"), back_row),
                               ("stroke", tr("Line color"), stroke_row),
                               ("fill", tr("Fill"), fill_row),
                               ("width", tr("Line width"), self.width),
@@ -323,8 +364,9 @@ class PropertiesPanel(QWidget):
         outer.addWidget(self.reset)
         outer.addStretch(1)
 
-        for b in (self.stroke, self.fill, self.text_color):
+        for b in (self.stroke, self.fill, self.text_color, self.text_back):
             b.changed.connect(self._emit)
+        self.no_back.toggled.connect(self._emit)
         self.no_fill.toggled.connect(self._emit)
         self.no_stroke.toggled.connect(self._emit)
         self.width.valueChanged.connect(self._emit)
@@ -350,6 +392,8 @@ class PropertiesPanel(QWidget):
         self.font.currentIndexChanged.connect(self._emit)
         self.bold.toggled.connect(self._emit)
         self.italic.toggled.connect(self._emit)
+        self.underline.toggled.connect(self._emit)
+        self.strike.toggled.connect(self._emit)
         self.title_edit.editingFinished.connect(self._emit)
         self.scope.currentIndexChanged.connect(self._emit)
         self.show_count.toggled.connect(self._emit)
@@ -367,16 +411,42 @@ class PropertiesPanel(QWidget):
         self.order.toggled.connect(self._emit)
         self.show_target(None, None)
 
-    def show_target(self, kind, props, selected=False):
+    def show_tag(self, what):
+        """The tag above the title: what="markup", "page" (the page's own content) or None."""
+        if what is None:
+            self.tag.hide()
+            return
+        if what == "page":
+            self.tag.setText(tr("Page content: changes the page itself"))
+            self.tag.setToolTip(tr("Written into the page, as its own text, lines and "
+                                   "pictures: every viewer shows it and prints it, and it "
+                                   "can't be hidden or taken off as a markup can."))
+            color = "rgba(0, 150, 136, 0.30)"
+        else:
+            self.tag.setText(tr("Markup: on top of the page"))
+            self.tag.setToolTip(tr("A markup (annotation) sits on top of the page: it can be "
+                                   "hidden, moved, deleted or flattened, and the page under "
+                                   "it stays as it was."))
+            color = "rgba(142, 68, 173, 0.30)"
+        self.tag.setStyleSheet("padding: 2px 5px; border-radius: 3px; font-size: 90%%; "
+                               "background: %s;" % color)
+        self.tag.show()
+
+    def show_target(self, kind, props, selected=False, tool=None):
+        """Settings for kind: a markup selected (selected=True), or a tool's settings for the
+        next ones. kind None: nothing to set (tool: the tool in use, for the tag above)."""
         self._loading = True
         self._kind = kind
         self._obj_width = None
         self.width.setSpecialValueText("")          # (blank only for objects of mixed widths)
         if kind is None:
+            self.show_tag("page" if tool in PAGE_TOOLS else None)
             self.title.setText(tr("No tool settings"))
             self.title.setStyleSheet("font-weight: bold;")
-            self.hint.setText(tr("Pick a markup tool to set its default style, "
-                                 "or click an annotation to edit it."))
+            self.hint.setText(tr("Click the page's own text, lines or pictures to select "
+                                 "them; their settings show here.") if tool == "editobjects"
+                              else tr("Pick a markup tool to set its default style, "
+                                      "or click an annotation to edit it."))
             for lab, w in self.rows.values():
                 lab.hide()
                 w.hide()
@@ -384,6 +454,7 @@ class PropertiesPanel(QWidget):
             self._loading = False
             return
         name = A.LABELS.get(kind, kind)
+        self.show_tag("page" if kind in PAGE_TOOLS else "markup")
         self.title.setText(tr("Selected: {name}").format(name=name) if selected else
                            tr("{name}: default style").format(name=name))
         # which one changes, at a glance: a markup on the page (blue) or the tool's style for
@@ -433,6 +504,9 @@ class PropertiesPanel(QWidget):
             self.rows["fill"][0].setText(tr("Fill"))
         if "text_color" in props:
             self.text_color.set_color(props["text_color"])
+        if "text_back" in props:
+            self.text_back.set_color(props["text_back"] or "#ffff00")
+            self.no_back.setChecked(not props["text_back"])
         if "width" in props:
             self.width.setValue(float(props["width"]))
             self.rows["width"][0].setText(tr("Border width") if kind in ("textbox", "dot")
@@ -516,6 +590,9 @@ class PropertiesPanel(QWidget):
             self.italic.setVisible(page_text)
             self.bold.setChecked(bool(props.get("bold")))
             self.italic.setChecked(bool(props.get("italic")))
+        for key, box in (("underline", self.underline), ("strike", self.strike)):
+            box.setVisible(key in props)
+            box.setChecked(bool(props.get(key)))
         self._props = dict(props)
         self._selected = selected
         self._dot_rows()
@@ -639,7 +716,8 @@ class PropertiesPanel(QWidget):
 
     _turn_at = 0.0                   # Rotate by: how far they've turned since selected
 
-    def show_objects(self, what, angle=None, text=False, width=None, style=None, turned=0.0):
+    def show_objects(self, what, angle=None, text=False, width=None, style=None, turned=0.0,
+                     text_style=None):
         """The page's own objects selected (Edit objects, CAD mode): their rotation, and their
         line width. what: what is selected ("1 picture"). angle: the one picture's or group's
         angle as shown (counterclockwise): Rotation turns it to the angle typed; None (lines
@@ -648,13 +726,16 @@ class PropertiesPanel(QWidget):
         among them (points on the page), "" when they differ, None when none has one.
         style: DocumentView.object_style() (their colors, Line style, arrowheads).
         turned: how far they've turned since they were selected (Rotate by shows it, and a
-        new number turns them by the difference)."""
+        new number turns them by the difference). text_style: the selected text's style
+        (DocumentView.object_text_style), shown in Font, Font size and Text color."""
         self._loading = True
         self._kind = "objects"
         self._props = {}
         self._obj_angle = angle
         self._obj_width = width
         self._obj_style = dict(style or {})
+        self._obj_text = dict(text_style) if text_style else None
+        self.show_tag("page")
         self.title.setText(tr("Selected: {name}").format(name=what))
         self.title.setStyleSheet("font-weight: bold; padding: 3px 5px; border-radius: 3px; "
                                  "background: rgba(45, 108, 223, 0.28);")
@@ -713,6 +794,38 @@ class PropertiesPanel(QWidget):
                 for w in self.rows[row]:
                     w.show()
             self.rows["head"][0].setText(tr("End arrowhead"))
+        if self._obj_text is not None:
+            # the page's text: its font, size, bold, italic, underline, strikethrough and
+            # color (several: Font size blank, the color "several"; what's set goes to all)
+            st = self._obj_text
+            self._fill_fonts("edittext", "")
+            self.rows["font"][0].setText(tr("Font"))
+            for box, key in ((self.bold, "bold"), (self.italic, "italic"),
+                             (self.underline, "underline"), (self.strike, "strike")):
+                box.setVisible(True)
+                box.setChecked(bool(st.get(key)))
+            self.rows["fontsize"][0].setText(tr("Font size"))
+            self.fontsize.setSpecialValueText("" if st.get("fontsize") != "" else " ")
+            self.fontsize.setValue(float(st["fontsize"]) if st.get("fontsize") != ""
+                                   else self.fontsize.minimum())
+            if st.get("text_color"):
+                self.text_color.set_color(st["text_color"])
+            else:
+                self.text_color.set_mixed()
+            back = st.get("text_back")
+            self.no_back.setChecked(back == "-")
+            if back and back != "-":
+                self.text_back.set_color(back)
+            elif back == "":
+                self.text_back.set_mixed()
+            else:
+                self.text_back.set_color("#ffff00")
+            for row in ("font", "fontsize", "text_color", "text_back"):
+                for w in self.rows[row]:
+                    w.show()
+            self.hint.setText(self.hint.text() + " " +
+                              tr("A text setting writes the text again in the page where it "
+                                 "is: each word keeps the rest of its style."))
         if width is not None:
             # (several of different widths: shown blank, and the width typed goes to all)
             self.rows["width"][0].setText(tr("Line width"))
@@ -744,6 +857,38 @@ class PropertiesPanel(QWidget):
         if self._loading or self._kind is None:
             return
         if self._kind == "objects":
+            # (the page's text selected: its font, size, style and color, what was changed)
+            st = self._obj_text
+            if st is not None and self.rows["font"][1].isVisible():
+                changed = {}
+                for key, box in (("bold", self.bold), ("italic", self.italic),
+                                 ("underline", self.underline), ("strike", self.strike)):
+                    if box.isChecked() != bool(st.get(key)):
+                        changed[key] = box.isChecked()
+                font = self.font.currentData() or ""
+                if font != (st.get("font") or ""):
+                    changed["font"] = font
+                size = round(self.fontsize.value(), 2)
+                if size >= 1 and (st.get("fontsize") == "" and
+                                  self.fontsize.text().strip() != "" or
+                                  st.get("fontsize") != "" and
+                                  abs(size - float(st.get("fontsize") or 0)) > 1e-6):
+                    changed["fontsize"] = size
+                color = self.text_color.color()
+                if color and color != st.get("text_color"):
+                    changed["text_color"] = color
+                if self.sender() is self.text_back and self.no_back.isChecked():
+                    self._loading = True
+                    self.no_back.setChecked(False)      # (a color picked: that one)
+                    self._loading = False
+                back = "-" if self.no_back.isChecked() else (self.text_back.color() or "")
+                if back and back != st.get("text_back"):
+                    changed["text_back"] = back
+                if changed:
+                    st.update(changed)
+                    self.fontsize.setSpecialValueText("")
+                    self.objectsText.emit(changed)
+                    return
             # (colors, Line style, arrowheads: what was changed goes to the selected shapes)
             style, changed = self._obj_style, {}
             for key, value in (("stroke", self.stroke.color()), ("fill", self.fill.color()),
@@ -788,6 +933,12 @@ class PropertiesPanel(QWidget):
                     self._loading = False
         if "text_color" in p:
             p["text_color"] = self.text_color.color()
+        if "text_back" in p:
+            if self.sender() is self.text_back and self.no_back.isChecked():
+                self._loading = True
+                self.no_back.setChecked(False)          # (a color picked: that one)
+                self._loading = False
+            p["text_back"] = "" if self.no_back.isChecked() else (self.text_back.color() or "")
         if "width" in p:
             p["width"] = self.width.value()
         if "fontsize" in p:
@@ -822,6 +973,9 @@ class PropertiesPanel(QWidget):
             if self._kind != "textbox":
                 p["bold"] = self.bold.isChecked()
                 p["italic"] = self.italic.isChecked()
+        for key, box in (("underline", self.underline), ("strike", self.strike)):
+            if key in p:
+                p[key] = box.isChecked()
         if "title" in p:
             p["title"] = self.title_edit.text().strip()
         if "scope" in p:

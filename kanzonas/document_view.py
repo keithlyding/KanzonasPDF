@@ -9414,6 +9414,134 @@ class DocumentView(QScrollArea):
                            tr("Color changed"), shapes, text_fn=texts,
                            takes_text=text is not None)
 
+    _TEXT_STYLE_SAMPLE = 40             # lines read for object_text_style (a big selection)
+
+    def object_text_style(self):
+        """For Properties: the style of the page's text selected in Edit objects, as
+        {"bold", "italic", "underline", "strike"} (True when all of it has it), "fontsize"
+        (points), "text_color" ("#rrggbb") and "text_back" (its Text background: "#rrggbb",
+        "-" for none), each "" when it differs, and "font" ("": as it is). None when no text
+        is selected. A big selection is judged by its first lines."""
+        from . import text_styles
+        if self.obj_sel is None:
+            return None
+        index, items = self.obj_sel
+        lines = [ln for it in items if it["kind"] == "text" for _r, ln in it["lines"]]
+        if not lines:
+            return None
+        page = self.doc[index]
+        flags = {"bold": True, "italic": True, "underline": True, "strike": True}
+        sizes, colors, backs = set(), set(), set()
+        # (the page read once for them all: one read a line walked a big drawing each time)
+        for st in text_styles.read_lines(page, lines[:self._TEXT_STYLE_SAMPLE]):
+            for c, k in zip(st.text, st.keys):
+                if c.isspace():
+                    continue
+                for key in flags:
+                    flags[key] = flags[key] and bool(getattr(k, key))
+                sizes.add(round(k.size, 1))
+                colors.add(k.color & 0xFFFFFF)
+                backs.add(k.back)
+        out = dict(flags, font="")
+        out["fontsize"] = sizes.pop() if len(sizes) == 1 else ""
+        out["text_color"] = ("#%06x" % colors.pop()) if len(colors) == 1 else ""
+        back = backs.pop() if len(backs) == 1 else None
+        out["text_back"] = "" if back is None else "-" if back < 0 else "#%06x" % back
+        return out
+
+    def style_text_objects(self, changes):
+        """Properties with the page's text selected in Edit objects: changes ({"bold",
+        "italic", "underline", "strike"}: on or off; "fontsize": points; "text_color":
+        "#rrggbb"; "text_back": "#rrggbb" or "-" for none; "font": an installed family)
+        given to all of it, each word keeping the
+        rest of its style, the text written again where it is (text_edit.restyle_lines), in
+        one undo step; it stays selected. Text color alone goes the quicker way
+        (recolor_objects)."""
+        from PySide6.QtGui import QColor
+        if self.obj_sel is None or not changes:
+            return
+        if set(changes) == {"text_color"}:
+            c = QColor(changes["text_color"])
+            if c.isValid():
+                self.recolor_objects(text=(c.redF(), c.greenF(), c.blueF()))
+            return
+        swap = {k: bool(changes[k]) for k in ("bold", "italic", "underline", "strike")
+                if k in changes}
+        if "text_color" in changes and QColor(changes["text_color"]).isValid():
+            c = QColor(changes["text_color"])
+            swap["color"] = (c.red() << 16) | (c.green() << 8) | c.blue()
+        if "text_back" in changes:
+            c = QColor(changes["text_back"]) if changes["text_back"] != "-" else None
+            swap["back"] = (c.red() << 16) | (c.green() << 8) | c.blue() \
+                if c is not None and c.isValid() else -1
+        size = changes.get("fontsize")
+        family = changes.get("font") or None
+
+        def change(k):
+            return k._replace(**swap) if swap else k
+
+        def texts(page, its):
+            # a new size or font changes the words' widths: a paragraph of several level
+            # lines is wrapped again to its own width, as Edit text does (written again line
+            # by line, its first line ran off the page: random battery, seed 13); the rest
+            # (labels, sideways text, Add text's blocks) is written again where it is
+            from . import text_styles
+            rewrap = [it for it in its if (size or family) and len(it["lines"]) > 1 and
+                      it.get("added") is None and
+                      all(abs(ln["dir"][0] - 1) < 1e-3 for _r, ln in it["lines"])]
+            here = [it for it in its if all(it is not x for x in rewrap)]
+            boxes = {}
+            used = []
+            if here:
+                paras = [[ln for _r, ln in it["lines"]] for it in here]
+                ratio = {}
+                for it in here:
+                    lines = [ln for _r, ln in it["lines"]]
+                    st = text_styles.read_lines(page, lines[:1])[0]
+                    main = text_styles.main_style(st.text, st.keys, st.main).size
+                    ratio[id(it)] = float(size) / main if size and main > 0 else 1.0
+                used += text_edit.restyle_lines(page, paras, change, family=family,
+                                                size=float(size) if size else None,
+                                                blocks=self._blocks_of(here))
+                # where each one's lines are now (to select it again): its first line where
+                # it was, the others as far from it as the size grew
+                now = text_edit.text_lines(page)
+                for it in here:
+                    lines = [ln for _r, ln in it["lines"]]
+                    first = pymupdf.Point(lines[0]["spans"][0]["origin"])
+                    box = pymupdf.Rect()
+                    for ln in lines:
+                        o = pymupdf.Point(ln["spans"][0]["origin"])
+                        want = first + (o - first) * ratio[id(it)]
+                        hit = next((r for r, h in now if text_edit.line_text(h).strip() ==
+                                    text_edit.line_text(ln).strip() and
+                                    abs(pymupdf.Point(h["spans"][0]["origin"]) - want) < 0.75),
+                                   None)
+                        if hit is not None:
+                            box |= hit
+                    boxes[id(it)] = box if not box.is_empty else it["rect"]
+            for it in rewrap:
+                lines = [ln for _r, ln in it["lines"]]
+                st = text_styles.read_paragraph(page, lines)
+                keys = [change(k)._replace(size=round(float(size), 2)) if size else change(k)
+                        for k in st.keys]
+                name, box, _bases = text_edit.replace_paragraph(
+                    page, lines, st.text, font=(family, False, False) if family else None,
+                    runs=text_styles.runs_of(st.text, keys), decor=st.decor)
+                used.append(name)
+                boxes[id(it)] = pymupdf.Rect(box)
+            if any(u and u.startswith("KZ") for u in used):
+                self._fonts_added = True
+            return [boxes.get(id(it), it["rect"]) for it in its]
+        names = {"bold": tr("Bold"), "italic": tr("Italic"), "underline": tr("Underline"),
+                 "strike": tr("Strikethrough"), "fontsize": tr("Font size"),
+                 "font": tr("Font"), "text_color": tr("Text color"),
+                 "text_back": tr("Text background")}
+        label = tr("{what} changed").format(what=names[next(iter(changes))]) \
+            if len(changes) == 1 else tr("Text style changed")
+        self._objects_edit(label, lambda page, ns: self._obj_cache.get(self.obj_sel[0]),
+                           text_fn=texts)
+
     def object_line_width(self):
         """The line width (points on the page) of the selected shapes with an outline: one
         number when they all have the same, "" when they differ, None when none has one."""

@@ -133,7 +133,18 @@ a decision changes or a piece of work lands. Details of each version are in
   uses a copy of its font that draws its letters, not one Save cut down to other letters.
 - 1.15.21 (owner, 22 Nov: "Almost how Microsoft does it"; "all of them but as one release"):
   lines' Start / End arrowhead, Middle arrow and Line style in Properties, for markups and the
-  drawing's own lines (with their Line color and Fill color there too).
+  drawing's own lines (with their Line color and Fill color there too). Its fixes (the
+  owner, 22 Nov): Line width's arrows and typed values, and Rotate by showing how far it
+  turned instead of going back to 0.
+- 1.16 (the owner, 22 Nov: "All non-markup edits need to be in the properties panel ... there
+  needs to be a way of differentiating whether what's being edited and added is a markup vs a
+  document change"; on the proposal: "Do what you think is best"): Properties and every
+  tool's tooltip say Markup or Page content; the page's text selected in Edit objects has
+  Font, Font size, Bold, Italic, Underline, Strikethrough, Text color and Text background in
+  Properties, and so does the open Edit text / Add text box; Text background is the words
+  highlighted in the page itself (each word's own style), as against the Highlight markup.
+  Decided against a separate Edit ribbon tab: the Markup tab already holds only markups,
+  and the tags and tooltips say which is which.
 
 ## Next
 The owner sets this list; nothing below is promised until it's here.

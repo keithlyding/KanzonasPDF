@@ -6,9 +6,10 @@ outline to move the text, drag a handle to change the width the text wraps to (i
 too). Enter = done, Shift+Enter = new line, Esc = cancel, clicking elsewhere = done.
 
 Each word shows its own style as it is in the PDF (font, size, bold, italic, color, underline,
-strikethrough: text_styles.Style, kept in each character's format), and a small bar above the
-box changes the selected words' style: Bold (Ctrl+B), Italic (Ctrl+I), Underline (Ctrl+U),
-Strikethrough, Text color, Larger / Smaller text (Ctrl+] / Ctrl+[). Text typed next to a word
+strikethrough, background: text_styles.Style, kept in each character's format), and a small bar
+above the box changes the selected words' style: Bold (Ctrl+B), Italic (Ctrl+I), Underline
+(Ctrl+U), Strikethrough, Text color, Text background (the page's own text highlighted, not a
+Highlight markup), Larger / Smaller text (Ctrl+] / Ctrl+[). Text typed next to a word
 takes that word's style; text typed into an empty box takes the paragraph's main style.
 """
 
@@ -36,6 +37,8 @@ P_FLAGS = QTextFormat.UserProperty + 2
 P_SIZE = QTextFormat.UserProperty + 3          # points
 P_FAMILY = QTextFormat.UserProperty + 4
 P_ALPHA = QTextFormat.UserProperty + 5         # opacity 0..255 (0: invisible on the page)
+P_BACK = QTextFormat.UserProperty + 6          # Text background (sRGB), -1: none
+BACK_DEFAULT = 0xFFFF00                        # the background the bar's button gives first
 
 _HINT = {"sans": "Arial", "serif": "Times New Roman", "mono": "Courier New"}
 _FAMILIES = {}
@@ -74,7 +77,7 @@ def _color_int(c):
 
 class StyleBar(QFrame):
     """The buttons above the editor that style the selected words."""
-    STATES = ("bold", "italic", "underline", "strike")      # buttons showing on / off
+    STATES = ("bold", "italic", "underline", "strike", "back")   # buttons showing on / off
 
     def __init__(self, editor):
         super().__init__(editor.parentWidget())
@@ -123,6 +126,8 @@ class StyleBar(QFrame):
         button("strike", "S", tr("Strikethrough"), lambda: e.toggle("strike"),
                lambda f: f.setStrikeOut(True))
         button("color", "A", tr("Text color"), e.pick_color, lambda f: f.setBold(True))
+        button("back", "ab", tr("Text background: the words highlighted in the page itself, "
+                                "not a Highlight markup"), e.toggle_background)
         button("larger", "A+", tr("Larger text (Ctrl+])"), lambda: e.grow_size(1))
         button("smaller", "A−", tr("Smaller text (Ctrl+[)"), lambda: e.grow_size(-1))
         for b in self.buttons.values():
@@ -157,7 +162,9 @@ class StyleBar(QFrame):
         fmts = [p[2] for p in parts] if a != b else [fmt]
         sts = [self.editor.style_of(f) for f in fmts]
         for key in self.STATES:
-            self.buttons[key].setChecked(bool(sts) and all(getattr(st, key) for st in sts))
+            on = (lambda st: st.back >= 0) if key == "back" else \
+                (lambda st, key=key: bool(getattr(st, key)))
+            self.buttons[key].setChecked(bool(sts) and all(on(st) for st in sts))
 
 
 class InlineEditor(QFrame):
@@ -305,6 +312,10 @@ class InlineEditor(QFrame):
         fmt.setForeground(QColor((style.color >> 16) & 255, (style.color >> 8) & 255,
                                  style.color & 255, max(70, min(255, style.alpha))))
         fmt.setProperty(P_ALPHA, int(style.alpha))
+        fmt.setProperty(P_BACK, int(style.back))
+        if style.back >= 0:
+            fmt.setBackground(QColor((style.back >> 16) & 255, (style.back >> 8) & 255,
+                                     style.back & 255))
         fmt.setProperty(P_FONT, style.font or "")
         fmt.setProperty(P_FLAGS, int(style.flags))
         fmt.setProperty(P_SIZE, float(style.size))
@@ -321,6 +332,7 @@ class InlineEditor(QFrame):
         flags = fmt.property(P_FLAGS)
         family = fmt.property(P_FAMILY)
         alpha = fmt.property(P_ALPHA)
+        back = fmt.property(P_BACK)
         brush = fmt.foreground()
         color = _color_int(brush.color()) if brush.style() != Qt.NoBrush else self.base.color
         qf = fmt.font()
@@ -328,7 +340,8 @@ class InlineEditor(QFrame):
                      int(flags) if isinstance(flags, int) else self.base.flags,
                      round(float(size), 2), color, qf.bold(), qf.italic(), qf.underline(),
                      qf.strikeOut(), family if isinstance(family, str) else self.base.family,
-                     alpha=int(alpha) if isinstance(alpha, int) else self.base.alpha)
+                     alpha=int(alpha) if isinstance(alpha, int) else self.base.alpha,
+                     back=int(back) if isinstance(back, int) else self.base.back)
 
     def _fill(self, runs):
         doc = self.text.document()
@@ -439,13 +452,21 @@ class InlineEditor(QFrame):
         sts = [self.style_of(f) for f in fmts] or [self.base]
         first = sts[0]
         return {"bold": all(st.bold for st in sts), "italic": all(st.italic for st in sts),
+                "underline": all(st.underline for st in sts),
+                "strike": all(st.strike for st in sts),
+                "text_back": ("#%06x" % first.back) if first.back >= 0 else "",
                 "fontsize": round(first.size, 2),
                 "text_color": "#%06x" % (first.color & 0xFFFFFF)}
 
     def apply_format(self, key, value):
         """A change made in Properties while editing: to the selected words, or to all the
-        text when nothing is selected (key: "bold", "italic", "fontsize", "text_color")."""
-        if key in ("bold", "italic"):
+        text when nothing is selected (key: "bold", "italic", "underline", "strike",
+        "fontsize", "text_color", "text_back": "" for none)."""
+        if key == "text_back":
+            c = QColor(value) if value else None
+            back = _color_int(c) if c is not None and c.isValid() else -1
+            self._restyle(lambda st: st._replace(back=back), whole=True)
+        elif key in ("bold", "italic", "underline", "strike"):
             self._restyle(lambda st: st._replace(**{key: bool(value)}), whole=True)
         elif key == "fontsize":
             size = round(max(1.0, float(value)), 2)
@@ -462,6 +483,21 @@ class InlineEditor(QFrame):
         fmts = [p[2] for p in parts] if a != b else [self.text.currentCharFormat()]
         on = not all(getattr(self.style_of(f), kind) for f in fmts)
         self._restyle(lambda st: st._replace(**{kind: on}))
+
+    _last_back = BACK_DEFAULT
+
+    def toggle_background(self):
+        """The bar's Text background button: the selection given the background used last
+        (yellow at first), or none when all of it has one already."""
+        parts, a, b = self._selected_formats()
+        fmts = [p[2] for p in parts] if a != b else [self.text.currentCharFormat()]
+        sts = [self.style_of(f) for f in fmts]
+        if sts and all(st.back >= 0 for st in sts):
+            InlineEditor._last_back = sts[0].back
+            self._restyle(lambda st: st._replace(back=-1))
+        else:
+            back = InlineEditor._last_back
+            self._restyle(lambda st: st._replace(back=back))
 
     def grow_size(self, step):
         """Larger / smaller text: the selection's sizes up or down a point."""

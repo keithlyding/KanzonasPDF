@@ -11700,3 +11700,45 @@ msgstr "Puntas de flecha cambiadas"
 #: properties
 msgid "Line style changed"
 msgstr "Estilo de línea cambiado"
+
+msgid "Text background"
+msgstr "Fondo del texto"
+
+msgid "Text style changed"
+msgstr "Estilo del texto cambiado"
+
+msgid "{what} changed"
+msgstr "{what} cambiado"
+
+msgid "Text background: the words highlighted in the page itself, not a Highlight markup"
+msgstr "Fondo del texto: las palabras resaltadas en la propia página, no una marca de Resaltar"
+
+msgid "Page content: {tip}"
+msgstr "Contenido de la página: {tip}"
+
+msgid "Markup: {tip}"
+msgstr "Marca: {tip}"
+
+msgid "several"
+msgstr "varios"
+
+msgid "The words highlighted in the page itself, as part of it: not a Highlight markup, which sits on top and can be hidden or deleted."
+msgstr "Las palabras resaltadas en la propia página, como parte de ella: no una marca de Resaltar, que queda encima y se puede ocultar o eliminar."
+
+msgid "Page content: changes the page itself"
+msgstr "Contenido de la página: cambia la propia página"
+
+msgid "Written into the page, as its own text, lines and pictures: every viewer shows it and prints it, and it can't be hidden or taken off as a markup can."
+msgstr "Se escribe en la página, como su propio texto, líneas e imágenes: todos los visores lo muestran y lo imprimen, y no se puede ocultar ni quitar como una marca."
+
+msgid "Markup: on top of the page"
+msgstr "Marca: encima de la página"
+
+msgid "A markup (annotation) sits on top of the page: it can be hidden, moved, deleted or flattened, and the page under it stays as it was."
+msgstr "Una marca (anotación) queda encima de la página: se puede ocultar, mover, eliminar o acoplar, y la página de debajo queda como estaba."
+
+msgid "Click the page's own text, lines or pictures to select them; their settings show here."
+msgstr "Haga clic en el texto, las líneas o las imágenes propias de la página para seleccionarlos; sus ajustes se muestran aquí."
+
+msgid "A text setting writes the text again in the page where it is: each word keeps the rest of its style."
+msgstr "Un ajuste del texto lo vuelve a escribir en la página donde está: cada palabra conserva el resto de su estilo."

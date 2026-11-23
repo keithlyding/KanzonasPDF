@@ -1045,6 +1045,44 @@ angolo in alto a sinistra va sulla griglia.</li>
 <li><b>Tieni premuto Alt</b> mentre disegni o trascini per posizionare un punto liberamente, senza aggancio.</li>
 </ul>
 
+<h2 id="kinds">Annotazione o contenuto della pagina</h2>
+<p>Ciò che aggiungi a un PDF è di uno di due tipi, e KanzonasPDF dice quale a ogni passo.</p>
+<ul>
+<li><b>Le annotazioni</b> (evidenziazioni, commenti, note, forme e linee disegnate con gli
+strumenti della scheda Annotazioni, timbri, misure) stanno <b>sopra la pagina</b>. Si possono
+spostare, nascondere, eliminare, mettere su livelli o appiattire, e la pagina sotto resta
+com'era; gli altri lettori PDF le elencano come commenti.</li>
+<li><b>Il contenuto della pagina</b> è la pagina stessa: il suo testo, le sue linee e le sue
+immagini. <b>Modifica testo</b>, <b>Aggiungi testo</b>, <b>Modifica oggetti</b>, lo strumento
+<b>Immagine</b> e <b>Cancella contenuto</b> lo cambiano. Ciò che scrivono fa parte della pagina:
+ogni lettore lo mostra e lo stampa, e non si può nascondere né togliere come un'annotazione.</li>
+<li><b>Come capirlo:</b> il pannello Proprietà mostra un'etichetta sopra il titolo,
+<b>Annotazione: sopra la pagina</b> (viola) o <b>Contenuto della pagina: cambia la pagina
+stessa</b> (verde acqua), per ciò che è selezionato e per lo strumento che stai per usare. Anche
+la descrizione di ogni strumento comincia con <b>Annotazione:</b> o <b>Contenuto della
+pagina:</b>.</li>
+<li><b>Evidenziare il testo in due modi:</b> lo strumento <b>Evidenzia</b> (scheda Annotazioni)
+aggiunge un'annotazione di evidenziazione sulle parole: si può togliere, e un revisore la vede
+come un commento. <b>Sfondo del testo</b> (Proprietà, o il pulsante <b>ab</b> sopra la casella
+mentre modifichi il testo) colora lo sfondo delle parole nella pagina stessa, come un
+evidenziatore sulla carta: fa parte dello stile di ogni parola, quindi si sposta e va a capo con
+le sue parole, si stampa sempre e non è un commento. Lo stesso vale per <b>Sottolinea</b> e
+<b>Barrato</b>: quelli della scheda Annotazioni sono annotazioni; quelli in Proprietà mentre
+modifichi il testo cambiano il testo stesso.</li>
+<li><b>Il testo della pagina in Proprietà:</b> seleziona del testo con Modifica oggetti (o in
+modalità CAD) e Proprietà mostra il suo <b>Font</b>, la <b>Dimensione carattere</b>,
+<b>Grassetto</b>, <b>Corsivo</b>, <b>Sottolinea</b>, <b>Barrato</b>, <b>Colore testo</b> e
+<b>Sfondo del testo</b> (vuoti, o "diversi", quando il testo selezionato è diverso). Una
+modifica va a tutto: il testo viene riscritto nella pagina dov'è, ogni parola mantiene il resto
+del suo stile, in un solo passaggio che Annulla annulla, e resta selezionato. Una nuova
+dimensione o un nuovo font rimandano a capo un paragrafo di più righe alla sua larghezza, come
+Modifica testo; una sola riga (un'etichetta), il testo di lato e i blocchi di Aggiungi testo
+vengono riscritti dove sono, con le righe allontanate (o avvicinate) quanto cresce (o cala) la
+dimensione. Il testo inclinato di un angolo che non è un quarto di giro (una filigrana in
+diagonale) non ha sottolineatura, barrato né sfondo. Per cambiare singole parole, modifica il
+testo (Modifica testo) e selezionale nella casella.</li>
+</ul>
+
 <h2 id="properties">Colori, bordi e stili (pannello Proprietà)</h2>
 <ul>
 <li>Con uno strumento attivo, il pannello Proprietà (F6) imposta lo <b>stile predefinito</b> di quello strumento, salvato
@@ -1360,12 +1398,13 @@ barrato. La casella li mostra come nella pagina.</li>
 <li><b>Grassetto, corsivo, sottolineato e colore per singole parole:</b> durante la modifica (un paragrafo, una
 riga o nuovo testo con Aggiungi testo), seleziona le parole e usa i pulsanti sopra la casella:
 <b>Grassetto</b> (Ctrl+B), <b>Corsivo</b> (Ctrl+I), <b>Sottolinea</b> (Ctrl+U),
-<b>Barrato</b>, <b>Colore testo</b> e <b>Testo più grande</b> (Ctrl+]) / <b>Testo più
+<b>Barrato</b>, <b>Colore testo</b>, <b>Sfondo del testo</b> (ab: le parole evidenziate nella pagina stessa,
+vedi <a href="#kinds">Annotazione o contenuto della pagina</a>) e <b>Testo più grande</b> (Ctrl+]) / <b>Testo più
 piccolo</b> (Ctrl+[), un punto alla volta (una riga con parole più grandi scende quanto serve,
 così non si sovrappongono alla riga sopra). Premi di nuovo un pulsante per togliere lo stile; uno stile che hanno tutte
 le parole selezionate appare premuto. Senza nulla di selezionato, il pulsante imposta lo stile di ciò che
-scrivi dopo. <b>Grassetto</b>, <b>Corsivo</b> e <b>Dimensione carattere</b> in Proprietà (e il <b>Colore
-testo</b> di Aggiungi testo) fanno lo stesso mentre la casella è aperta: cambiano le parole selezionate, che restano
+scrivi dopo. <b>Grassetto</b>, <b>Corsivo</b>, <b>Sottolinea</b>, <b>Barrato</b>, <b>Dimensione carattere</b>,
+<b>Colore testo</b> e <b>Sfondo del testo</b> in Proprietà fanno lo stesso mentre la casella è aperta: cambiano le parole selezionate, che restano
 selezionate, o tutto il testo della casella quando non c'è nulla di selezionato, e Proprietà mostra lo stile
 delle parole selezionate. Non cambiano le impostazioni dello strumento per il testo successivo. Il testo scritto accanto a una parola prende
 lo stile di quella parola; il testo scritto in una casella vuota prende lo stile principale del paragrafo.

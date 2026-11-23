@@ -1060,6 +1060,41 @@ top-left corner goes to the grid.</li>
 <li><b>Hold Alt</b> while drawing or dragging to place a point freely, without snapping.</li>
 </ul>
 
+<h2 id="kinds">Markup or page content</h2>
+<p>What you add to a PDF is one of two kinds, and KanzonasPDF says which at every step.</p>
+<ul>
+<li><b>Markups</b> (annotations: highlights, comments, notes, shapes and lines drawn with the
+Markup tab's tools, stamps, measurements) sit <b>on top of the page</b>. They can be moved,
+hidden, deleted, put on layers or flattened, and the page under them stays as it was; other
+PDF readers list them as comments.</li>
+<li><b>Page content</b> is the page itself: its own text, lines and pictures. <b>Edit text</b>,
+<b>Add text</b>, <b>Edit objects</b>, the <b>Image</b> tool and <b>Erase content</b> change
+it. What they write is part of the page: every reader shows and prints it, and it can't be
+hidden or taken off as a markup can.</li>
+<li><b>How to tell:</b> the Properties panel shows a tag above its title, <b>Markup: on top of
+the page</b> (violet) or <b>Page content: changes the page itself</b> (teal), for what's
+selected and for the tool you're about to use. Each tool's tooltip starts with
+<b>Markup:</b> or <b>Page content:</b> too.</li>
+<li><b>Highlighting text two ways:</b> the <b>Highlight</b> tool (Markup tab) adds a highlight
+markup over the words: it can be removed, and a reviewer sees it as a comment. <b>Text
+background</b> (Properties, or the <b>ab</b> button above the box while editing text) colors
+the words' background in the page itself, as a highlighter pen on paper: it's part of each
+word's style, so it moves and rewraps with its words, prints always and isn't a comment. The
+same goes for <b>Underline</b> and <b>Strikethrough</b>: the Markup tab's are markups; the ones
+in Properties while editing text change the text itself.</li>
+<li><b>The page's text in Properties:</b> select text with Edit objects (or in CAD mode) and
+Properties shows its <b>Font</b>, <b>Font size</b>, <b>Bold</b>, <b>Italic</b>,
+<b>Underline</b>, <b>Strikethrough</b>, <b>Text color</b> and <b>Text background</b> (blank, or
+"several", when the selected text differs). A change goes to all of it: the text is written
+again in the page where it is, each word keeping the rest of its style, in one step Undo takes
+back, and it stays selected. A new size or font wraps a paragraph of several lines again to its
+own width, as Edit text does; a single line (a label), sideways text and Add text's blocks are
+written where they are, their lines spread apart (or drawn together) as much as the size grows
+(or shrinks). Text at an angle other than a quarter turn (a diagonal watermark) gets no
+underline, strikethrough or background. To change single words, edit the text (Edit text) and
+select them in the box.</li>
+</ul>
+
 <h2 id="properties">Colors, borders and styles (Properties panel)</h2>
 <ul>
 <li>With a tool active, the Properties panel (F6) sets that tool's <b>default style</b>, saved
@@ -1377,12 +1412,13 @@ strikethrough. The box shows them as on the page.</li>
 <li><b>Bold, italic, underline and color for single words:</b> while editing (a paragraph, a
 line, or new text with Add text), select words and use the buttons above the box:
 <b>Bold</b> (Ctrl+B), <b>Italic</b> (Ctrl+I), <b>Underline</b> (Ctrl+U),
-<b>Strikethrough</b>, <b>Text color</b>, and <b>Larger text</b> (Ctrl+]) / <b>Smaller
-text</b> (Ctrl+[), a point at a time (a line with larger words moves down as far as they need,
+<b>Strikethrough</b>, <b>Text color</b>, <b>Text background</b> (ab: the words highlighted
+in the page itself, see <a href="#kinds">Markup or page content</a>), and <b>Larger text</b>
+(Ctrl+]) / <b>Smaller text</b> (Ctrl+[), a point at a time (a line with larger words moves down as far as they need,
 so they don't run into the line above). Press a button again to take the style off; a style all the
 selected words have shows pressed. With nothing selected, the button sets the style of what you
-type next. <b>Bold</b>, <b>Italic</b> and <b>Font size</b> in Properties (and Add text's <b>Text
-color</b>) do the same while the box is open: they change the selected words, which stay
+type next. <b>Bold</b>, <b>Italic</b>, <b>Underline</b>, <b>Strikethrough</b>, <b>Font size</b>,
+<b>Text color</b> and <b>Text background</b> in Properties do the same while the box is open: they change the selected words, which stay
 selected, or all the text in the box when nothing is selected, and Properties shows the style of
 the selected words. They don't change the tool's own settings for the next text. Text typed next to a word takes
 that word's style; text typed into an empty box takes the paragraph's main style.
