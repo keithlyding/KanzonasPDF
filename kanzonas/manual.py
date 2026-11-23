@@ -1530,6 +1530,14 @@ the measurement shows the wall area as well (length &times; height: "Wall area 1
 for drywall, paint, insulation or masonry, and the Measurement summary and the Excel takeoff list
 it as a <b>Wall area</b> of its own next to the length. Set it before drawing for the next
 lengths, or select a length and change it there.</li>
+<li><b>Drops and rises on runs:</b> for conduit, wire and pipe, a Polylength can count the
+vertical runs the plan doesn't show. Select it, right-click near one of its points &gt;
+<b>Add drop or rise...</b> and type the vertical length (12'-6", or a number in the page's unit).
+Each one is named at its point ("Drop 10.00 ft"), the measurement shows its total with them
+("27.00 ft, including 2 drops, 12.00 ft"), and the Measurement summary, the Excel takeoff and
+legends count the total. Right-click near the point again to <b>Change this drop...</b> or
+<b>Remove this drop</b>. They stay at their points when the run is moved, copied or turned, and
+Set as Default doesn't pass them on to the next Polylengths.</li>
 <li><b>Count</b> (Shift+C): click each item; each click places a marker with the next number of
 its group. Set it up in Properties before you click, with the Count tool picked:
 <b>Group</b> (pick one of the document's groups or type a name, such as Smoke detectors:

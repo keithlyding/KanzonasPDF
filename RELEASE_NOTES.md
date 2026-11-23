@@ -9,6 +9,21 @@ Spanish translation under `## <version> (es)`. The Windows build fails without t
 translation under `## <version> (it)` is shown to Italian users (since 1.13); without one they
 see the English.
 
+## 1.16.4
+
+**New**
+- Drops and rises on runs: right-click near a point of a Polylength measurement > Add drop or rise..., for conduit, wire and pipe runs. Its total includes the vertical runs the plan doesn't show; each drop is named at its point, and the Measurement summary, the Excel takeoff and legends count the total.
+
+## 1.16.4 (es)
+
+**Novedades**
+- Bajadas y subidas en recorridos: clic derecho cerca de un punto de una medición de Longitud de polilínea > Agregar bajada o subida..., para recorridos de tubo, cable y tubería. Su total incluye los tramos verticales que el plano no muestra; cada bajada se nombra en su punto, y el Resumen de mediciones, la medición en Excel y las leyendas cuentan el total.
+
+## 1.16.4 (it)
+
+**Novità**
+- Discese e risalite sui percorsi: clic destro vicino a un punto di una misura di Lunghezza polilinea > Aggiungi discesa o risalita..., per percorsi di tubi, cavi e tubazioni. Il totale comprende i tratti verticali che la pianta non mostra; ogni discesa è indicata al suo punto, e il Riepilogo misure, il computo in Excel e le legende contano il totale.
+
 ## 1.16.3
 
 **New**

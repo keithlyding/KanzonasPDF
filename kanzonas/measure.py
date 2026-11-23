@@ -234,6 +234,21 @@ def depth_m(props, unit):
         return UNITS[base]
 
 
+def drops_m(props, n=None):
+    """A Polylength's drops and rises, [(point number, meters)] (the vertical runs at its
+    points that the plan doesn't show: conduit, wire, pipe), sorted; those past its n points
+    (when n is given) and any that aren't numbers left out."""
+    out = []
+    for d in (props or {}).get("drops") or ():
+        try:
+            k, metres = int(d[0]), float(d[1])
+        except (TypeError, ValueError, IndexError):
+            continue
+        if metres > 0 and math.isfinite(metres) and k >= 0 and (n is None or k < n):
+            out.append((k, metres))
+    return sorted(out)
+
+
 def height_m(props, unit):
     """A Length's or Polylength's height (typed in the page's unit; feet for feet and
     inches) in meters; 0 when it has none."""
@@ -296,6 +311,14 @@ def measure_text(kind, points, page, group="", props=None, holes=None):
     f, unit, _label, _ok = get_scale(page)
     if kind in ("m_length", "m_poly"):
         text = fmt_length(length(points) * f, unit)
+        drops = drops_m(props, len(points)) if kind == "m_poly" else []
+        if drops:
+            # (its total with the vertical runs, and what they add)
+            down = sum(m for _k, m in drops)
+            text = fmt_length(length(points) * f + down, unit) + "\n" + (
+                tr("including 1 drop of {length}") if len(drops) == 1 else
+                tr("including {n} drops, {length}")).format(n=len(drops),
+                                                            length=fmt_length(down, unit))
         h = height_m(props, unit)
         if h > 0:
             # (a wall's: for drywall, paint, insulation, masonry)
@@ -346,7 +369,8 @@ def raw_values(kind, points, page, props=None, holes=None):
     f, unit, _l, _ok = get_scale(page)
     base = "ft" if unit == "ft-in" else unit
     if kind in ("m_length", "m_poly"):
-        return length(points) * f / UNITS[base], base
+        down = sum(m for _k, m in drops_m(props, len(points))) if kind == "m_poly" else 0.0
+        return (length(points) * f + down) / UNITS[base], base
     if kind == "m_dim":
         return length(points[:2]) * f / UNITS[base], base
     if kind == "m_area":
