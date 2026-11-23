@@ -40,7 +40,7 @@ las líneas se imprimen exactamente tan finas como son), las <b>Marcas de corte<
 <b>Dejarlas fuera</b> (solo se imprime la página, como en cualquier programa de PDF), <b>En la misma hoja</b> (la hoja
 abarca la página y lo que está junto a ella, así que la página se imprime más pequeña) o <b>En una hoja extra después de
 la página</b> (la página se imprime a su tamaño, así que un plano conserva su escala, y la hoja siguiente la muestra
-tenue con lo que está junto a ella en su lugar). <b>Configurar página…</b> define el tamaño del papel y los márgenes. Use las flechas
+tenue con lo que está junto a ella en su lugar). <b>Papel</b> muestra los tamaños de papel de la impresora (sin impresora, los tamaños de oficina y los de planos ANSI y Arquitectura); <b>Configurar página…</b> define los márgenes. Cada documento recuerda con qué se imprimió la última vez (impresora, papel, copias, páginas y lo demás) y abre la ventana Imprimir con ello. Use las flechas
 debajo de la vista previa para ver cada hoja. Las páginas se imprimen con la resolución de la impresora, hasta 600 ppp,
 y se procesan por franjas, de modo que incluso los planos grandes se imprimen nítidos sin usar mucha memoria.
 Las marcas y los campos de formulario siguen su propia opción de impresión, como en Acrobat: una hecha para verse

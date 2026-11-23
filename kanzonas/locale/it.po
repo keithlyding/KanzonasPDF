@@ -11878,3 +11878,12 @@ msgstr "Altezza"
 
 msgid "Wall area"
 msgstr "Area parete"
+
+msgid "Paper"
+msgstr "Carta"
+
+msgid "The paper to print on (the sizes this printer has)"
+msgstr "La carta su cui stampare (i formati di questa stampante)"
+
+msgid "Margins and other paper settings for this printer"
+msgstr "Margini e altre impostazioni della carta per questa stampante"

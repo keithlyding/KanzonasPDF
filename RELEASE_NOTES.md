@@ -14,18 +14,21 @@ see the English.
 **New**
 - Wall area from a length: give a Length or Polylength measurement a Height in Properties, and it shows the wall area too (length × height), for drywall, paint, insulation or masonry. The Measurement summary and the Excel takeoff list it as a Wall area.
 - Crop pages: the box snaps to the page's corners and edges with Snap to page on (and to the grid and objects, as shapes do).
+- Print: the paper size is on the Print window (the printer's own sizes; Page setup is for the margins), and each document remembers what it was last printed with: printer, paper, copies, pages and the other settings.
 
 ## 1.16.3 (es)
 
 **Novedades**
 - Área de muro desde una longitud: dé a una medición de Longitud o Longitud de polilínea una Altura en Propiedades, y muestra también el área del muro (longitud × altura), para paneles de yeso, pintura, aislamiento o mampostería. El Resumen de mediciones y la medición en Excel la muestran como Área de muro.
 - Recortar páginas: el cuadro se ajusta a las esquinas y bordes de la página con Ajustar a la página activado (y a la cuadrícula y los objetos, como las formas).
+- Imprimir: el tamaño del papel está en la ventana Imprimir (los tamaños de la impresora; Configurar página es para los márgenes), y cada documento recuerda con qué se imprimió la última vez: impresora, papel, copias, páginas y los demás ajustes.
 
 ## 1.16.3 (it)
 
 **Novità**
 - Area della parete da una lunghezza: dai a una misura di Lunghezza o Lunghezza polilinea un'Altezza in Proprietà, e mostra anche l'area della parete (lunghezza × altezza), per cartongesso, pittura, isolamento o muratura. Il Riepilogo misure e il computo in Excel la elencano come Area parete.
 - Ritaglia pagine: il riquadro si aggancia agli angoli e ai bordi della pagina con Aggancia alla pagina attivo (e alla griglia e agli oggetti, come le forme).
+- Stampa: il formato della carta è nella finestra Stampa (i formati della stampante; Imposta pagina è per i margini), e ogni documento ricorda con cosa è stato stampato l'ultima volta: stampante, carta, copie, pagine e le altre impostazioni.
 
 ## 1.16.2
 

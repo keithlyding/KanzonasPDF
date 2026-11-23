@@ -17,6 +17,13 @@ from PySide6.QtWidgets import (QApplication, QButtonGroup, QCheckBox, QComboBox,
 from .i18n import tr
 
 PREVIEW_W, PREVIEW_H = 380, 470
+# paper offered when the printer doesn't list its own (no printer installed, or a driver that
+# lists none): office sizes, then the ANSI and architectural drawing sizes plotters take
+PAPERS = (QPageSize.Letter, QPageSize.Legal, QPageSize.Tabloid, QPageSize.A4, QPageSize.A3,
+          QPageSize.A2, QPageSize.A1, QPageSize.A0, QPageSize.AnsiC, QPageSize.AnsiD,
+          QPageSize.AnsiE, QPageSize.ArchA, QPageSize.ArchB, QPageSize.ArchC, QPageSize.ArchD,
+          QPageSize.ArchE)
+STATES_KEPT = 200           # documents whose print settings are remembered (the most recent)
 BAND_BYTES = 48 * 1024 * 1024      # largest piece of a page rendered at once when printing
 
 
@@ -130,6 +137,35 @@ def dark_lines_setting():
     return QSettings().value("print_dark_lines", "true") != "false"
 
 
+def _state_key(view):
+    import os
+    return None if getattr(view, "untitled", False) else os.path.normcase(
+        os.path.abspath(view.path))
+
+
+def stored_state(view):
+    """The print settings stored for view's document ({} when it was never printed here)."""
+    from . import paths
+    key = _state_key(view)
+    return paths.stored_json(paths.settings(), "print_states", {}).get(key, {}) if key else {}
+
+
+def store_state(view, state):
+    """Remember state (PrintDialog.state()) for view's document, the most recent kept."""
+    import json
+    from . import paths
+    key = _state_key(view)
+    if not key:
+        return
+    s = paths.settings()
+    states = paths.stored_json(s, "print_states", {})
+    states.pop(key, None)                   # (moves to the end: the most recent)
+    states[key] = state
+    if len(states) > STATES_KEPT:
+        states = dict(list(states.items())[-STATES_KEPT:])
+    s.setValue("print_states", json.dumps(states))
+
+
 class PrintDialog(QDialog):
     def __init__(self, parent, view):
         super().__init__(parent)
@@ -153,12 +189,18 @@ class PrintDialog(QDialog):
             self.printer_box.addItem(tr("(no printer installed)"))
             self.printer_box.setEnabled(False)
         setup = QPushButton(tr("Page setup..."))
-        setup.setToolTip(tr("Paper size and margins for this printer"))
+        setup.setToolTip(tr("Margins and other paper settings for this printer"))
         setup.clicked.connect(self._page_setup)
         row = QHBoxLayout()
         row.addWidget(self.printer_box, 1)
         row.addWidget(setup)
         left.addRow(tr("Printer"), self._wrap(row))
+        # the paper here, not only behind Page setup (the owner, 23 Nov: "paper size needs
+        # to be included in the dialog without having to click on page setup"): the
+        # printer's own sizes
+        self.paper = QComboBox()
+        self.paper.setToolTip(tr("The paper to print on (the sizes this printer has)"))
+        left.addRow(tr("Paper"), self.paper)
         self.copies = QSpinBox()
         self.copies.setRange(1, 999)
         left.addRow(tr("Copies"), self.copies)
@@ -257,15 +299,20 @@ class PrintDialog(QDialog):
         outer.addLayout(body)
         outer.addWidget(self.buttons)
 
+        # this document's settings from the last time it was printed
+        self._restore(stored_state(view))
+        self._apply_printer()
+        self._fill_papers(self._wanted_paper)
         for sig in (self.all_pages.toggled, self.current.toggled, self.some.toggled,
                     self.orientation.currentIndexChanged, self.size.currentIndexChanged,
                     self.markups.toggled, self.marks.toggled, self.dark_lines.toggled,
                     self.beside.currentIndexChanged,
                     self.printer_box.currentIndexChanged):
             sig.connect(self._changed)
+        self.printer_box.currentIndexChanged.connect(self._printer_changed)
+        self.paper.currentIndexChanged.connect(self._paper_changed)
         self.range_text.textChanged.connect(lambda _t: (self.some.setChecked(True),
                                                         self._changed()))
-        self._apply_printer()
         self._changed()
 
     @staticmethod
@@ -283,7 +330,114 @@ class PrintDialog(QDialog):
     def _page_setup(self):
         self._apply_printer()
         if QPageSetupDialog(self.printer, self).exec():
+            # (a paper chosen there shows in the Paper list too)
+            self._fill_papers(self.printer.pageLayout().pageSize())
             self._changed()
+
+    def _printer_changed(self, *_):
+        self._apply_printer()
+        self._fill_papers(self._current_paper())     # (the same paper when it has it)
+
+    def _papers(self):
+        """The paper sizes the chosen printer has (QPageSize list), or PAPERS."""
+        if self.printer_box.isEnabled():
+            info = QPrinterInfo.printerInfo(self.printer_box.currentText())
+            sizes = [q for q in info.supportedPageSizes() if q.isValid()]
+            if sizes:
+                return sizes
+        return [QPageSize(i) for i in PAPERS]
+
+    def _fill_papers(self, want=None):
+        """The Paper list for the chosen printer, want (a QPageSize) chosen when the printer
+        has it, else the printer's own paper."""
+        sizes = self._papers()
+        self.paper.blockSignals(True)
+        self.paper.clear()
+        for q in sizes:
+            self.paper.addItem(q.name(), q)
+        self.paper.blockSignals(False)
+        mine = self.printer.pageLayout().pageSize()
+        for pick in (want, mine):
+            k = self._paper_index(pick) if pick is not None and pick.isValid() else -1
+            if k >= 0:
+                self.paper.setCurrentIndex(k)
+                break
+        self._paper_changed()
+
+    def _paper_index(self, q):
+        """Where paper q is in the Paper list (by its kind, else by its size), or -1."""
+        for k in range(self.paper.count()):
+            other = self.paper.itemData(k)
+            if q.id() != QPageSize.Custom and other.id() == q.id():
+                return k
+        for k in range(self.paper.count()):
+            if self.paper.itemData(k).isEquivalentTo(q):
+                return k
+        return -1
+
+    def _current_paper(self):
+        return self.paper.currentData() if self.paper.count() else None
+
+    def _paper_changed(self, *_):
+        q = self._current_paper()
+        if q is not None:
+            self.printer.setPageSize(q)
+            self._changed()
+
+    # ---- what's remembered per document (the owner, 23 Nov: "the document needs to remember
+    # the last printed settings") -------------------------------------------------------
+    def state(self):
+        """The window's settings, as stored for this document."""
+        q = self._current_paper()
+        return {"printer": self.printer_box.currentText() if self.printer_box.isEnabled()
+                else "",
+                "paper": [q.key(), q.size(QPageSize.Point).width(),
+                          q.size(QPageSize.Point).height()] if q is not None else None,
+                "copies": self.copies.value(),
+                "pages": "current" if self.current.isChecked() else
+                         "some" if self.some.isChecked() else "all",
+                "range": self.range_text.text(),
+                "orientation": self.orientation.currentIndex(),
+                "size": self.size.currentIndex(),
+                "markups": self.markups.isChecked(),
+                "dark_lines": self.dark_lines.isChecked(),
+                "marks": self.marks.isChecked(),
+                "beside": self.beside.currentIndex()}
+
+    def _restore(self, st):
+        """Put this document's stored settings (state()) back; ones that no longer apply (a
+        printer since removed, a page range past the end) are left as they were."""
+        self._wanted_paper = None
+        if not st:
+            return
+        printer = st.get("printer")
+        if printer and self.printer_box.isEnabled() and \
+                self.printer_box.findText(printer) >= 0:
+            self.printer_box.setCurrentText(printer)
+        paper = st.get("paper")
+        if paper:
+            q = QPageSize(QPageSize.id(QSizeF(paper[1], paper[2]), QPageSize.Point))
+            if q.id() == QPageSize.Custom:
+                q = QPageSize(QSizeF(paper[1], paper[2]), QPageSize.Point, paper[0])
+            self._wanted_paper = q
+        self.copies.setValue(int(st.get("copies", 1)))
+        pages = st.get("pages")
+        if pages == "some" and st.get("range"):
+            self.range_text.setText(st["range"])
+            self.some.setChecked(True)
+        elif pages == "current":
+            self.current.setChecked(True)
+        for combo, key in ((self.orientation, "orientation"), (self.size, "size")):
+            k = st.get(key)
+            if isinstance(k, int) and 0 <= k < combo.count():
+                combo.setCurrentIndex(k)
+        for box, key in ((self.markups, "markups"), (self.dark_lines, "dark_lines"),
+                         (self.marks, "marks")):
+            if key in st:
+                box.setChecked(bool(st[key]))
+        k = st.get("beside")
+        if isinstance(k, int) and 0 <= k < self.beside.count() and self.beside.isEnabled():
+            self.beside.setCurrentIndex(k)
 
     def pages(self):
         """The pages to print (0-based), or None when the range text isn't valid."""
@@ -523,6 +677,7 @@ class PrintDialog(QDialog):
         self._apply_printer()
         self.printer.setCopyCount(self.copies.value())
         if self.print_to(self.printer, pages):
+            store_state(self.view, self.state())
             self.accept()
 
     def print_to(self, printer, pages):

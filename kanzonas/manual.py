@@ -48,7 +48,7 @@ lines print exactly as thin as they are), <b>Crop marks</b> (see Print productio
 <b>Leave them out</b> (only the page prints, as in every PDF program), <b>On the same sheet</b>
 (the sheet takes in the page and what's beside it, so the page prints smaller), or <b>On an
 extra sheet after the page</b> (the page prints at its size, so a drawing stays at scale, and
-the next sheet shows it faint with what's beside it in place). <b>Page setup...</b> sets the paper size and margins. Use the arrows
+the next sheet shows it faint with what's beside it in place). <b>Paper</b> lists the printer's paper sizes (without a printer, the office sizes and the ANSI and Architect drawing sizes); <b>Page setup...</b> sets the margins. Each document remembers what it was last printed with (printer, paper, copies, pages and the rest) and opens the Print window with it. Use the arrows
 under the preview to see each sheet. Pages print at the printer's resolution up to 600 dpi,
 rendered a strip at a time so even large drawings print sharp without using much memory.
 Markups and form fields follow their own print setting, as in Acrobat: one made to show on

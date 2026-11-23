@@ -37,7 +37,7 @@ le linee vengono stampate esattamente sottili come sono), <b>Segni di taglio</b>
 <b>Escludile</b> (viene stampata solo la pagina, come in qualsiasi programma PDF), <b>Sullo stesso foglio</b> (il foglio
 comprende la pagina e ciò che le sta accanto, quindi la pagina viene stampata più piccola) oppure <b>Su un foglio
 aggiuntivo dopo la pagina</b> (la pagina viene stampata alla sua dimensione, così un disegno resta in scala, e il foglio
-successivo la mostra sbiadita con ciò che le sta accanto al suo posto). <b>Imposta pagina...</b> imposta il formato della carta e i margini. Usa le frecce
+successivo la mostra sbiadita con ciò che le sta accanto al suo posto). <b>Carta</b> elenca i formati di carta della stampante (senza stampante, i formati da ufficio e quelli per disegni ANSI e Architettura); <b>Imposta pagina...</b> imposta i margini. Ogni documento ricorda con cosa è stato stampato l'ultima volta (stampante, carta, copie, pagine e il resto) e apre la finestra Stampa così. Usa le frecce
 sotto l'anteprima per vedere ogni foglio. Le pagine vengono stampate alla risoluzione della stampante fino a 600 dpi,
 elaborate una striscia alla volta, così anche i disegni grandi escono nitidi senza usare molta memoria.
 Annotazioni e campi modulo seguono la propria impostazione di stampa, come in Acrobat: quelli fatti per comparire
