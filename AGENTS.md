@@ -28,8 +28,13 @@ and only when both are green.
   existing features, even when they add a tool (e.g. 1.6.3: click-click drawing, grips, Arc,
   Mask, Trim on clouds). Plain numbers only (1.0, not 1.00). A 1.x release is a normal
   release on GitHub (only 0.x ones were marked pre-release).
-- Every push to any branch runs the full Windows and Linux builds (~12-15 minutes, in parallel). Push when a piece of
-  work is done, not after every small edit.
+- Every push to any branch runs the full Windows, Linux and macOS builds (in parallel; the
+  Mac's is the longest). Push when a piece of work is done, not after every small edit.
+- On main, the build skips the regression tests for files they already passed on: a pull
+  request squash-merged after main was merged into it gives main exactly the files of its
+  last commit (the workflow's `tested` job, tools/tested_on_pr.py). So merge the latest main
+  into your branch and let its build go green before merging; if main moved on since, main's
+  build runs every test again.
 - **Outside contributors' pull requests** (the owner, 12 Nov 2026):
   - They don't set `__version__`, CHANGELOG.md or RELEASE_NOTES.md (CONTRIBUTING.md says so):
     the maintainer adds them at merge time, with the next free number and a credit by GitHub
