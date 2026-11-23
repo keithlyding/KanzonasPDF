@@ -747,7 +747,8 @@ class Battery:
             (self.op_shape, 10), (self.op_line, 5), (self.op_poly, 4), (self.op_ink, 3),
             (self.op_textbox, 3), (self.op_callout, 2), (self.op_note, 2), (self.op_stamp, 2),
             (self.op_dot, 2), (self.op_dot_options, 2),
-            (self.op_measure, 2), (self.op_dimension, 3), (self.op_text_markup, 6),
+            (self.op_measure, 2), (self.op_dimension, 3), (self.op_cutout, 3),
+            (self.op_text_markup, 6),
             (self.op_attach, 1), (self.op_legend, 2), (self.op_legend_options, 2),
             (self.op_move, 6), (self.op_nudge, 3), (self.op_resize, 3), (self.op_props, 4),
             (self.op_retype, 3), (self.op_delete, 5), (self.op_duplicate, 2),
@@ -868,6 +869,56 @@ class Battery:
             self.v.apply_drag_tool(i, self.rnd.choice(["m_length", "m_radius"]), a, b, False)
         else:
             self.v.apply_poly(i, "m_angle", [a, b, self.point(i, 40)])
+
+    def op_cutout(self):
+        """Cut-outs (1.16.1, measure.cut_area): an Area or Volume drawn, or one already there
+        given an opening drawn in it (with the Cut-out tool, into the one selected or the one
+        it's drawn in, sometimes over its edge or another cut-out), or one of its cut-outs or
+        all of them taken out. Its net value must be its gross less what its cut-outs cover
+        of it, and read back from the file."""
+        from kanzonas import annotations as A, measure as M
+        v = self.v
+        have = [(i, x) for i in range(v.doc.page_count) for x in self.markups(i)
+                if self.kind(i, x) in A.CUT_KINDS]
+        r = self.rnd.random()
+        if not have or r < 0.3:
+            i = self.page()
+            a, b = self.box(i, 60, 250)
+            v.apply_poly(i, self.rnd.choice(["m_area", "m_volume"]),
+                         [a, pymupdf.Point(b.x, a.y), b, pymupdf.Point(a.x, b.y)])
+            return None
+        i, x = self.rnd.choice(have)
+        v.select_xref(i, x)
+        m = v.selected_model
+        if m is None or m["kind"] not in A.CUT_KINDS or m.get("locked"):
+            v.clear_selection()
+            return "none"
+        rev = v.revision
+        if r < 0.8 or not m.get("holes"):
+            box = pymupdf.Rect()
+            for q in m["points"]:
+                box |= q
+            c = pymupdf.Point(self.rnd.uniform(box.x0, box.x1), self.rnd.uniform(box.y0, box.y1))
+            w, h = self.rnd.uniform(4, 80), self.rnd.uniform(4, 80)
+            if self.rnd.random() < 0.5:
+                v.clear_selection()           # (into the one it's drawn in, if any)
+            v.add_cutout(i, [c, c + (w, 0), c + (w, h), c + (0, h)])
+        else:
+            k = self.rnd.choice([None] + list(range(len(m["holes"]))))
+            v.remove_cutouts(i, x, k)
+        v.clear_selection()
+        if v.revision == rev:
+            return "none"
+        page = v.doc[i]
+        for a in A.each_annot(page):
+            got = A.read(a)
+            if got and got["kind"] in A.CUT_KINDS and got.get("holes"):
+                net = M.net_area(got["points"], got["holes"])
+                gross, cut = M.area(got["points"]), M.cut_area(got["points"], got["holes"])
+                if abs(net - max(0.0, gross - cut)) > 1e-6 or cut > gross + 1e-6:
+                    raise Failed("page %d: an area's net %.3f isn't its gross %.3f less its "
+                                 "cut-outs %.3f" % (i, net, gross, cut))
+        return "edit"
 
     def op_dimension(self):
         """Dimensions (dimensions.py): one drawn (its two points and where its line goes, as

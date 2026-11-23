@@ -192,6 +192,7 @@ BOXED = ("rect", "ellipse", "textbox", "field", "callout", "stamp", "image", "at
 MEASURES = ("m_length", "m_poly", "m_area", "m_count", "m_angle", "m_radius", "m_perimeter",
             "m_volume", "m_dim")
 CLOSED_MEASURES = ("m_area", "m_perimeter", "m_volume")      # drawn as a closed outline
+CUT_KINDS = ("m_area", "m_volume")         # can have cut-outs (model "holes", measure.cut_area)
 POINTED = ("line", "arrow", "polygon", "polyline", "arc", "opencloud", "dot") + MEASURES   # geometry = list of points
 VERTEXED = ("polygon", "polyline", "arc", "opencloud", "m_poly", "m_angle", "m_dim") + \
     CLOSED_MEASURES     # one handle per vertex (a dimension's: its two points and its line)
@@ -414,6 +415,15 @@ def read(annot):
             return None
     elif kind in ("polygon", "polyline", "opencloud", "m_poly", "m_angle") + CLOSED_MEASURES:
         model["points"] = [pymupdf.Point(v) for v in verts]
+        holes = geom.get("holes") if isinstance(geom, dict) else None
+        if kind in CUT_KINDS and isinstance(holes, list):
+            # (its cut-outs: openings taken out of the area, measure.cut_area)
+            got = [[pymupdf.Point(h[i], h[i + 1]) for i in range(0, len(h) - 1, 2)]
+                   for h in holes if isinstance(h, list) and
+                   all(isinstance(c, (int, float)) for c in h)]
+            got = [h for h in got if len(h) >= 3]
+            if got:
+                model["holes"] = got
         if kind in ("polyline", "opencloud") and isinstance(geom, dict):
             # made by trimming a rectangle or polygon: its corners cut as the shape's did
             if geom.get("sides"):
@@ -774,7 +784,8 @@ def write(page, model):
             label_text = str(model.get("n", 1))
             info["content"] = f"{p.get('group') or 'Count'} #{model.get('n', 1)}"
         else:
-            label_text = measure.measure_text(kind, model["points"], page, props=p)
+            label_text = measure.measure_text(kind, model["points"], page, props=p,
+                                              holes=model.get("holes"))
             info["content"] = f"{LABELS[kind]}: " + label_text.replace("\n", ", ")
             if kind == "m_dim":
                 # its caption (/Cap): other viewers that draw it anew show the length alone
@@ -817,6 +828,8 @@ def write(page, model):
                 _solid_ends(page.parent, a)
     if kind in LINE_KINDS and p.get("mid") in ("open", "closed"):
         _draw_mid_arrow(page, a, p, stroke, width)
+    if kind in CUT_KINDS and model.get("holes"):
+        _draw_holes(page, a, model["holes"])
 
     doc = page.parent
     if kind in ("textbox", "callout") and width > 0 and stroke:
@@ -850,6 +863,9 @@ def write(page, model):
         store["geom"] = {"cloud": clouds.cloud_of(model), "sides": bool(model.get("sides"))}
     elif kind == "polyline" and model.get("sides"):
         store["geom"] = {"sides": True}
+    if kind in CUT_KINDS and model.get("holes"):
+        store["geom"] = {"holes": [[c for q in h for c in (q.x, q.y)]
+                                   for h in model["holes"]]}
     doc.xref_set_key(a.xref, KZ_KEY, pymupdf.get_pdf_str(json.dumps(store)))
     keep = (pymupdf.PDF_ANNOT_IS_LOCKED if model.get("locked") else 0) | \
         (pymupdf.PDF_ANNOT_IS_HIDDEN if model.get("hidden") else 0)
@@ -886,6 +902,40 @@ def write(page, model):
         doc.xref_set_key(a.xref, "C", "null")       # (a stamp's color: the legend has none)
         legend.draw(page, a.xref, model)        # (last: a setter after it would undo it)
     return a
+
+
+_PAINT_LINE = re.compile(rb"^(b|B|f|F|s|S)\*?$", re.M)
+
+
+def _draw_holes(page, annot, holes):
+    """An Area's or Volume's cut-outs drawn in its appearance: each one a closed outline in
+    the same path as the area's, painted even-odd, so its fill leaves them out and its outline
+    goes round them. Other PDF viewers show this drawing (the PDF's own polygon has no
+    holes; one that draws the polygon anew shows it without them), and the comment's
+    net value."""
+    doc = page.parent
+    typ, val = doc.xref_get_key(annot.xref, "AP/N")
+    if typ != "xref":
+        return
+    ap = int(val.split()[0])
+    data = doc.xref_stream(ap)
+    m = _PAINT_LINE.search(data)
+    first = data.find(b" m\n")
+    close = data.rfind(b"\nh\n", 0, m.start()) if m else -1
+    if not m or first < 0 or close < first:
+        return
+    to_pdf = pdfcoords.to_pdf(page)
+    sub = []
+    for h in holes:
+        pts = [pymupdf.Point(q) * to_pdf for q in h]
+        sub.append("%.3f %.3f m\n" % (pts[0].x, pts[0].y) +
+                   "".join("%.3f %.3f l\n" % (q.x, q.y) for q in pts[1:]) + "h")
+    at = close + len(b"\nh\n")
+    paint = m.group(1)
+    star = paint if paint in (b"s", b"S") else paint + b"*"
+    data = data[:at] + "\n".join(sub).encode() + b"\n" + data[at:m.start()] + star + \
+        data[m.end():]
+    doc.update_stream(ap, data)
 
 
 # ---- images ------------------------------------------------------------------------
@@ -1166,6 +1216,8 @@ def copy(model):
         m["points"] = [pymupdf.Point(q) for q in m["points"]]
     if "strokes" in m:
         m["strokes"] = [[pymupdf.Point(q) for q in s] for s in m["strokes"]]
+    if "holes" in m:
+        m["holes"] = [[pymupdf.Point(q) for q in h] for h in m["holes"]]
     if m.get("bend") is not None:
         m["bend"] = pymupdf.Point(m["bend"])
     if isinstance(m.get("cloud"), dict):
@@ -1206,6 +1258,8 @@ def moved(model, delta):
         m["points"] = [q + delta for q in m["points"]]
     if "strokes" in m:
         m["strokes"] = [[q + delta for q in s] for s in m["strokes"]]
+    if "holes" in m:
+        m["holes"] = [[q + delta for q in h] for h in m["holes"]]
     if m.get("bend") is not None:
         m["bend"] = m["bend"] + delta
     return m
@@ -1225,6 +1279,8 @@ def transformed(model, mat):
         m["bend"] = pymupdf.Point(m["bend"]) * mat
     if "strokes" in m:
         m["strokes"] = [[pymupdf.Point(q) * mat for q in s] for s in m["strokes"]]
+    if "holes" in m:
+        m["holes"] = [[pymupdf.Point(q) * mat for q in h] for h in m["holes"]]
     if "quads" in m:
         d = pymupdf.Point(mat.e, mat.f)
         m["quads"] = [pymupdf.Quad(q.ul + d, q.ur + d, q.ll + d, q.lr + d) for q in m["quads"]]
@@ -1287,6 +1343,8 @@ def page_turned(model, turn):
         m["bend"] = pymupdf.Point(m["bend"]) * mat
     if "strokes" in m:
         m["strokes"] = [[pymupdf.Point(q) * mat for q in s] for s in m["strokes"]]
+    if "holes" in m:
+        m["holes"] = [[pymupdf.Point(q) * mat for q in h] for h in m["holes"]]
     if "quads" in m:
         m["quads"] = [pymupdf.Quad(q) * mat for q in m["quads"]]
     if "rect" in m:
@@ -1347,6 +1405,8 @@ def resized(model, new_rect):
         m["bend"] = f(m["bend"])
     if "strokes" in m:
         m["strokes"] = [[f(q) for q in s] for s in m["strokes"]]
+    if "holes" in m:
+        m["holes"] = [[f(q) for q in h] for h in m["holes"]]
     return m
 
 
@@ -1461,6 +1521,10 @@ def rebase_page(page, d):
                     g = geom.get(k)
                     if isinstance(g, list) and all(isinstance(c, (int, float)) for c in g):
                         geom[k] = [c + (d.x if i % 2 == 0 else d.y) for i, c in enumerate(g)]
+                if isinstance(geom.get("holes"), list):      # (an area's cut-outs)
+                    geom["holes"] = [[c + (d.x if i % 2 == 0 else d.y)
+                                      for i, c in enumerate(h)]
+                                     for h in geom["holes"] if isinstance(h, list)]
                 doc.xref_set_key(xref, KZ_KEY, pymupdf.get_pdf_str(json.dumps(store)))
         kind, val = doc.xref_get_key(xref, "KZUnder")
         if kind == "array" and "R" not in val:
@@ -1553,6 +1617,9 @@ def shift_in_place(page, xref, d, to_pdf=None):
             for k in ("box", "target", "at", "pts", "bend"):
                 if isinstance(geom.get(k), list):
                     geom[k] = [c + (d.x if i % 2 == 0 else d.y) for i, c in enumerate(geom[k])]
+            if isinstance(geom.get("holes"), list):      # (an area's cut-outs)
+                geom["holes"] = [[c + (d.x if i % 2 == 0 else d.y) for i, c in enumerate(h)]
+                                 for h in geom["holes"] if isinstance(h, list)]
             edits.append((xref, KZ_KEY, pymupdf.get_pdf_str(json.dumps(store))))
     edits.append((xref, "M", pymupdf.get_pdf_str(pymupdf.get_pdf_now())))  # (modified now)
     for x, key, value in edits:

@@ -1551,6 +1551,18 @@ radio (R) y el diámetro (&Oslash;).
 <b>Volumen</b>: haga clic en las esquinas del área, haga doble clic o presione Enter; muestra el área
 &times; la profundidad. Defina la <b>Profundidad</b> en el panel de propiedades, en la unidad de la escala de la página (pies
 cuando la escala está en pies y pulgadas); cambiarla actualiza la medición seleccionada.</li>
+<li><b>Recorte</b> (pestaña Medir, grupo "Más", y el menú Medir): quita una abertura de un Área o un
+Volumen, como el hueco de una escalera de un piso, ventanas y puertas de un muro o una columna de una losa.
+Seleccione el Área o el Volumen (o haga clic derecho en él &gt; <b>Agregar recorte</b>), elija Recorte, haga clic
+en las esquinas de la abertura y haga doble clic o presione Enter; dibuje los que necesite, y cada uno va a esa
+medición. Sin nada seleccionado, un recorte va al Área o Volumen en que se dibuja. La medición muestra entonces su
+área <b>neta</b> (o volumen neto), con una línea que dice qué se quitó de qué ("2 recortes de 1,200 sq ft"), y el
+Resumen de mediciones y las leyendas suman los valores netos. Los recortes dibujados unos sobre otros o fuera del
+borde de la medición se quitan una sola vez, y solo donde la cubren. Un recorte es parte de su medición: se mueve,
+se copia, se voltea, se deshace y se guarda con ella, y el relleno de la medición lo deja vacío. Para devolverlo,
+haga clic derecho dentro de él &gt; <b>Quitar este recorte</b>, o <b>Quitar todos los recortes</b>. Otros visores
+de PDF muestran la medición con sus aberturas y su valor neto en su comentario (uno que vuelve a dibujar las marcas
+desde cero la muestra sin ellas).</li>
 <li><b>Resumen de mediciones</b> suma todo y exporta a CSV.</li>
 <li><b>Espacio</b> (pestaña Medir, grupo "Más", el menú Medir y el botón Medir de la pestaña
 CAD), como los Espacios de Bluebeam: un área con nombre de un plano (una habitación, una zona,

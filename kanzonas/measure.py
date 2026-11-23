@@ -234,24 +234,62 @@ def depth_m(props, unit):
         return UNITS[base]
 
 
-def measure_text(kind, points, page, group="", props=None):
+def _qpath(points):
+    from PySide6.QtCore import QPointF
+    from PySide6.QtGui import QPainterPath, QPolygonF
+    path = QPainterPath()
+    path.addPolygon(QPolygonF([QPointF(q[0], q[1]) for q in points]))
+    path.closeSubpath()
+    return path
+
+
+def cut_area(points, holes):
+    """The area (PDF points squared) the cut-outs holes ([[Point]]) take out of the polygon
+    points: their union, clipped to it, so an opening drawn over another one or past the
+    area's edge isn't taken out twice or from outside."""
+    holes = [h for h in (holes or ()) if len(h) >= 3]
+    if not holes or len(points) < 3:
+        return 0.0
+    cut = _qpath(holes[0])
+    for h in holes[1:]:
+        cut = cut.united(_qpath(h))
+    cut = cut.intersected(_qpath(points))
+    total = 0.0
+    for poly in cut.toFillPolygons():
+        pts = [poly[i] for i in range(poly.size())]
+        total += abs(sum(pts[i].x() * pts[i - 1].y() - pts[i - 1].x() * pts[i].y()
+                         for i in range(len(pts)))) / 2
+    return total
+
+
+def net_area(points, holes=None):
+    """An Area's or Volume's area less its cut-outs (PDF points squared)."""
+    return max(0.0, area(points) - cut_area(points, holes))
+
+
+def measure_text(kind, points, page, group="", props=None, holes=None):
+    """The label of a measurement. holes: an Area's or Volume's cut-outs ([[Point]]): its
+    value is the net one, and a line under it says what was taken out."""
     f, unit, _label, _ok = get_scale(page)
     if kind in ("m_length", "m_poly"):
         return fmt_length(length(points) * f, unit)
     if kind == "m_dim":                 # (between its two measured points)
         return fmt_length(length(points[:2]) * f, unit)
+    holes = [h for h in (holes or ()) if len(h) >= 3]
     if kind == "m_area":
-        a = fmt_area(area(points) * f * f, unit)
+        a = fmt_area(net_area(points, holes) * f * f, unit)
         per = fmt_length(length(points + points[:1]) * f, unit)
-        return a + "\n" + tr("Perimeter {length}").format(length=per)
+        return a + "\n" + tr("Perimeter {length}").format(length=per) + _cut_line(
+            points, holes, f, unit)
     if kind == "m_perimeter":
         return fmt_length(length(points + points[:1]) * f, unit)
     if kind == "m_volume":
         if len(points) < 3:
             return ""
         d = depth_m(props, unit)
-        return (fmt_volume(area(points) * f * f * d, unit) + "\n" +
-                fmt_area(area(points) * f * f, unit) + " \u00d7 " + fmt_length(d, unit))
+        a = net_area(points, holes) * f * f
+        return (fmt_volume(a * d, unit) + "\n" + fmt_area(a, unit) + " \u00d7 " +
+                fmt_length(d, unit) + _cut_line(points, holes, f, unit))
     if kind == "m_angle":
         return f"{angle(points):.1f}\u00b0" if len(points) >= 3 else ""
     if kind == "m_radius":
@@ -264,8 +302,18 @@ def measure_text(kind, points, page, group="", props=None):
     return ""
 
 
-def raw_values(kind, points, page, props=None):
-    """Numbers for totals: (value, unit) in display units."""
+def _cut_line(points, holes, f, unit):
+    """The label's line for cut-outs: how many, and the gross area they were taken from."""
+    if not holes:
+        return ""
+    return "\n" + tr("{n} cut-outs from {area}").format(
+        n=len(holes), area=fmt_area(area(points) * f * f, unit)) if len(holes) > 1 else \
+        "\n" + tr("1 cut-out from {area}").format(area=fmt_area(area(points) * f * f, unit))
+
+
+def raw_values(kind, points, page, props=None, holes=None):
+    """Numbers for totals: (value, unit) in display units (an Area's or Volume's net of its
+    cut-outs, holes)."""
     f, unit, _l, _ok = get_scale(page)
     base = "ft" if unit == "ft-in" else unit
     if kind in ("m_length", "m_poly"):
@@ -273,11 +321,12 @@ def raw_values(kind, points, page, props=None):
     if kind == "m_dim":
         return length(points[:2]) * f / UNITS[base], base
     if kind == "m_area":
-        return area(points) * f * f / UNITS[base] ** 2, "sq " + base
+        return net_area(points, holes) * f * f / UNITS[base] ** 2, "sq " + base
     if kind == "m_perimeter":
         return length(points + points[:1]) * f / UNITS[base], base
     if kind == "m_volume":
-        return area(points) * f * f * depth_m(props, unit) / UNITS[base] ** 3, "cu " + base
+        return (net_area(points, holes) * f * f * depth_m(props, unit) / UNITS[base] ** 3,
+                "cu " + base)
     if kind == "m_angle":
         return angle(points), "degrees"
     if kind == "m_radius":

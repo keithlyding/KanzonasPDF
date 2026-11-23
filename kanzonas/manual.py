@@ -1567,6 +1567,19 @@ radius (R) and diameter (&Oslash;).
 <b>Volume</b>: click the corners of the area, double-click or press Enter; it shows area
 &times; depth. Set the <b>Depth</b> in the Properties panel, in the page's scale unit (feet
 when the scale is in feet and inches); changing it updates the selected measurement.</li>
+<li><b>Cut-out</b> (Measure tab, "More" group, and the Measure menu): takes an opening out of an
+Area or Volume, such as a stair shaft from a floor, windows and doors from a wall, or a column
+from a slab. Select the Area or Volume (or right-click it &gt; <b>Add cut-out</b>), pick
+Cut-out, then click the opening's corners and double-click or press Enter; draw as many as you
+need, and each one goes into that measurement. With nothing selected, a cut-out goes into the
+Area or Volume it's drawn in. The measurement then shows its <b>net</b> area (or net volume),
+with a line saying what was taken out of what ("2 cut-outs from 1,200 sq ft"), and the
+Measurement summary and legends total the net values. Cut-outs drawn over each other or past the
+measurement's edge are taken out only once, and only where they overlap it. A cut-out is part of
+its measurement: it moves, copies, flips, undoes and saves with it, and the measurement's fill
+leaves it empty. To put one back, right-click inside it &gt; <b>Remove this cut-out</b>, or
+<b>Remove all cut-outs</b>. Other PDF viewers show the measurement with its openings and its
+net value in its comment (one that draws markups anew from scratch shows it without them).</li>
 <li><b>Measurement summary</b> totals everything and exports to CSV.</li>
 <li><b>Space</b> (Measure tab, "More" group, the Measure menu and the CAD tab's Measure
 button), like Bluebeam's Spaces: a named area of a sheet (a room, a zone, a level). Click each

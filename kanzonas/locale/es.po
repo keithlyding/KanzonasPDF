@@ -11742,3 +11742,33 @@ msgstr "Haga clic en el texto, las líneas o las imágenes propias de la página
 
 msgid "A text setting writes the text again in the page where it is: each word keeps the rest of its style."
 msgstr "Un ajuste del texto lo vuelve a escribir en la página donde está: cada palabra conserva el resto de su estilo."
+
+msgid "Cut-out added (Ctrl+Z undoes it)"
+msgstr "Recorte agregado (Ctrl+Z lo deshace)"
+
+msgid "Draw a cut-out inside an Area or Volume measurement, or select one first"
+msgstr "Dibuje un recorte dentro de una medición de Área o Volumen, o seleccione una primero"
+
+msgid "That measurement is locked"
+msgstr "Esa medición está bloqueada"
+
+msgid "Cut-out"
+msgstr "Recorte"
+
+msgid "Cut-out: click the corners of an opening (a stair, a window, a column) inside an Area or Volume, double-click or Enter: its area is taken out of the measurement"
+msgstr "Recorte: haga clic en las esquinas de una abertura (una escalera, una ventana, una columna) dentro de un Área o Volumen, doble clic o Enter: su área se quita de la medición"
+
+msgid "{n} cut-outs from {area}"
+msgstr "{n} recortes de {area}"
+
+msgid "1 cut-out from {area}"
+msgstr "1 recorte de {area}"
+
+msgid "Add cut-out"
+msgstr "Agregar recorte"
+
+msgid "Remove this cut-out"
+msgstr "Quitar este recorte"
+
+msgid "Remove all cut-outs"
+msgstr "Quitar todos los recortes"

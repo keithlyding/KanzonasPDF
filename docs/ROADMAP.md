@@ -148,6 +148,35 @@ a decision changes or a piece of work lands. Details of each version are in
 
 ## Next
 The owner sets this list; nothing below is promised until it's here.
+- **Takeoff and quantity surveying** (the owner, 23 Nov 2026: estimators and quantity surveyors
+  are a key audience, pdf.kanzonas.com/pdf-takeoff-software). Seven pieces, in this order, each
+  its own release following AGENTS.md, each measured at scale (thousands of markups) against
+  the speed budgets and put in the random battery where it changes markups. When one is
+  released the owner is told, so the website session can update that page (its "What it
+  doesn't do" list says counting is by clicking and that it doesn't price). Already there
+  before them: the scale tools, Length, Polylength, Area, Perimeter, Volume (area x depth),
+  named Count groups, Spaces, Legends and the Measurement summary with CSV export (one row a
+  kind and Count group; none of the seven below was there, in part or whole).
+  1. **Cut-outs in areas** (1.16.1): openings taken out of an Area or Volume (a stair shaft, a
+     window, a column); it shows the net value, the summary and legends total net. Kept in
+     the markup itself (KZProps geom "holes"), drawn as holes in its appearance (even-odd
+     fill), so they move, copy, undo and save with it and other viewers show them.
+  2. **Excel export of the takeoff, grouped**: the Measurement summary to .xlsx (openpyxl,
+     lazily), grouped by sheet, by Space and by Count group or kind, with quantities, units
+     and subtotals; CSV stays. The start of a bill of quantities.
+  3. **Wall area from a length**: a Height on Length and Polylength (as Volume's Depth),
+     showing length x height as well (drywall, paint, insulation, masonry).
+  4. **Drops on runs**: vertical lengths (drops, rises) at chosen points of a Polylength,
+     counted in its total, shown on the markup and in the summary (conduit, wire, pipe).
+  5. **A quantity per count, and waste**: items per counted item with their own units ("each
+     fixture = 2 boxes + 1 whip"), and a waste or extra percentage for a group or
+     measurement; the summary and the Excel export show counts and resulting quantities.
+  6. **Slope for roof areas**: a pitch on an Area (6:12, or degrees) turning the plan area into
+     the sloped area.
+  7. **Find similar symbols** (as Bluebeam's VisualSearch): one symbol picked, its matches
+     found on the page or the whole set and placed as Count markers in a group, for the
+     user to check before keeping. Last, the hardest: fast on big sheets, with no worker
+     thread touching the document.
 - **1.14.1: thumbnails and the Preview pane in Windows File Explorer** (owner, 13 Nov:
   "when I look in a folder, it doesn't just show a bunch of KanzonasPDF icons"; "Yes, do both
   thumbnails and preview pane"). KanzonasPDFShell.dll (shell_ext/): a C++ thumbnail handler
