@@ -679,5 +679,23 @@ class Pieces(unittest.TestCase):
                         0.15 <= strike <= 0.4, (under, thick, strike))
 
 
+
+class DecorationsReadBack(unittest.TestCase):
+    """An underline or strikethrough written is read back, whatever the text starts or ends
+    with: a contents row's dot leader " . . . . " struck through was read as not (its bar
+    ran from the space before the first dot; random battery, seed 41)."""
+
+    def test_text_starting_or_ending_with_spaces(self):
+        for text in (" . . . . . . . .", "word  ", "  two words", ". ."):
+            for kind in ("underline", "strike"):
+                d = pymupdf.open()
+                p = d.new_page()
+                p.insert_text((100, 300), text, fontsize=12)
+                lines = [ln for _r, ln in text_edit.text_lines(p)]
+                text_edit.restyle_lines(p, [lines], lambda k: k._replace(**{kind: True}))
+                st = text_styles.read_lines(p, [ln for _r, ln in text_edit.text_lines(p)])[0]
+                got = [getattr(k, kind) for c, k in zip(st.text, st.keys) if not c.isspace()]
+                self.assertTrue(got and all(got), (text, kind, st.text))
+
 if __name__ == "__main__":
     unittest.main()
