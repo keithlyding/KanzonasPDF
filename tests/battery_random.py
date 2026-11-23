@@ -927,7 +927,7 @@ class Battery:
         return "edit"
 
     def op_drops(self):
-        """Drops and rises on a Polylength (1.16.4, measure.drops_m): one drawn, or one already
+        """Drops and rises on a Polylength (1.16.3, measure.drops_m): one drawn, or one already
         there given a vertical length at one of its points, changed, or taken off. Its value
         must be its plan length and its drops, read back from the file."""
         from kanzonas import annotations as A, measure as M
@@ -1134,9 +1134,9 @@ class Battery:
                  # (1.16.3: a Length's or Polylength's height, its wall area; a Volume's depth)
                  "height": self.rnd.choice([0.0, 2.5, 8.0, 12.0]),
                  "depth": self.rnd.choice([0.5, 1.0, 3.0]),
-                 # (1.16.5: a measurement's waste or extra percent, for the takeoff)
+                 # (1.16.3: a measurement's waste or extra percent, for the takeoff)
                  "waste": self.rnd.choice([0.0, 5.0, 12.5]),
-                 # (1.16.6: a roof Area's pitch)
+                 # (1.16.3: a roof Area's pitch)
                  "slope": self.rnd.choice(["", "6:12", "4/12", "30\u00b0"])}[k]
         v.update_selected_props({k: value})
         v.clear_selection()

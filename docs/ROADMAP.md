@@ -166,12 +166,12 @@ The owner sets this list; nothing below is promised until it's here.
      and subtotals; CSV stays. The start of a bill of quantities.
   3. **Wall area from a length** (1.16.3): a Height on Length and Polylength (as Volume's Depth),
      showing length x height as well (drywall, paint, insulation, masonry).
-  4. **Drops on runs** (1.16.4): vertical lengths (drops, rises) at chosen points of a Polylength,
+  4. **Drops on runs** (1.16.3): vertical lengths (drops, rises) at chosen points of a Polylength,
      counted in its total, shown on the markup and in the summary (conduit, wire, pipe).
-  5. **A quantity per count, and waste** (1.16.5): items per counted item with their own units ("each
+  5. **A quantity per count, and waste** (1.16.3): items per counted item with their own units ("each
      fixture = 2 boxes + 1 whip"), and a waste or extra percentage for a group or
      measurement; the summary and the Excel export show counts and resulting quantities.
-  6. **Slope for roof areas** (1.16.6): a pitch on an Area (6:12, or degrees) turning the plan area into
+  6. **Slope for roof areas** (1.16.3): a pitch on an Area (6:12, or degrees) turning the plan area into
      the sloped area.
   7. **Find similar symbols** (as Bluebeam's VisualSearch): one symbol picked, its matches
      found on the page or the whole set and placed as Count markers in a group, for the
