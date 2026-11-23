@@ -306,7 +306,7 @@ class Drawing(unittest.TestCase):
             self.assertTrue(any(abs(q - want) < 0.6 for q in pts), want)
         rows = measure_ui.summary_rows(v.doc)
         self.assertEqual([r[0] for r in rows], ["Dimension"])
-        self.assertEqual(rows[0][3:], (1, 21.33, "ft"))
+        self.assertEqual(rows[0][3:], (1, 21.33, "ft", ""))   # no waste on it
         # a new scale measures it again
         v.set_page_scale([0], measure.scale_from_preset(48), "ft-in", '1/4" = 1\'-0"')
         (x2, _m), = self.markups(v)
