@@ -8460,14 +8460,20 @@ class DocumentView(QScrollArea):
 
     def _reselect_objects(self, index, items):
         """Select again the objects items (read before the page changed) as the page is read
-        now: shapes and pictures by their place in the drawing order, text by its spot."""
+        now: shapes and pictures by their place in the drawing order, text by its own lines
+        where they are (or by its spot)."""
         objs = self.content_objects(index)
         by_n = {it["n"]: it for it in (objs.items if objs else [])}
         texts = self.text_objects(index) if any(it["kind"] == "text" for it in items) else []
         again = []
-        for it in items:
+        for k, it in enumerate(items):
             if it["kind"] == "text":
-                found = _text_at(texts, it["rect"])
+                # (by its own lines, _text_again: text moved onto other text is read with it as
+                # one paragraph, and an item of just its own lines was selected. Looked for by
+                # its box, it was lost, or the other text came along: a markup moved with it
+                # by the arrow keys left it unselected after the first press, random battery,
+                # seed 12, tagged)
+                found = self._text_again(index, it, it["rect"], texts, k)
                 if found is not None and all(found is not t for t in again):
                     again.append(found)
             elif it["n"] in by_n:
