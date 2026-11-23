@@ -111,6 +111,25 @@ class OnThePage(unittest.TestCase):
         (_r, ln), = text_edit.text_lines(p)
         self.assertEqual(text_edit.line_text(ln), "COPY")
 
+    def test_one_of_two_copies_in_the_same_place_leaves_the_other(self):
+        # (a watermark stamped twice: restyling, moving or recoloring one took the other's
+        # letters too, as the same line. Random battery, seed 77)
+        for edit in ("restyle", "move", "recolor"):
+            d = pymupdf.open()
+            p = d.new_page()
+            for _ in range(2):
+                p.insert_text((100, 300), "DRAFT", fontsize=48)
+            lines = [ln for _r, ln in text_edit.text_lines(p)]
+            self.assertEqual(len(lines), 2)
+            if edit == "restyle":
+                text_edit.restyle_lines(p, [lines[:1]], lambda k: k, size=12)
+            elif edit == "move":
+                text_edit.move_lines(p, lines[:1], (0, 100))
+            else:
+                text_edit.recolor_lines(p, lines[:1], (1, 0, 0))
+            got = [text_edit.line_text(ln) for _r, ln in text_edit.text_lines(p)]
+            self.assertEqual(got, ["DRAFT", "DRAFT"], edit)
+
     def test_a_table_cell_s_fill_is_not_a_background(self):
         d = pymupdf.open()
         p = d.new_page()

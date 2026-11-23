@@ -940,10 +940,21 @@ def _others_of(page, lines):
     """The page's text lines without the spans of these lines: a justified line's words, a
     piece set apart, can be grouped into lines another way than these were (what's left of a
     line is a line of its own)."""
-    mine = {_span_key(s) for ln in lines for s in ln["spans"]}
+    import collections
+    # (counted: a line drawn twice in the same place, a watermark stamped twice, is two
+    # lines, and the copy not picked is another one; taken as the same, it went with the
+    # picked one and wasn't written again. Random battery, seed 77)
+    mine = collections.Counter(_span_key(s) for ln in lines for s in ln["spans"])
     out = []
+
+    def picked(s):
+        k = _span_key(s)
+        if mine[k] > 0:
+            mine[k] -= 1
+            return True
+        return False
     for _r, ln in text_lines(page):
-        rest = [s for s in ln["spans"] if _span_key(s) not in mine]
+        rest = [s for s in ln["spans"] if not picked(s)]
         if not rest or not any(s["text"].strip() for s in rest):
             continue
         if len(rest) != len(ln["spans"]):
