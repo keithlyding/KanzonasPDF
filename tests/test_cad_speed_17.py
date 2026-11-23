@@ -234,9 +234,9 @@ class Reading(unittest.TestCase):
         seen = []
         real = P.scan_steps
 
-        def spy(data, out):
+        def spy(data, out, *more):
             seen.append(gc.isenabled())
-            yield from real(data, out)
+            yield from real(data, out, *more)
         with mock.patch.object(P, "scan_steps", spy):
             P.Objects(pg)
             objs, steps = P.Objects.steps(pg)

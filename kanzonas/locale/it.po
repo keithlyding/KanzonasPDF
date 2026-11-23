@@ -11407,9 +11407,6 @@ msgstr "Seleziona due o più oggetti per raggrupparli."
 msgid "Some of the selected objects can't be grouped."
 msgstr "Alcuni degli oggetti selezionati non si possono raggruppare."
 
-msgid "The selected objects are drawn under different clipping or on different layers: they can't be one group."
-msgstr "Gli oggetti selezionati sono disegnati con ritagli diversi o su livelli diversi: non possono formare un unico gruppo."
-
 msgid "Markups and the page's own objects can't be one group: group the markups, or the page's objects, on their own."
 msgstr "Le annotazioni e gli oggetti propri della pagina non possono formare un unico gruppo: raggruppa le annotazioni, oppure gli oggetti della pagina, separatamente."
 
@@ -11971,3 +11968,15 @@ msgstr "La pendenza di una copertura, alzata su base (6:12) o in gradi (30°): l
 
 msgid "Slope"
 msgstr "Pendenza"
+
+msgid "The selected objects are drawn under different clipping: they can't be one group."
+msgstr "Gli oggetti selezionati sono disegnati con ritagli diversi: non possono formare un unico gruppo."
+
+msgid "The selected objects are tagged as different parts of the page (for screen readers): they can't be one group."
+msgstr "Gli oggetti selezionati sono contrassegnati come parti diverse della pagina (per i lettori di schermo): non possono formare un unico gruppo."
+
+msgid "Group (1 object)"
+msgstr "Gruppo (1 oggetto)"
+
+msgid "Group ({n} objects)"
+msgstr "Gruppo ({n} oggetti)"

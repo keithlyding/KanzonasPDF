@@ -184,7 +184,7 @@ def _tokens(data):
         if c in _WS or c == 0x25:
             i = j
             continue
-        if c in b"/<[]{}" or (c in b"+-.0123456789" and _num(tok) is not None):
+        if c in b"/<>[]{}" or (c in b"+-.0123456789" and _num(tok) is not None):
             if op_start is None:
                 op_start = i
             operands.append(tok)
@@ -397,7 +397,7 @@ def scan_steps(data, out, clip_paths=None):
         if c in _WS or c == 0x25:
             i = j
             continue
-        if c in b"/<[]{}" or (c in num_start and _num(tok) is not None):
+        if c in b"/<>[]{}" or (c in num_start and _num(tok) is not None):
             if op_start is None:
                 op_start = i
             operands.append(tok)
@@ -805,6 +805,14 @@ def _own_stream(doc, page):
     return x
 
 
+def _clip_key(data, clip):
+    """What a clipping path (start, end of its W, ctm: scan_with_clips) is: its instructions
+    (spaces evened out) and its matrix (rounded)."""
+    start, end, ctm = clip
+    path = b" ".join(data[start:end].split()) if start is not None else None
+    return path, tuple(round(v, 4) for v in ctm)
+
+
 class _Shape(dict):
     """A shape item: its "quad" is worked out when first asked for (most never are; making
     one for each of 100,000 lines took seconds)."""
@@ -834,14 +842,15 @@ def _inv(m):
 class Objects:
     """The editable objects of one page, read once (cache it until the page changes)."""
 
-    def __init__(self, page, data=None, found=None, reuse=None):
+    def __init__(self, page, data=None, found=None, reuse=None, clip_keys=None):
         """data / found: the page's content and its scan when the caller already has them
         (after a move: see transform), so a big drawing isn't read again. reuse: {number in
-        found: the shape item it had before an edit that left it as it was} (see _rebuilt)."""
+        found: the shape item it had before an edit that left it as it was} (see _rebuilt).
+        clip_keys: the clips' shapes (see clip_shapes) when an edit left them as they were."""
         enabled = gc.isenabled()
         gc.disable()                    # (see _gc_paused)
         try:
-            for _ in self.build_steps(page, data, found, reuse):
+            for _ in self.build_steps(page, data, found, reuse, clip_keys):
                 pass
         finally:
             if enabled:
@@ -854,16 +863,19 @@ class Objects:
         objs = cls.__new__(cls)
         return objs, _gc_paused_steps(objs.build_steps(page, None, None))
 
-    def build_steps(self, page, data, found, reuse=None):
+    def build_steps(self, page, data, found, reuse=None, clip_keys=None):
         self.data = _contents(page) if data is None else data
         self.tm = pdfcoords.to_page(page)
         self.items = []
         self.found = []
+        self.clip_keys = clip_keys
         if not self.data.strip():
+            self.clip_keys = []
             return
         if found is None:
-            found = []
-            yield from scan_steps(self.data, found)
+            found, clips = [], []
+            yield from scan_steps(self.data, found, clips)
+            self.clip_keys = [_clip_key(self.data, c) for c in clips]
         self.found = found
         names = {}
         for it in page.get_images(full=True):
@@ -953,6 +965,17 @@ class Objects:
                                "quad": quad, "obj": d,
                                # a picture filling the sheet (a scan): as a group above
                                "background": abs(quad.rect) >= big})
+
+    def clip_shapes(self):
+        """For each clipping path the page sets, by its number in an entry's "ctx": what it
+        is (its path as written and the matrix it's drawn with), so two clips that cut out
+        the same area compare equal (CAD programs set the sheet's frame again for each layer
+        or block). Kept from the read; worked out again (a read of the drawing) only after
+        an edit moved a clip."""
+        if self.clip_keys is None:
+            _found, clips = scan_with_clips(self.data)
+            self.clip_keys = [_clip_key(self.data, c) for c in clips]
+        return self.clip_keys
 
     def lines(self, item):
         """A shape's outline (cached), or the picture's outline."""
@@ -1369,7 +1392,19 @@ def _split(old):
     return b" ".join(state), b" ".join(path)
 
 
-_WRAP = re.compile(rb"\nq ((?:-?[\d.]+ ){6})cm\n$")
+_WRAP = re.compile(rb"\nq ((?:-?[\d.]+ +){6})cm\n$")
+WRAP_ROOM = 8               # spaces to spare in a wrapper written first (see _head)
+
+
+def _head(m, size=None):
+    """The  q <m> cm  wrapper put around a moved object (m: 6 numbers). One written over a
+    wrapper already there (size: that one's length) keeps its length when it can, spaces
+    before cm making up the difference, so nothing after it moves in the stream and a big
+    drawing's objects stay as read (see _moved); a first one gets WRAP_ROOM spaces to spare
+    for that."""
+    head = b"\nq %.6f %.6f %.6f %.6f %.4f %.4f " % tuple(m)
+    pad = WRAP_ROOM if size is None else size - len(head) - 3
+    return head + b" " * max(pad, 0) + b"cm\n"
 
 
 CLIP_LOOK_BACK = 4096       # bytes before an object searched for the  q  that opens its clip
@@ -1453,6 +1488,7 @@ def transform(page, ns, t_page, objs=None):
     pieces = []
     tp = tuple(t_pdf)
     starts = None
+    clips_moved = False
     for n in sorted(set(ns), reverse=True):
         if n >= len(found):
             raise ValueError(tr("The object is no longer on the page."))
@@ -1468,26 +1504,27 @@ def transform(page, ns, t_page, objs=None):
             piece = _clip_piece(data, span, d, n, t_pdf) if span is not None else None
             if piece is not None:
                 pieces.append(piece)
+                clips_moved = True
                 continue
         c = tuple(ctm)
         m = _mul(_mul(c, tp), _inv(c))              # the move, in the object's own space
         old = data[s:e]
-        w = _WRAP.search(data, max(0, s - 120), s)
+        w = _WRAP.search(data, max(0, s - 200), s)
         if w and w.end() == s and data[e:e + 3] == b"\nQ\n":
             outer = pymupdf.Matrix(*[float(v) for v in w.group(1).split()])
-            head = b"\nq %.6f %.6f %.6f %.6f %.4f %.4f cm\n" % _mul(m, tuple(outer))
+            head = _head(_mul(m, tuple(outer)), w.end() - w.start())
             # the object's matrix becomes (written wrapper) x (what was under the old one)
             pieces.append((w.start(), e + 3, head + old + b"\nQ\n", n, len(head), len(old),
                            _written(head) * ~outer, b""))
             continue
         state, body = _split(old) if old[:2] != b"BI" else (b"", old)
-        head = b"\nq %.6f %.6f %.6f %.6f %.4f %.4f cm\n" % tuple(m)
+        head = _head(m)
         pieces.append((s, e, state + head + body + b"\nQ\n", n,
                        len(state) + len(head), len(body), _written(head), state))
     data = _splice(data, pieces)
     _set_contents(page, data)
     same = objs is not None and objs.found is found      # (else its lines don't apply)
-    return _moved(page, data, found, pieces, objs if same else None, t_page)
+    return _moved(page, data, found, pieces, objs if same else None, t_page, clips_moved)
 
 
 def _clip_piece(data, span, d, n, t_pdf):
@@ -1511,14 +1548,14 @@ def _clip_piece(data, span, d, n, t_pdf):
     at_q = ~inner * ctm                         # the space at q0
     move = at_q * t_pdf * ~at_q                 # the move, in that space
     body = data[q0:q1]
-    w = _WRAP.search(data, max(0, q0 - 120), q0)
+    w = _WRAP.search(data, max(0, q0 - 200), q0)
     if w and w.end() == q0 and data[q1:q1 + 3] == b"\nQ\n":
         outer = pymupdf.Matrix(*[float(v) for v in w.group(1).split()])
-        head = b"\nq %.6f %.6f %.6f %.6f %.4f %.4f cm\n" % tuple(move * outer)
+        head = _head(tuple(move * outer), w.end() - w.start())
         new_ctm = inner * _written(head) * ~outer * at_q
         return (w.start(), q1 + 3, head + body + b"\nQ\n", n, len(head) + s - q0, e - s,
                 new_ctm * ~ctm, b"")
-    head = b"\nq %.6f %.6f %.6f %.6f %.4f %.4f cm\n" % tuple(move)
+    head = _head(tuple(move))
     new_ctm = inner * _written(head) * at_q
     return (q0, q1, head + body + b"\nQ\n", n, len(head) + s - q0, e - s, new_ctm * ~ctm, b"")
 
@@ -1562,7 +1599,7 @@ def _written(head):
     return pymupdf.Matrix(*[float(v) for v in head.split()[1:7]])
 
 
-def _rebuilt(page, data, found, objs, origin):
+def _rebuilt(page, data, found, objs, origin, clips_kept=True):
     """The page's Objects after an edit, from its new scan entries `found` (no second read of
     the whole drawing). origin[k] says where entry k came from: (old number, None) for an
     object left as it was, (old number, Matrix) for one moved or copied by that matrix (in
@@ -1572,7 +1609,8 @@ def _rebuilt(page, data, found, objs, origin):
     A scan entry an edit left exactly as it was (same place in the stream, same matrix) is
     shared with the old Objects, not copied (copying 200,000 of them took a good part of a
     small edit on a big sheet): nothing changes a scan entry in place, edits make new ones.
-    Items stay each Objects' own (marks on the new ones don't touch the old)."""
+    Items stay each Objects' own (marks on the new ones don't touch the old).
+    clips_kept: the edit left every clipping path as it was (their shapes carry over)."""
     if objs is None:
         return Objects(page, data, found)
     old = {it["n"]: it for it in objs.items}
@@ -1584,7 +1622,8 @@ def _rebuilt(page, data, found, objs, origin):
             src = old.get(o[0])
             if src is not None and src["kind"] == "shape":
                 reuse[k] = src
-    new = Objects(page, data, found, reuse)
+    new = Objects(page, data, found, reuse,
+                  getattr(objs, "clip_keys", None) if clips_kept else None)
     Point = pymupdf.Point
     for it in new.items:
         o = origin[it["n"]] if it["n"] < len(origin) else None
@@ -1602,13 +1641,18 @@ def _rebuilt(page, data, found, objs, origin):
     return new
 
 
-def _moved(page, data, found, pieces, objs=None, t_page=None):
+def _moved(page, data, found, pieces, objs=None, t_page=None, clips_moved=False):
     """The page's Objects after transform, from the old scan instead of reading the whole
     drawing again: a moved object is wrapped in its own  q M cm ... Q, which leaves the
     graphics state of everything after it as it was, so the other objects only shift by
     the bytes added before them, and the moved one gets M in front of its matrix.
     An object's own state settings (CAD exporters put the color and width inside the shape)
-    move in front of it, so its recorded state is the state after them."""
+    move in front of it, so its recorded state is the state after them. clips_moved: a clip
+    moved along with its object (its shape is read again when needed)."""
+    if objs is not None and all(len(p[2]) == p[1] - p[0] for p in pieces):
+        got = _moved_in_place(page, data, found, pieces, objs, t_page, clips_moved)
+        if got is not None:
+            return got
     new = list(found)                   # (unchanged entries shared, see _rebuilt)
     by_n = {p[3]: p for p in pieces}
     shift = 0
@@ -1636,7 +1680,60 @@ def _moved(page, data, found, pieces, objs=None, t_page=None):
         shift += len(piece) - (e - s)
         k += 1
     origin = [(n, t_page if n in by_n else None) for n in range(len(found))]
-    return _rebuilt(page, data, new, objs, origin)
+    return _rebuilt(page, data, new, objs, origin, clips_kept=not clips_moved)
+
+
+def _moved_in_place(page, data, found, pieces, objs, t_page, clips_moved):
+    """_moved when no piece changed length (a wrapper written over again: _head), so every
+    other object is where it was in the stream: its scan entry and its item are the old
+    ones, shared (nothing changes them in place: see _rebuilt), and only the moved ones are
+    made anew, as a read makes them, their lines moved along. A big drawing's moved group
+    then takes a few milliseconds, not a pass over its 200,000 objects. None when it can't
+    be done (an object that has no item now, or had none): then the general way."""
+    new_found = list(found)
+    entries = []
+    for s, _e, _piece, n, off, size, m, state in pieces:
+        d = found[n]
+        x = dict(d)
+        x["start"] = s + off
+        x["end"] = x["start"] + size
+        x["ctm"] = pymupdf.Matrix(m) * d["ctm"]
+        if state:
+            x["state"] = _state_after(d.get("state", b""), state)
+        new_found[n] = x
+        entries.append(n)
+    part = Objects.__new__(Objects)
+    for _ in part.build_steps(page, data, [new_found[n] for n in entries]):
+        pass
+    made = {}
+    for it in part.items:
+        it["n"] = entries[it["n"]]
+        made[it["n"]] = it
+    items = list(objs.items)
+    rows = []
+    a, b, c, d_, e, f = tuple(t_page)
+    Point = pymupdf.Point
+    for n in entries:
+        i = bisect.bisect_left(items, n, key=lambda it: it["n"])
+        old = items[i] if i < len(items) and items[i]["n"] == n else None
+        it = made.get(n)
+        if old is None or it is None or old["kind"] != it["kind"]:
+            return None
+        if "lines" in old:
+            it["lines"] = [[Point(q.x * a + q.y * c + e, q.x * b + q.y * d_ + f) for q in line]
+                           for line in old["lines"]]
+        items[i] = it
+        rows.append(i)
+    new = Objects.__new__(Objects)
+    new.data, new.tm, new.found, new.items = data, objs.tm, new_found, items
+    new.clip_keys = None if clips_moved else objs.clip_keys
+    index = getattr(objs, "_at_index", None)
+    if index is not None and index.size == len(items):
+        # (the lookup of what's under the pointer: the moved ones' boxes put in a copy)
+        new._at_index = index.replaced(rows, [items[i]["rect"] for i in rows],
+                                       [items[i].get("width", 0) / 2 for i in rows])
+        new._segments = {k: v for k, v in objs._segments.items() if k not in made}
+    return new
 
 
 def move_to(page, ns, old_rect, new_rect, objs=None):
@@ -1837,6 +1934,24 @@ def _used_resources(doc, page, body):
         if items:
             parts.append("/%s<<%s>>" % (cat, " ".join(items)))
     return "<<%s>>" % "".join(parts)
+
+
+def holds_text(doc, xref, depth=0):
+    """Whether drawing group xref (a Form XObject) may draw text, itself or in a group
+    inside it (True when it can't be told)."""
+    try:
+        if b"BT" in (doc.xref_stream(xref) or b""):
+            return True
+        for kind, val in _res_entries(doc, xref, "Resources/XObject").values():
+            if kind != "xref":
+                continue
+            sub = int(val.split()[0])
+            if doc.xref_get_key(sub, "Subtype")[1] == "/Form" and (
+                    depth >= 8 or holds_text(doc, sub, depth + 1)):
+                return True
+    except Exception:
+        return True                     # (unreadable: it may)
+    return False
 
 
 def group_size(doc, xref, memo=None, depth=0):
@@ -2214,7 +2329,7 @@ _STROKE_SET = _STROKE | {b"CS"}
 # earlier  q  and settings don't stop it there; a move's  q ... cm  may come in between)
 _OWN_COLOR = re.compile(
     rb"\nq\n((?:(?:-?[\d.]+ -?[\d.]+ -?[\d.]+ (?:RG|rg)|-?[\d.]+ w|\[[-\d. ]*\] -?[\d.]+ d) ?)*)"
-    rb"\n(/KZHeads <<[^<>]*>> DP\n)?((?:\nq (?:-?[\d.]+ ){6}cm\n)*)\Z")
+    rb"\n(/KZHeads <<[^<>]*>> DP\n)?((?:\nq (?:-?[\d.]+ +){6}cm\n)*)\Z")
 _HEADS_MARK = re.compile(rb"/KZHeads <</S/(\w+)/E/(\w+)/M/(\w+)/N (\d+)>> DP")
 HEAD_KINDS = ("none", "open", "closed")      # a drawing line's arrowheads (closed: outlined)
 # a Line style's dash pattern, in line widths (as annotations.DASHES)
@@ -2771,9 +2886,11 @@ def _expand(doc, page, fx, taken, depth=0):
 def group_problem(objs, items):
     """Why Edit objects items (of the page's Objects objs) can't be one group, or None when
     they can: two or more shapes, pictures (not inline ones), groups and paragraphs of text,
-    the shapes, pictures and groups drawn under the same clipping and in the same layer
-    (marked content), as the group placed after the last of them will be. (Text is written
-    again, as a move does: text_edit.)"""
+    the shapes, pictures and groups drawn under the same clipping (the same area cut out:
+    clip_shapes), as the group placed after the last of them will be. They may be on
+    different layers (each keeps its own inside the group: group), but not in different
+    parts of a tagged page's structure (marked content with an MCID, which the tags point
+    at). (Text is written again, as a move does: text_edit.)"""
     if len(items) < 2:
         return tr("Select two or more objects to group them.")
     drawn = [it for it in items if it["kind"] != "text"]
@@ -2787,11 +2904,36 @@ def group_problem(objs, items):
         return tr("The object is no longer on the page.")
     ctx = [found[it["n"]].get("ctx") for it in drawn]
     if None in ctx:                     # (entries made some other way: read the stream)
-        ctx = _contexts(objs.data, [found[it["n"]]["start"] for it in drawn]).values()
-    if len(set(ctx)) != 1:
-        return tr("The selected objects are drawn under different clipping or on different "
-                  "layers: they can't be one group.")
+        ctx = list(_contexts(objs.data, [found[it["n"]]["start"] for it in drawn]).values())
+        clips = {c[1] for c in ctx}     # (where each clip is set, not what it is)
+    else:
+        clips = {c[1] for c in ctx}
+        if len(clips) > 1:
+            shapes = objs.clip_shapes()
+            clips = {frozenset(shapes[k] if k < len(shapes) else ("?", k) for k in c)
+                     for c in clips}
+    if len(clips) > 1:
+        return tr("The selected objects are drawn under different clipping: they can't be "
+                  "one group.")
+    _common, own = _layer_split([c[0] for c in ctx])
+    if any(b"/MCID" in b for mine in own for b in mine):
+        return tr("The selected objects are tagged as different parts of the page (for "
+                  "screen readers): they can't be one group.")
     return None
+
+
+def _layer_split(chains):
+    """(the marked content (BDC ... EMC: layers, tags) that all of chains are in, each
+    chain's own inside that). chains: an entry's "ctx"[0] for each object."""
+    first = chains[0] if chains else ()
+    k = len(first)
+    for c in chains[1:]:
+        k = min(k, len(c))
+        for i in range(k):
+            if c[i] != first[i]:
+                k = i
+                break
+    return first[:k], [tuple(c[k:]) for c in chains]
 
 
 def _key(d):
@@ -2802,27 +2944,37 @@ def _key(d):
 
 
 @_gc_paused
-def group(page, ns, text=None):
+def group(page, ns, text=None, objs=None):
     """Make objects ns (shapes, pictures and groups, see group_problem), and the page's text
     lines text (text_edit lines), one group: a Form XObject, as CAD programs export blocks,
     drawn where the last object was (objects between them come out under the group; with
     text only, on top), the objects themselves taken off the page. The text is written again
     inside it, in its own font, size and color, as a move writes it. Edit objects and CAD
-    mode select and move a group as one object; Ungroup takes it apart again. Returns the
-    group's xref and the fonts the text was written with. Raises ValueError (before anything
-    changes) when a line can't be written."""
+    mode select and move a group as one object; Ungroup takes it apart again.
+
+    Objects on different layers each keep theirs: inside the group each is drawn in its own
+    layer's marked content (/OC /name BDC ... EMC, the layer copied into the group's
+    resources), and the group itself is placed outside the layers they don't share, so
+    hiding a layer still hides just its own objects.
+
+    objs: the page's Objects (already read) to use instead of reading the drawing again.
+    Returns (the group's xref, the fonts the text was written with, the page's new Objects
+    worked out from the old ones without reading the drawing again, or None). Raises
+    ValueError (before anything changes) when a line can't be written."""
     from . import text_edit
     doc = page.parent
     ns = sorted(set(ns))
     lines = list(text or [])
     if len(ns) + len(lines) < 2:
         raise ValueError(tr("Select two or more objects to group them."))
-    found = scan(_contents(page))
+    data = _contents(page)
+    have = not lines and objs is not None and objs.found and objs.data == data
+    found = objs.found if have else scan(data)
     if ns and ns[-1] >= len(found):
         raise ValueError(tr("The object is no longer on the page."))
-    keys = [_key(found[n]) for n in ns]
     extra, boxes, used = b"", [], []
     if lines:
+        keys = [_key(found[n]) for n in ns]
         text_edit.refuse_with_marks(page)
         plans, styled, decor = text_edit._plan_lines(page, lines)   # (the fonts first)
         tm = pdfcoords.to_page(page)
@@ -2836,23 +2988,38 @@ def group(page, ns, text=None):
             raise ValueError(tr("The text couldn't be put in a group."))
         extra = after[len(base):]
         _set_contents(page, base)       # (it goes in the group instead)
-    data = _contents(page)
-    found = scan(data)
-    if ns and [_key(found[n]) for n in ns if n < len(found)] != keys:
-        # (taking the text out wrote the page's instructions again: the same objects,
-        # found by what they are)
-        want, out, k = list(keys), [], 0
-        for i, d in enumerate(found):
-            if k < len(want) and _key(d) == want[k]:
-                out.append(i)
-                k += 1
-        if len(out) != len(ns):
-            raise ValueError(tr("The object is no longer on the page."))
-        ns = out
+        data = _contents(page)
+        found = scan(data)
+        if ns and [_key(found[n]) for n in ns if n < len(found)] != keys:
+            # (taking the text out wrote the page's instructions again: the same objects,
+            # found by what they are)
+            want, out, k = list(keys), [], 0
+            for i, d in enumerate(found):
+                if k < len(want) and _key(d) == want[k]:
+                    out.append(i)
+                    k += 1
+            if len(out) != len(ns):
+                raise ValueError(tr("The object is no longer on the page."))
+            ns = out
     forms = {("/" + g[1]).encode(): g[0] for g in page.get_xobjects() if g[2] == 0}
     _own_resources(page)
     _add_reset_gs(page)
-    body = [_DEFAULTS] + _standalone(data, found, ns) + ([b"q\n" + extra + b"\nQ"] if extra else [])
+    ctx = [found[n].get("ctx") for n in ns]
+    if None in ctx:                     # (entries made some other way: read the stream)
+        got = _contexts(data, [found[n]["start"] for n in ns])
+        ctx = [got[found[n]["start"]] for n in ns]
+    common, own = _layer_split([c[0] for c in ctx])
+    # each object in its own layers (the ones not all of them are in); objects next to
+    # each other in the same layers share one  BDC ... EMC
+    body, run, run_own = [_DEFAULTS], [], ()
+    for piece, mine in list(zip(_standalone(data, found, ns), own)) + [(None, None)]:
+        if run and mine != run_own:
+            body.append(b"\n".join(run_own + (b"\n".join(run),)) + b"\nEMC" * len(run_own))
+            run = []
+        run_own = mine
+        run.append(piece)
+    if extra:
+        body.append(b"q\n" + extra + b"\nQ")
     xs, ys, pad = [], [], 1.0
     for n in ns:
         d = found[n]
@@ -2884,20 +3051,94 @@ def group(page, ns, text=None):
     _put_stream(doc, xref, b"\n".join(body))
     name = b"KzGroup%d" % xref
     _set_resource(doc, page.xref, "XObject", name.decode(), "%d 0 R" % xref)
-    if ns:
-        last = found[ns[-1]]
-        add = b"\nq\n%.6f %.6f %.6f %.6f %.4f %.4f cm\n" % _inv(tuple(last["ctm"])) + \
-            b"/%s Do\nQ\n" % name
-        at = last["end"]
-        _set_contents(page, data[:at] + add + data[at:])
-        # (the group comes right after the last of them: their numbers in the drawing order
-        # are the same, and they go)
-        delete(page, ns)
-    else:
+    if not ns:
         # (text only: on top, where the text was written again; the page's instructions
         # end with the default coordinates, PyMuPDF keeps them balanced)
         _set_contents(page, data + b"\nq\n/%s Do\nQ\n" % name)
-    return xref, used
+        return xref, used, None
+    # the group right after the last of them (their numbers in the drawing order stay the
+    # same), outside the layers that one is in and the others aren't; the objects go (their
+    # own state settings stay, for what's drawn after them); all in one pass
+    last = found[ns[-1]]
+    leave = ctx[-1][0][len(common):]
+    # (placed in a wrapper as a move writes one: moving it then writes over that, keeping
+    # its length, see _head)
+    head = _head(_inv(tuple(last["ctm"])))
+    do = b"/%s Do" % name
+    old = data[last["start"]:last["end"]]
+    keep = _split(old)[0] if old[:2] != b"BI" else b""
+    span = _alone_in_q(data, [d["start"] for d in found], last["start"], last["end"]) \
+        if leave else None
+    if span is None:
+        put = b" " + keep + b" " + b"\nEMC" * len(leave)
+        place = (last["start"], last["end"])
+    else:
+        # drawn alone in its own  q <its colors...> ... Q  (as some CAD programs write each
+        # line): that goes, and the group is drawn at its level with the same settings, so
+        # the layers are closed and opened again outside it, nested as they were
+        put = b"\n" + b"EMC\n" * len(leave) + b"q\n" + \
+            data[span[0]:last["start"]].lstrip(_WS)[1:] + b" " + keep
+        place = span
+    put += head + do + b"\nQ\n" + (b"Q\n" if span is not None else b"") + \
+        b"".join(b + b"\n" for b in leave)
+    pieces = []
+    for n in ns[:-1]:
+        d = found[n]
+        old = data[d["start"]:d["end"]]
+        own = _split(old)[0] if old[:2] != b"BI" else b""
+        pieces.append((d["start"], d["end"], b" " + own + b" ", n))
+    pieces.append(place + (put, ns[-1]))
+    new_data = _splice(data, pieces)
+    _set_contents(page, new_data)
+    # the new scan, from the old one: the objects after them only shifted
+    by_n = {p[3]: p for p in pieces}
+    out, origin, shift = [], [], 0
+    for n, d in enumerate(found):
+        p = by_n.get(n)
+        if p is None:
+            if shift:
+                e = dict(d)
+                e["start"] += shift
+                e["end"] += shift
+            else:
+                e = d                   # (unchanged: shared, see _rebuilt)
+            out.append(e)
+            origin.append((n, None))
+            continue
+        if n == ns[-1]:
+            s_ = p[0] + shift + put.index(do)
+            out.append({"start": s_, "end": s_ + len(do),
+                        "ctm": _written(head) * last["ctm"],
+                        "name": b"/" + name, "state": _after_last(data, last),
+                        "ctx": (common, ctx[-1][1])})
+            origin.append(None)
+        shift += len(p[2]) - (p[1] - p[0])
+    return xref, used, _rebuilt(page, new_data, out, objs if have else None, origin)
+
+
+_SPAN_OPS = _NOTED | {b"cm"}
+
+
+def _alone_in_q(data, starts, s, e):
+    """(start of the  q , end of the  Q ) when the object at data[s:e] is drawn alone in its
+    own  q <graphics state settings> <the object> Q , else None. starts: every object's
+    start, in order."""
+    k = bisect.bisect_left(starts, s)
+    lo = max(0, s - CLIP_LOOK_BACK, (starts[k - 1] + 1) if k else 0)
+    qs = [m.start() for m in _Q_OP.finditer(data, lo, s)]
+    if not qs:
+        return None
+    q0 = qs[-1]
+    toks = list(_tokens(data[q0:s]))
+    if not toks or toks[0][0] != b"q" or any(t[0] not in _SPAN_OPS for t in toks[1:]) or \
+            data[q0 + toks[-1][3]:s].strip(_WS):
+        return None
+    for op, _a, _s, e_ in _tokens(data[e:e + CLIP_LOOK_AHEAD]):
+        if op == b"Q":
+            return q0, e + e_
+        if op not in _SPAN_OPS:
+            return None
+    return None
 
 
 def ungroup(page, ns):

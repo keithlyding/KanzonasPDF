@@ -247,6 +247,18 @@ class BoxIndex:
         self.x1, self.y1 = x1 + g + e, y1 + g + e
         self.size = n
 
+    def replaced(self, rows, rects, grow=None):
+        """A copy with the boxes at indexes rows made from rects (and grow) instead: the same
+        numbers a new BoxIndex of all the boxes would hold."""
+        part = BoxIndex(rects, grow)
+        out = BoxIndex.__new__(BoxIndex)
+        out.size = self.size
+        for k in ("x0", "y0", "x1", "y1"):
+            a = getattr(self, k).copy()
+            a[rows] = getattr(part, k)
+            setattr(out, k, a)
+        return out
+
     def near(self, x, y, pad=0.0):
         """Indexes (in order) of the boxes within about pad of point (x, y)."""
         import numpy as np

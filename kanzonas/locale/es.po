@@ -11346,9 +11346,6 @@ msgstr "No se pudo poner el texto en un grupo."
 msgid "Some of the selected objects can't be grouped."
 msgstr "Algunos de los objetos seleccionados no se pueden agrupar."
 
-msgid "The selected objects are drawn under different clipping or on different layers: they can't be one group."
-msgstr "Los objetos seleccionados se dibujan con recortes distintos o en capas distintas: no pueden ser un mismo grupo."
-
 msgid "Markups and the page's own objects can't be one group: group the markups, or the page's objects, on their own."
 msgstr "Las marcas y los objetos propios de la página no pueden ser un mismo grupo: agrupe las marcas, o los objetos de la página, por separado."
 
@@ -11907,3 +11904,15 @@ msgstr "La pendiente de una cubierta, subida a recorrido (6:12) o en grados (30�
 
 msgid "Slope"
 msgstr "Pendiente"
+
+msgid "The selected objects are drawn under different clipping: they can't be one group."
+msgstr "Los objetos seleccionados se dibujan con recortes distintos: no pueden ser un mismo grupo."
+
+msgid "The selected objects are tagged as different parts of the page (for screen readers): they can't be one group."
+msgstr "Los objetos seleccionados están etiquetados como partes distintas de la página (para lectores de pantalla): no pueden ser un mismo grupo."
+
+msgid "Group (1 object)"
+msgstr "Grupo (1 objeto)"
+
+msgid "Group ({n} objects)"
+msgstr "Grupo ({n} objetos)"
