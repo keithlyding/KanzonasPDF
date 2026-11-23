@@ -11836,3 +11836,33 @@ msgstr "Rimuovi questo ritaglio"
 
 msgid "Remove all cut-outs"
 msgstr "Rimuovi tutti i ritagli"
+
+msgid "Export Excel..."
+msgstr "Esporta Excel..."
+
+msgid "The takeoff as an Excel workbook: grouped by sheet, by space and by kind or Count group, with quantities, units and subtotals, and every measurement on its own row"
+msgstr "Il computo come cartella di lavoro Excel: raggruppato per tavola, per spazio e per tipo o gruppo di Conteggio, con quantità, unità e subtotali, e ogni misura su una riga"
+
+msgid "Export takeoff"
+msgstr "Esporta computo"
+
+msgid "Excel workbooks"
+msgstr "Cartelle di lavoro Excel"
+
+msgid "Quantity"
+msgstr "Quantità"
+
+msgid "By sheet"
+msgstr "Per tavola"
+
+msgid "Sheet"
+msgstr "Tavola"
+
+msgid "By space"
+msgstr "Per spazio"
+
+msgid "(no space)"
+msgstr "(nessuno spazio)"
+
+msgid "Subtotal"
+msgstr "Subtotale"
