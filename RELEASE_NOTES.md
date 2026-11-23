@@ -9,6 +9,21 @@ Spanish translation under `## <version> (es)`. The Windows build fails without t
 translation under `## <version> (it)` is shown to Italian users (since 1.13); without one they
 see the English.
 
+## 1.16.2
+
+**New**
+- Measurement summary > Export Excel...: the whole takeoff as an Excel workbook, grouped by sheet, by space and by kind or Count group, with quantities, units and subtotals, and every measurement on its own row (the start of a bill of quantities). Export CSV... stays.
+
+## 1.16.2 (es)
+
+**Novedades**
+- Resumen de mediciones > Exportar Excel...: toda la medición como un libro de Excel, agrupada por plano, por espacio y por tipo o grupo de Recuento, con cantidades, unidades y subtotales, y cada medición en su propia fila (el comienzo de un presupuesto de cantidades). Exportar CSV... se mantiene.
+
+## 1.16.2 (it)
+
+**Novità**
+- Riepilogo misure > Esporta Excel...: tutto il computo come cartella di lavoro Excel, raggruppato per tavola, per spazio e per tipo o gruppo di Conteggio, con quantità, unità e subtotali, e ogni misura su una riga (l'inizio di un computo metrico). Esporta CSV... resta.
+
 ## 1.16.1
 
 **New**

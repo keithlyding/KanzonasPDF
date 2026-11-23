@@ -161,7 +161,7 @@ The owner sets this list; nothing below is promised until it's here.
      window, a column); it shows the net value, the summary and legends total net. Kept in
      the markup itself (KZProps geom "holes"), drawn as holes in its appearance (even-odd
      fill), so they move, copy, undo and save with it and other viewers show them.
-  2. **Excel export of the takeoff, grouped**: the Measurement summary to .xlsx (openpyxl,
+  2. **Excel export of the takeoff, grouped** (1.16.2): the Measurement summary to .xlsx (openpyxl,
      lazily), grouped by sheet, by Space and by Count group or kind, with quantities, units
      and subtotals; CSV stays. The start of a bill of quantities.
   3. **Wall area from a length**: a Height on Length and Polylength (as Volume's Depth),

@@ -1563,7 +1563,16 @@ se copia, se voltea, se deshace y se guarda con ella, y el relleno de la medici�
 haga clic derecho dentro de él &gt; <b>Quitar este recorte</b>, o <b>Quitar todos los recortes</b>. Otros visores
 de PDF muestran la medición con sus aberturas y su valor neto en su comentario (uno que vuelve a dibujar las marcas
 desde cero la muestra sin ellas).</li>
-<li><b>Resumen de mediciones</b> suma todo y exporta a CSV.</li>
+<li><b>Resumen de mediciones</b> (pestaña Medir, menú Medir) suma todo: cada tipo de medición y cada
+grupo de Recuento, con las páginas en que está, cuántas hay y el total (las áreas y los volúmenes netos de sus
+recortes). <b>Exportar CSV...</b> guarda esa tabla. <b>Exportar Excel...</b> guarda toda la medición como un
+libro de Excel (.xlsx), el comienzo de un presupuesto de cantidades, con cuatro hojas: <b>Resumen</b> (la misma
+tabla); <b>Por plano</b> (cada página, nombrada por su etiqueta de página si la tiene, con sus mediciones por tipo
+y grupo de Recuento, sus cantidades y unidades, y un subtotal de cada unidad); <b>Por espacio</b> (lo mismo para
+cada Espacio, en todos los planos, y lo que no está en ningún espacio); y <b>Elementos</b> (cada medición en su
+propia fila: plano, espacio, tipo, grupo, asunto, cantidad y unidad, con filtros, para una tabla dinámica o su
+propio presupuesto). Los subtotales son fórmulas, así que una cantidad que cambie en Excel los cambia. Los nombres
+del PDF (espacios, grupos, asuntos) se escriben como texto, nunca como fórmulas.</li>
 <li><b>Espacio</b> (pestaña Medir, grupo "Más", el menú Medir y el botón Medir de la pestaña
 CAD), como los Espacios de Bluebeam: un área con nombre de un plano (una habitación, una zona,
 un nivel). Haga clic en cada esquina, doble clic o pulse Enter, y escriba su nombre (se ofrece

@@ -11772,3 +11772,33 @@ msgstr "Quitar este recorte"
 
 msgid "Remove all cut-outs"
 msgstr "Quitar todos los recortes"
+
+msgid "Export Excel..."
+msgstr "Exportar Excel..."
+
+msgid "The takeoff as an Excel workbook: grouped by sheet, by space and by kind or Count group, with quantities, units and subtotals, and every measurement on its own row"
+msgstr "La medición como libro de Excel: agrupada por plano, por espacio y por tipo o grupo de Recuento, con cantidades, unidades y subtotales, y cada medición en su propia fila"
+
+msgid "Export takeoff"
+msgstr "Exportar medición"
+
+msgid "Excel workbooks"
+msgstr "Libros de Excel"
+
+msgid "Quantity"
+msgstr "Cantidad"
+
+msgid "By sheet"
+msgstr "Por plano"
+
+msgid "Sheet"
+msgstr "Plano"
+
+msgid "By space"
+msgstr "Por espacio"
+
+msgid "(no space)"
+msgstr "(sin espacio)"
+
+msgid "Subtotal"
+msgstr "Subtotal"

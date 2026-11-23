@@ -10,7 +10,6 @@ from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QFormLayout, Q
                                QTableWidgetItem, QHeaderView, QPushButton, QFileDialog,
                                QMessageBox, QAbstractItemView)
 
-from . import annotations as A
 from . import measure as M
 from . import sheet_scale
 from .i18n import tr
@@ -165,38 +164,11 @@ class ScaleDialog(QDialog):
 
 
 def summary_rows(doc):
-    """[(kind label, group/page, count, total, unit)] grouped per kind + unit (+ count group)."""
-    groups = {}
-    for i in range(doc.page_count):
-        page = doc[i]
-        for a in A.each_annot(page):
-            m = A.read(a)
-            if not m or m["kind"] not in A.MEASURES:
-                continue
-            value, unit = M.raw_values(m["kind"], m["points"], page, m["props"],
-                                       m.get("holes"))       # (an area's net of its cut-outs)
-            key = (A.LABELS[m["kind"]], m["props"].get("group", "") if m["kind"] == "m_count" else "")
-            g = groups.setdefault(key + (unit,), {"count": 0, "total": 0.0, "pages": set()})
-            g["count"] += 1
-            g["total"] += value
-            g["pages"].add(i + 1)
-    rows = []
-    for (label, group, unit), g in sorted(groups.items()):
-        pages = ", ".join(str(p) for p in sorted(g["pages"]))
-        total = g["count"] if unit == "count" else round(g["total"], 2)
-        rows.append((label, group or "", pages, g["count"], total, _unit_name(unit)))
-    return rows
-
-
-def _unit_name(unit):
-    """A total's unit as shown ("count", "degrees" and "ft (radius)" are worded)."""
-    if unit == "count":
-        return tr("count")
-    if unit == "degrees":
-        return tr("degrees")
-    if unit.endswith(" (radius)"):
-        return tr("{unit} (radius)").format(unit=unit[:-len(" (radius)")])
-    return unit
+    """[(kind label, group, pages, count, total, unit)] grouped per kind + unit (+ count
+    group): takeoff.summary of every measurement (an Area's or Volume's net of its
+    cut-outs)."""
+    from . import takeoff
+    return takeoff.summary(takeoff.items(doc))
 
 
 class SummaryDialog(QDialog):
@@ -207,7 +179,10 @@ class SummaryDialog(QDialog):
         self.setWindowTitle(tr("Measurement summary"))
         self.resize(640, 360)
         lay = QVBoxLayout(self)
-        self.rows = summary_rows(doc)
+        from . import takeoff
+        self.doc = doc
+        self.items = takeoff.items(doc)
+        self.rows = takeoff.summary(self.items)
         t = QTableWidget(len(self.rows), len(self.COLS))
         t.setHorizontalHeaderLabels(self.COLS)
         t.setEditTriggers(QAbstractItemView.NoEditTriggers)
@@ -225,9 +200,16 @@ class SummaryDialog(QDialog):
         btns = QHBoxLayout()
         exp = QPushButton(tr("Export CSV..."))
         exp.clicked.connect(self._export)
+        # (the takeoff grouped by sheet, Space and kind, with subtotals: takeoff.py)
+        xls = self.excel_button = QPushButton(tr("Export Excel..."))
+        xls.setToolTip(tr("The takeoff as an Excel workbook: grouped by sheet, by space and by "
+                          "kind or Count group, with quantities, units and subtotals, and every "
+                          "measurement on its own row"))
+        xls.clicked.connect(self._export_excel)
         close = QPushButton(tr("Close"))
         close.clicked.connect(self.accept)
         btns.addWidget(exp)
+        btns.addWidget(xls)
         btns.addStretch(1)
         btns.addWidget(close)
         lay.addLayout(btns)
@@ -245,5 +227,25 @@ class SummaryDialog(QDialog):
                 w.writerows([[csv_cell(v) for v in row] for row in self.rows])
         except OSError as ex:           # (open in Excel, read-only, a folder...)
             QMessageBox.warning(self, tr("Export measurements"), tr(
+                "Couldn't save {name}:\n{error}").format(name=os.path.basename(path),
+                                                         error=ex.strerror or ex))
+
+    def ask_excel_path(self):
+        """Where to save the workbook ("" when cancelled). (Tests replace it.)"""
+        path, _ = QFileDialog.getSaveFileName(self, tr("Export takeoff"), "takeoff.xlsx",
+                                              tr("Excel workbooks") + " (*.xlsx)")
+        if path and not path.lower().endswith(".xlsx"):
+            path += ".xlsx"
+        return path
+
+    def _export_excel(self):
+        path = self.ask_excel_path()
+        if not path:
+            return
+        from . import takeoff
+        try:
+            takeoff.write_xlsx(self.doc, path, self.items)
+        except OSError as ex:           # (open in Excel, read-only, a folder...)
+            QMessageBox.warning(self, tr("Export takeoff"), tr(
                 "Couldn't save {name}:\n{error}").format(name=os.path.basename(path),
                                                          error=ex.strerror or ex))

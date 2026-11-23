@@ -1580,7 +1580,17 @@ its measurement: it moves, copies, flips, undoes and saves with it, and the meas
 leaves it empty. To put one back, right-click inside it &gt; <b>Remove this cut-out</b>, or
 <b>Remove all cut-outs</b>. Other PDF viewers show the measurement with its openings and its
 net value in its comment (one that draws markups anew from scratch shows it without them).</li>
-<li><b>Measurement summary</b> totals everything and exports to CSV.</li>
+<li><b>Measurement summary</b> (Measure tab, Measure menu) totals everything: each kind of
+measurement and each Count group, with the pages it's on, how many and the total (areas and
+volumes net of their cut-outs). <b>Export CSV...</b> saves that table. <b>Export Excel...</b>
+saves the whole takeoff as an Excel workbook (.xlsx), the start of a bill of quantities, with
+four worksheets: <b>Summary</b> (the same table); <b>By sheet</b> (each page, named by its page
+label when it has one, with its measurements by kind and Count group, their quantities and units,
+and a subtotal of each unit); <b>By space</b> (the same for each Space, across the sheets, and
+what's in no space); and <b>Items</b> (every measurement on its own row: sheet, space, kind,
+group, subject, quantity and unit, with filters on, for a pivot table or your own bill of
+quantities). Subtotals are formulas, so a quantity you change in Excel changes them. Names from
+the PDF (spaces, groups, subjects) are written as plain text, never as formulas.</li>
 <li><b>Space</b> (Measure tab, "More" group, the Measure menu and the CAD tab's Measure
 button), like Bluebeam's Spaces: a named area of a sheet (a room, a zone, a level). Click each
 corner, double-click or press Enter, and type its name (Space 1, Space 2... is offered). It is

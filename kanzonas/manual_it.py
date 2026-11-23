@@ -1565,7 +1565,16 @@ misura: si sposta, si copia, si capovolge, si annulla e si salva con essa, e il 
 vuoto. Per rimetterlo, fai clic destro al suo interno &gt; <b>Rimuovi questo ritaglio</b>, o <b>Rimuovi tutti i
 ritagli</b>. Gli altri visualizzatori PDF mostrano la misura con le sue aperture e il valore netto nel suo commento
 (uno che ridisegna le annotazioni da zero la mostra senza).</li>
-<li><b>Riepilogo misure</b> somma tutto ed esporta in CSV.</li>
+<li><b>Riepilogo misure</b> (scheda Misure, menu Misure) somma tutto: ogni tipo di misura e ogni gruppo
+di Conteggio, con le pagine in cui si trova, quanti sono e il totale (aree e volumi al netto dei loro ritagli).
+<b>Esporta CSV...</b> salva quella tabella. <b>Esporta Excel...</b> salva tutto il computo come una cartella di
+lavoro Excel (.xlsx), l'inizio di un computo metrico, con quattro fogli: <b>Riepilogo</b> (la stessa tabella);
+<b>Per tavola</b> (ogni pagina, chiamata con la sua etichetta di pagina se ne ha una, con le sue misure per tipo e
+gruppo di Conteggio, le quantità e le unità, e un subtotale per ogni unità); <b>Per spazio</b> (lo stesso per ogni
+Spazio, in tutte le tavole, e ciò che non è in nessuno spazio); ed <b>Elementi</b> (ogni misura su una riga: tavola,
+spazio, tipo, gruppo, oggetto, quantità e unità, con i filtri attivi, per una tabella pivot o il tuo computo). I
+subtotali sono formule, quindi una quantità cambiata in Excel li cambia. I nomi presi dal PDF (spazi, gruppi,
+oggetti) sono scritti come testo, mai come formule.</li>
 <li><b>Spazio</b> (scheda Misure, gruppo "Altro", il menu Misure e il pulsante Misura della scheda CAD),
 come gli Spaces di Bluebeam: un'area con un nome in una tavola (una stanza, una zona, un piano). Fai clic su
 ogni angolo, doppio clic o premi Invio, e digita il suo nome (viene proposto Spazio 1, Spazio 2...). È un
