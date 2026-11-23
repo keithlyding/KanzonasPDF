@@ -33,8 +33,35 @@ env:
     --name KanzonasPDF
 
 jobs:
+  # On main only: were this commit's files already tested on its pull request? A pull
+  # request squash-merged after main was merged into it gives main exactly the files of its
+  # last commit, whose build ran every regression test; then the jobs below skip theirs, and
+  # still build the apps from main and self-test, install and update them (the owner, 23 Nov
+  # 2026). Main moved on since, no pull request, a test that didn't pass there, a tag, a
+  # branch or a run by hand: every test runs (tools/tested_on_pr.py).
+  tested:
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: read
+    outputs:
+      windows: ${{ steps.pr.outputs.windows }}
+      linux: ${{ steps.pr.outputs.linux }}
+      macos: ${{ steps.pr.outputs.macos }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Were these files tested on their pull request?
+        id: pr
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python3 tools/tested_on_pr.py
+
   # Windows: the exe folder, setup, portable zip and PortableApps.com layout
   build:
+    needs: tested
+    if: ${{ !cancelled() }}
     runs-on: windows-latest
     outputs:
       version: ${{ steps.ver.outputs.version }}
@@ -65,6 +92,7 @@ jobs:
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
 
       - name: Regression tests (security, document preservation, efficiency budgets)
+        if: needs.tested.outputs.windows != 'true'
         env:
           QT_QPA_PLATFORM: offscreen
         run: python -X faulthandler -m unittest discover -s tests -p "test_*.py" -t .
@@ -443,6 +471,8 @@ jobs:
   # glibc 2.35 and newer (Ubuntu 22.04, Debian 12, Fedora 36 and later); PySide6 6.12's
   # wheels need glibc 2.34. packaging/linux/make_appimage.py makes the AppDir and checks it.
   linux:
+    needs: tested
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-22.04
     outputs:
       version: ${{ steps.ver.outputs.version }}
@@ -500,6 +530,7 @@ jobs:
           python -c "import cv2; print('OpenCV', cv2.__version__)"
 
       - name: Regression tests (security, document preservation, efficiency budgets)
+        if: needs.tested.outputs.linux != 'true'
         env:
           QT_QPA_PLATFORM: offscreen
         run: python -X faulthandler -m unittest discover -s tests -p "test_*.py" -t .
@@ -628,6 +659,8 @@ jobs:
   # for now: people allow it once in System Settings > Privacy & Security > Open Anyway (see
   # the signing steps below).
   macos:
+    needs: tested
+    if: ${{ !cancelled() }}
     name: macos (arm64)
     runs-on: macos-15
     timeout-minutes: 120
@@ -674,6 +707,7 @@ jobs:
           python -c "import pymupdf, onnxruntime; print('PyMuPDF', pymupdf.__version__, 'MuPDF', pymupdf.mupdf_version, 'ONNX Runtime', onnxruntime.__version__)"
 
       - name: Regression tests (security, document preservation, efficiency budgets)
+        if: needs.tested.outputs.macos != 'true'
         env:
           QT_QPA_PLATFORM: offscreen
         run: |
