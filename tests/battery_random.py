@@ -1668,13 +1668,16 @@ class Battery:
             v.select_objects(i, pick)
         if marks and (not pick or self.rnd.random() < 0.6):
             v.select_xref(i, self.rnd.choice(marks))
-        others = self.other_letters(i, pick)
+        # (counted wherever they are, off the page too: a picked group's text goes with it,
+        # and one by the edge can be moved past it. Seed 41, step 192, 22 Nov: "Initial
+        # here" of a group at x 8 moved 40 pt left, still in the page's content at x -32)
+        others = self.all_letters(i)
         d = (self.rnd.uniform(-50, 50), self.rnd.uniform(-50, 50))
         rev = v.revision
         v.cad_apply("Moved", pymupdf.Matrix(1, 0, 0, 1, d[0], d[1]))
         v.clear_selection()
         v.clear_object_selection()
-        self.check_letters(i, others)
+        self.check_letters(i, others, anywhere=True)
         return "edit" if v.revision != rev else "none"
 
     def op_text_nudge(self):
@@ -1721,15 +1724,30 @@ class Battery:
             out.update(c for c in text_edit.line_text(ln) if not c.isspace())
         return out
 
-    def check_letters(self, i, before):
-        """Every letter of the text that wasn't picked is still on the page."""
+    def all_letters(self, i):
+        """Every letter of page i's text, wherever it's drawn (past the page's edges too):
+        for a step that moves text and deletes none."""
+        import collections
+        if i >= self.v.doc.page_count:
+            return None
+        page = self.v.doc[i]
+        # (a text page read with no clip: get_text's own clip still stops at the page's edges)
+        text = page.get_text("text", textpage=page.get_textpage(clip=pymupdf.INFINITE_RECT()))
+        return collections.Counter(c for c in text if not c.isspace())
+
+    def check_letters(self, i, before, anywhere=False):
+        """Every letter of the text that wasn't picked is still on the page (anywhere: in
+        the page's content, wherever it's drawn; before from all_letters)."""
         import collections
         from kanzonas import text_edit
         if before is None or i >= self.v.doc.page_count:
             return
         now = collections.Counter()
-        for _r, ln in text_edit.text_lines(self.v.doc[i]):
-            now.update(c for c in text_edit.line_text(ln) if not c.isspace())
+        if anywhere:
+            now = self.all_letters(i)
+        else:
+            for _r, ln in text_edit.text_lines(self.v.doc[i]):
+                now.update(c for c in text_edit.line_text(ln) if not c.isspace())
         lost = before - now
         if lost:
             raise Failed("page %d: text that wasn't selected lost letters: %r" % (
