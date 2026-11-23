@@ -244,6 +244,19 @@ def paint_selected_path(p, path):
     p.drawPath(path)
 
 
+def paint_selected_rects(p, rects):
+    """paint_selected_path for many boxes (QRectF): drawn as rectangles, not as one path. A
+    path of hundreds of boxes is stroked smoothed a dozen times slower: 300 selected markups
+    took 30 ms a paint for their boxes, against 2 ms."""
+    p.setBrush(Qt.NoBrush)
+    p.setPen(QPen(QColor(255, 255, 255, 230), 4))
+    p.drawRects(rects)
+    dash = QPen(SELECTED, 2, Qt.CustomDashLine)
+    dash.setDashPattern([3, 2])
+    p.setPen(dash)
+    p.drawRects(rects)
+
+
 def paint_grips(p, points):
     """Grips: small filled squares on the selected things' ends and corners, as AutoCAD
     marks a selection (points: widget coordinates)."""
@@ -1546,10 +1559,9 @@ class PageWidget(QWidget):
             if self.view.cad_select and not self._edit and len(group) <= 2000:
                 self._paint_cad_markups(p, group, page)
                 return
-            path = QPainterPath()
-            for m in group:
-                path.addRect(self.to_screen(self._shown_box(m), page).adjusted(-3, -3, 3, 3))
-            paint_selected_path(p, path)        # (shows on any color: white under blue)
+            # (shows on any color: white under blue)
+            paint_selected_rects(p, [self.to_screen(self._shown_box(m), page).adjusted(
+                -3, -3, 3, 3) for m in group])
             return
         shown = self._edit["preview"] if self._edit and self._edit.get("preview") else model
         if self.view.cad_select and self.view.tool == "editobjects" and not self._edit:
