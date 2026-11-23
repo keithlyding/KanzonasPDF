@@ -17,6 +17,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import pymupdf  # noqa: E402
+from PySide6.QtTest import QTest  # noqa: E402
 from PySide6.QtWidgets import QApplication  # noqa: E402
 
 APP = QApplication.instance() or QApplication([])
@@ -131,7 +132,10 @@ class Prepared(unittest.TestCase):
         v._cad_prepare_soon()
         end = time.monotonic() + 5
         while time.monotonic() < end:
-            APP.processEvents()
+            # (waited as Qt's tests wait, timers given their turn: on the Mac build, a loop of
+            # bare processEvents() left the idle read's timer waiting the whole 5 s twice,
+            # nothing read; here the read takes 10 ms)
+            QTest.qWait(5)
             objs = v._obj_cache.get(0)
             if objs is not None and all("lines" in it for it in objs.items
                                         if it["kind"] == "shape"):
