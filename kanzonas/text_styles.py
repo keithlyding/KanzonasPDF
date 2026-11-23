@@ -45,7 +45,10 @@ from .i18n import tr
 SHEAR = 0.21                    # tan(~12 degrees): a slanted (synthetic) italic
 STROKE = 0.03                   # a thickened (synthetic) bold's stroke, x font size
 _FILLED, _STROKED = 16, 32      # MuPDF's letter flags (FZ_STEXT_FILLED, FZ_STEXT_STROKED)
-_FLAGS = ((pymupdf.TEXTFLAGS_DICT & ~pymupdf.TEXT_PRESERVE_IMAGES) |
+# (not cut at the page's edges: the letters of a line running past one are its letters, as
+# text_edit.text_lines reads them)
+_FLAGS = ((pymupdf.TEXTFLAGS_DICT & ~pymupdf.TEXT_PRESERVE_IMAGES &
+           ~pymupdf.TEXT_MEDIABOX_CLIP) |
           pymupdf.TEXT_COLLECT_STYLES | pymupdf.TEXT_COLLECT_VECTORS)
 _KEEP_FLAGS = 2 | 4 | 8 | 16    # italic, serif, mono, bold (not superscript)
 

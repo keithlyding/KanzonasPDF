@@ -70,16 +70,10 @@ def page_textpage(page, flags, clip=None):
             c = pymupdf.Rect(clip) if clip is not None else None
             if flags & pymupdf.TEXT_MEDIABOX_CLIP:
                 c = (c & page.rect) if c is not None else pymupdf.Rect(page.rect)
-            if c is not None:
-                try:
-                    m = pymupdf.mupdf
-                    opts = m.FzStextOptions()
-                    opts.flags = (flags & ~pymupdf.TEXT_MEDIABOX_CLIP) | m.FZ_STEXT_CLIP_RECT
-                    box = m.FzRect(c.x0, c.y0, c.x1, c.y1)     # (kept alive while used)
-                    opts.clip = box.internal()
-                    stp = m.FzStextPage(dl.this, opts)
-                except Exception:
-                    stp = None          # (the whole page instead)
+            try:
+                stp = _stext_page(dl, flags & ~pymupdf.TEXT_MEDIABOX_CLIP, c)
+            except Exception:
+                stp = None              # (PyMuPDF's own way instead)
             if stp is None:
                 stp = dl.get_textpage(flags=flags)
             tp = pymupdf.TextPage(stp)
@@ -90,6 +84,29 @@ def page_textpage(page, flags, clip=None):
     return tp, flags
 
 
+def _stext_page(dl, flags, clip=None):
+    """MuPDF's text page of display list dl, read only in clip (a Rect) when given. The list
+    is played whole: played the usual way (PyMuPDF's TextPage of a display list), it's cut
+    at the page's box, and a line running past an edge lost its letters there, whatever
+    clip was asked (random battery, seed 41)."""
+    m = pymupdf.mupdf
+    opts = m.FzStextOptions()
+    opts.flags = flags
+    if clip is not None:
+        opts.flags |= m.FZ_STEXT_CLIP_RECT
+        box = m.FzRect(clip.x0, clip.y0, clip.x1, clip.y1)     # (kept alive while used)
+        opts.clip = box.internal()
+    # (the text page as big as everything: MuPDF leaves out letters outside its box too)
+    everywhere = m.FzRect(m.FzRect.Fixed_INFINITE)
+    stp = m.FzStextPage(everywhere)
+    dev = m.fz_new_stext_device(stp, opts)
+    try:
+        m.fz_run_display_list(dl.this, dev, m.FzMatrix(), everywhere, m.FzCookie())
+    finally:
+        m.fz_close_device(dev)
+    return stp
+
+
 def text_lines(page):
     """[(rect, line)] for every visual text line on the page (unrotated coords).
 
@@ -97,7 +114,14 @@ def text_lines(page):
     letter placed separately, another text block). Pieces on the same baseline that
     touch or nearly touch are merged, so editing a line never leaves a letter behind."""
     pieces = []
-    d = page_text_dict(page, pymupdf.TEXTFLAGS_DICT & ~pymupdf.TEXT_PRESERVE_IMAGES)
+    # read whole, not cut at the page's edges: a line running past an edge (a label on a
+    # page cropped close) keeps its letters there, or editing it wrote it again without
+    # them (MuPDF's page-box clip drops each letter whose shape is outside: a sideways
+    # "SHEET NO: R-3" read as "SHEET NO R 3"; random battery, seed 41). Lines wholly
+    # outside the page are left out, as the clip did.
+    d = page_text_dict(page, pymupdf.TEXTFLAGS_DICT & ~pymupdf.TEXT_PRESERVE_IMAGES &
+                       ~pymupdf.TEXT_MEDIABOX_CLIP)
+    shown = (page.rect * page.derotation_matrix).normalize()
     for b in d["blocks"]:
         if b.get("type") != 0:
             continue
@@ -125,7 +149,15 @@ def text_lines(page):
                 continue
         merged.append({"bbox": pymupdf.Rect(piece["bbox"]), "dir": piece["dir"],
                        "spans": list(piece["spans"])})
-    return [(m["bbox"], m) for m in merged]
+    # (a line's pieces joined first: its letters past the edge can be a piece of their own)
+    return [(m["bbox"], m) for m in merged if _shows(m, shown)]
+
+
+def _shows(line, shown):
+    """True when a line read whole (text_lines) is on the page, at least partly: the lines
+    MuPDF's page-box clip leaves some letters of (it's then kept whole)."""
+    r = pymupdf.Rect(line["bbox"]) & shown
+    return not r.is_empty and r.width > 0 and r.height > 0
 
 
 def visible(line):
