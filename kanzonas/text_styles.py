@@ -20,6 +20,9 @@ thickened (render mode 2, a stroke about 3% of the size in the text's color) or 
 as before. Underline and strikethrough are drawn as thin filled bars in the run's color,
 one per line piece, turned with sideways text.
 
+Text at an angle other than a quarter turn (a diagonal watermark) has no underline,
+strikethrough or background drawn: a slanted bar can't be read back from the page.
+
 A background color (Text background: the page's own text highlighted, not a Highlight
 markup) is a filled box behind the run, from just above its letters to just below them,
 drawn in the page right before the letters, multiplied with what's under it (as a
@@ -947,9 +950,12 @@ def write_row(shape, origin, rotate, row_pieces, fonts):
 
     def at(a, c=0.0):
         return pymupdf.Point(origin.x + d[0] * a + n[0] * c, origin.y + d[1] * a + n[1] * c)
-    # backgrounds first, under the letters
+    # backgrounds first, under the letters. (Backgrounds, underlines and strikethrough lines
+    # only on level text and text turned by quarters: at another angle, a diagonal
+    # watermark's, a bar is a slanted shape the page can't be read back from, and it was
+    # drawn as the square around it.)
     group = []
-    for p in list(row_pieces) + [None]:
+    for p in (list(row_pieces) + [None]) if quarter else ():
         on = p is not None and p[1].back >= 0
         if group and (not on or p[1].back != group[0][1].back):
             _background(shape, at, group, fonts)
@@ -980,7 +986,7 @@ def write_row(shape, origin, rotate, row_pieces, fonts):
         if f.italic:
             kw["morph"] = (pt, _shear(d, n) if turn is None else turn * _shear(d, n))
         shape.insert_text(pt, text, **kw)
-    for kind in ("underline", "strike"):
+    for kind in ("underline", "strike") if quarter else ():
         group = []
         for p in list(row_pieces) + [None]:
             on = p is not None and getattr(p[1], kind) and p[1].alpha > 0

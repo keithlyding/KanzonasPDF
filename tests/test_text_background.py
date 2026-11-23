@@ -98,6 +98,19 @@ class OnThePage(unittest.TestCase):
         self.assertEqual((k.underline, k.strike, k.color), (True, True, 0xFF0000))
         self.assertEqual(len(p.get_drawings()), 2)
 
+    def test_diagonal_text_has_none_drawn(self):
+        # (an underline on a diagonal watermark was drawn as the square around its slanted
+        # bar, over the word; a background would have been the same)
+        d = pymupdf.open()
+        p = d.new_page()
+        p.insert_text((200, 400), "COPY", fontsize=48,
+                      morph=(pymupdf.Point(200, 400), pymupdf.Matrix(45)))
+        (_r, ln), = text_edit.text_lines(p)
+        text_edit.restyle_lines(p, [[ln]], lambda k: k._replace(underline=True, back=YELLOW))
+        self.assertEqual(p.get_drawings(), [])
+        (_r, ln), = text_edit.text_lines(p)
+        self.assertEqual(text_edit.line_text(ln), "COPY")
+
     def test_a_table_cell_s_fill_is_not_a_background(self):
         d = pymupdf.open()
         p = d.new_page()

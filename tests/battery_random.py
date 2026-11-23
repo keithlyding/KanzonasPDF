@@ -1638,7 +1638,11 @@ class Battery:
             # what takes text out; nothing of the text changes)
             if v.obj_sel is not None and v.object_text_style() != before:
                 raise Failed("page %d: text restyled with redaction marks on it" % i)
-        elif v.revision != rev and v.obj_sel is not None:
+        elif v.revision != rev and v.obj_sel is not None and all(
+                abs(ln["dir"][0] * ln["dir"][1]) < 1e-3
+                for it in v.obj_sel[1] for _r, ln in it.get("lines", ())):
+            # (underline and strikethrough read back: on level and quarter-turned text only;
+            # a diagonal watermark has none drawn)
             got = v.object_text_style() or {}
             for key in ("bold", "underline", "strike"):
                 if key in changes and got.get(key) != changes[key] and \
