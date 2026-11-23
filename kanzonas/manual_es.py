@@ -1508,6 +1508,12 @@ una dimensión conocida después de leer las escalas, y use Calibrar cinta métr
 <li><b>Longitud</b> (Shift+M), <b>Longitud de polilínea</b>, <b>Área</b> con perímetro (Shift+A) y
 <b>Conteo</b> (Shift+C, con grupos con nombre, más abajo). Los valores se actualizan cuando edita la marca
 o cambia la escala.</li>
+<li><b>Área de muro desde una longitud:</b> Longitud y Longitud de polilínea tienen una <b>Altura</b> en
+Propiedades, en la unidad de la escala de la página (pies cuando la escala está en pies y pulgadas), "ninguno" al
+principio. Con una altura, la medición muestra también el área del muro (longitud &times; altura: "Área de muro
+120.00 sq ft"), para paneles de yeso, pintura, aislamiento o mampostería, y el Resumen de mediciones y la medición
+en Excel la muestran como un <b>Área de muro</b> propia junto a la longitud. Defínala antes de dibujar para las
+siguientes longitudes, o seleccione una longitud y cámbiela allí.</li>
 <li><b>Conteo</b> (Shift+C): haga clic en cada elemento; cada clic pone un marcador con el siguiente número
 de su grupo. Prepárelo en Propiedades antes de hacer clic, con la herramienta Conteo elegida:
 <b>Grupo</b> (elija uno de los grupos del documento o escriba un nombre, como Detectores de humo: los

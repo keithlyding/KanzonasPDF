@@ -151,6 +151,15 @@ class PropertiesPanel(QWidget):
         self.depth.setKeyboardTracking(False)
         self.depth.setToolTip(tr("Volume = area \u00d7 depth. The depth is in the page's scale "
                                  "unit (feet when the scale is in feet and inches)."))
+        # a Length's or Polylength's height: its wall area shown too (0: none)
+        self.height = QDoubleSpinBox()
+        self.height.setRange(0, 1_000_000)
+        self.height.setDecimals(3)
+        self.height.setKeyboardTracking(False)
+        self.height.setSpecialValueText(tr("none"))
+        self.height.setToolTip(tr("Wall area = length \u00d7 height, for drywall, paint, "
+                                  "insulation or masonry. The height is in the page's scale unit "
+                                  "(feet when the scale is in feet and inches); 0 for none."))
         self.opacity = QSlider(Qt.Horizontal)
         self.opacity.setRange(10, 100)
         self.head = QComboBox()
@@ -352,6 +361,7 @@ class PropertiesPanel(QWidget):
                               ("mid", tr("Middle arrow"), self.mid),
                               ("dash", tr("Line style"), self.dash),
                               ("depth", tr("Depth"), self.depth),
+                              ("height", tr("Height"), self.height),
                               ("rotation", tr("Rotation"), self.rotation),
                               ("turn", tr("Rotate by"), self.turn),
                               ("opacity", tr("Opacity"), self.opacity)):
@@ -372,6 +382,7 @@ class PropertiesPanel(QWidget):
         self.width.valueChanged.connect(self._emit)
         self.fontsize.valueChanged.connect(self._emit)
         self.depth.valueChanged.connect(self._emit)
+        self.height.valueChanged.connect(self._emit)
         self.opacity.sliderReleased.connect(self._emit)
         # (a click on the slider's track or the arrow keys move it without a release: they
         # apply too; a drag applies once, when it's let go)
@@ -534,6 +545,8 @@ class PropertiesPanel(QWidget):
                 combo.setCurrentIndex(max(0, combo.findData(props[key])))
         if "depth" in props:
             self.depth.setValue(float(props["depth"] or 0))
+        if "height" in props:
+            self.height.setValue(float(props["height"] or 0))
         if "label" in props:
             self._fill_labels(props["label"])
         if "date" in props:
@@ -951,6 +964,8 @@ class PropertiesPanel(QWidget):
                 p[key] = combo.currentData()
         if "depth" in p:
             p["depth"] = self.depth.value()
+        if "height" in p:
+            p["height"] = self.height.value()
         if "markup" in p:
             p["markup"] = A.COMMENT_STYLES[self.markup.currentIndex()]
         if "label" in p:

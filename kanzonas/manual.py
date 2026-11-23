@@ -1524,6 +1524,12 @@ one known dimension after reading the scales, and use Calibrate Tape Measure if 
 <li><b>Length</b> (Shift+M), <b>Polylength</b>, <b>Area</b> with perimeter (Shift+A), and
 <b>Count</b> (Shift+C, with named groups, below). Values update when you edit the markup or
 change the scale.</li>
+<li><b>Wall area from a length:</b> Length and Polylength have a <b>Height</b> in Properties, in
+the page's scale unit (feet when the scale is in feet and inches), "none" at first. With a height,
+the measurement shows the wall area as well (length &times; height: "Wall area 120.00 sq ft"),
+for drywall, paint, insulation or masonry, and the Measurement summary and the Excel takeoff list
+it as a <b>Wall area</b> of its own next to the length. Set it before drawing for the next
+lengths, or select a length and change it there.</li>
 <li><b>Count</b> (Shift+C): click each item; each click places a marker with the next number of
 its group. Set it up in Properties before you click, with the Count tool picked:
 <b>Group</b> (pick one of the document's groups or type a name, such as Smoke detectors:

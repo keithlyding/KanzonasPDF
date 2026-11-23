@@ -11802,3 +11802,15 @@ msgstr "(sin espacio)"
 
 msgid "Subtotal"
 msgstr "Subtotal"
+
+msgid "Wall area {area}"
+msgstr "Área de muro {area}"
+
+msgid "Wall area = length × height, for drywall, paint, insulation or masonry. The height is in the page's scale unit (feet when the scale is in feet and inches); 0 for none."
+msgstr "Área de muro = longitud × altura, para paneles de yeso, pintura, aislamiento o mampostería. La altura está en la unidad de la escala de la página (pies cuando la escala está en pies y pulgadas); 0 para ninguna."
+
+msgid "Height"
+msgstr "Altura"
+
+msgid "Wall area"
+msgstr "Área de muro"

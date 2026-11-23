@@ -9,6 +9,21 @@ Spanish translation under `## <version> (es)`. The Windows build fails without t
 translation under `## <version> (it)` is shown to Italian users (since 1.13); without one they
 see the English.
 
+## 1.16.3
+
+**New**
+- Wall area from a length: give a Length or Polylength measurement a Height in Properties, and it shows the wall area too (length × height), for drywall, paint, insulation or masonry. The Measurement summary and the Excel takeoff list it as a Wall area.
+
+## 1.16.3 (es)
+
+**Novedades**
+- Área de muro desde una longitud: dé a una medición de Longitud o Longitud de polilínea una Altura en Propiedades, y muestra también el área del muro (longitud × altura), para paneles de yeso, pintura, aislamiento o mampostería. El Resumen de mediciones y la medición en Excel la muestran como Área de muro.
+
+## 1.16.3 (it)
+
+**Novità**
+- Area della parete da una lunghezza: dai a una misura di Lunghezza o Lunghezza polilinea un'Altezza in Proprietà, e mostra anche l'area della parete (lunghezza × altezza), per cartongesso, pittura, isolamento o muratura. Il Riepilogo misure e il computo in Excel la elencano come Area parete.
+
 ## 1.16.2
 
 **New**

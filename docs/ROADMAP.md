@@ -164,7 +164,7 @@ The owner sets this list; nothing below is promised until it's here.
   2. **Excel export of the takeoff, grouped** (1.16.2): the Measurement summary to .xlsx (openpyxl,
      lazily), grouped by sheet, by Space and by Count group or kind, with quantities, units
      and subtotals; CSV stays. The start of a bill of quantities.
-  3. **Wall area from a length**: a Height on Length and Polylength (as Volume's Depth),
+  3. **Wall area from a length** (1.16.3): a Height on Length and Polylength (as Volume's Depth),
      showing length x height as well (drywall, paint, insulation, masonry).
   4. **Drops on runs**: vertical lengths (drops, rises) at chosen points of a Polylength,
      counted in its total, shown on the markup and in the summary (conduit, wire, pipe).

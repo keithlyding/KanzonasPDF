@@ -1067,7 +1067,7 @@ class Battery:
         v = self.v
         props = v.selected_model["props"]
         choices = [k for k in ("stroke", "fill", "width", "opacity", "fontsize", "text_color",
-                               "head_start", "head", "mid", "dash")
+                               "head_start", "head", "mid", "dash", "height", "depth")
                    if k in props]
         if not choices:
             v.clear_selection()
@@ -1084,7 +1084,10 @@ class Battery:
                  "head_start": self.rnd.choice(list(A.HEADS)),
                  "head": self.rnd.choice(heads),
                  "mid": self.rnd.choice(list(A.MIDS)),
-                 "dash": self.rnd.choice(list(A.DASHES))}[k]
+                 "dash": self.rnd.choice(list(A.DASHES)),
+                 # (1.16.3: a Length's or Polylength's height, its wall area; a Volume's depth)
+                 "height": self.rnd.choice([0.0, 2.5, 8.0, 12.0]),
+                 "depth": self.rnd.choice([0.5, 1.0, 3.0])}[k]
         v.update_selected_props({k: value})
         v.clear_selection()
 

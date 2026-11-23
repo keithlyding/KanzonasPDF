@@ -234,6 +234,29 @@ def depth_m(props, unit):
         return UNITS[base]
 
 
+def height_m(props, unit):
+    """A Length's or Polylength's height (typed in the page's unit; feet for feet and
+    inches) in meters; 0 when it has none."""
+    base = "ft" if unit == "ft-in" else unit
+    try:
+        return max(0.0, float((props or {}).get("height") or 0.0)) * UNITS[base]
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def wall_area(kind, points, page, props):
+    """(the wall area of a Length or Polylength with a height, its unit), in display units
+    (square feet for feet and inches), or None when it has no height."""
+    if kind not in ("m_length", "m_poly"):
+        return None
+    f, unit, _l, _ok = get_scale(page)
+    h = height_m(props, unit)
+    if h <= 0:
+        return None
+    base = "ft" if unit == "ft-in" else unit
+    return length(points) * f * h / UNITS[base] ** 2, "sq " + base
+
+
 def _qpath(points):
     from PySide6.QtCore import QPointF
     from PySide6.QtGui import QPainterPath, QPolygonF
@@ -272,7 +295,13 @@ def measure_text(kind, points, page, group="", props=None, holes=None):
     value is the net one, and a line under it says what was taken out."""
     f, unit, _label, _ok = get_scale(page)
     if kind in ("m_length", "m_poly"):
-        return fmt_length(length(points) * f, unit)
+        text = fmt_length(length(points) * f, unit)
+        h = height_m(props, unit)
+        if h > 0:
+            # (a wall's: for drywall, paint, insulation, masonry)
+            text += "\n" + tr("Wall area {area}").format(
+                area=fmt_area(length(points) * f * h, unit))
+        return text
     if kind == "m_dim":                 # (between its two measured points)
         return fmt_length(length(points[:2]) * f, unit)
     holes = [h for h in (holes or ()) if len(h) >= 3]

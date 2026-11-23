@@ -1510,6 +1510,12 @@ una dimensione nota dopo aver letto le scale, e usa Calibra metro a nastro se no
 <li><b>Lunghezza</b> (Shift+M), <b>Lunghezza polilinea</b>, <b>Area</b> con perimetro (Shift+A) e
 <b>Conteggio</b> (Shift+C, con gruppi con nome, più avanti). I valori si aggiornano quando modifichi
 l'annotazione o cambi la scala.</li>
+<li><b>Area della parete da una lunghezza:</b> Lunghezza e Lunghezza polilinea hanno un'<b>Altezza</b> in
+Proprietà, nell'unità della scala della pagina (piedi quando la scala è in piedi e pollici), "nessuna" all'inizio.
+Con un'altezza, la misura mostra anche l'area della parete (lunghezza &times; altezza: "Area parete 120.00 sq ft"),
+per cartongesso, pittura, isolamento o muratura, e il Riepilogo misure e il computo in Excel la elencano come
+<b>Area parete</b> a sé accanto alla lunghezza. Impostala prima di disegnare per le lunghezze successive, o
+seleziona una lunghezza e cambiala lì.</li>
 <li><b>Conteggio</b> (Shift+C): fai clic su ogni elemento; ogni clic mette un indicatore con il numero
 successivo del suo gruppo. Preparalo in Proprietà prima di fare clic, con lo strumento Conteggio scelto:
 <b>Gruppo</b> (scegli uno dei gruppi del documento o scrivi un nome, come Rilevatori di fumo: gli indicatori

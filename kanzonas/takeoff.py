@@ -44,7 +44,8 @@ def items(doc):
     """[{"page", "sheet", "space", "kind", "type", "group", "subject", "value", "unit"}] for
     every measurement of doc, page by page: "type" the kind's name, "group" a Count marker's
     group, "space" the Space its middle is in ("" for none), "value" its quantity in "unit"
-    (an Area's or Volume's net of its cut-outs; 1 for a Count marker)."""
+    (an Area's or Volume's net of its cut-outs; 1 for a Count marker). A Length or
+    Polylength with a height has a second row after it, its wall area (kind "wall")."""
     out = []
     for i in range(doc.page_count):
         page = doc[i]
@@ -59,11 +60,16 @@ def items(doc):
         name = sheet_name(page)
         for x, m in found:
             value, unit = M.raw_values(m["kind"], m["points"], page, m["props"], m.get("holes"))
-            out.append({"page": i, "sheet": name, "space": where.get(x, ""),
-                        "kind": m["kind"], "type": A.LABELS[m["kind"]],
-                        "group": (m["props"].get("group") or "") if m["kind"] == "m_count"
-                        else "", "subject": m.get("subject") or "",
-                        "value": value, "unit": unit})
+            row = {"page": i, "sheet": name, "space": where.get(x, ""),
+                   "kind": m["kind"], "type": A.LABELS[m["kind"]],
+                   "group": (m["props"].get("group") or "") if m["kind"] == "m_count"
+                   else "", "subject": m.get("subject") or "", "value": value, "unit": unit}
+            out.append(row)
+            wall = M.wall_area(m["kind"], m["points"], page, m["props"])
+            if wall is not None:
+                # (a Length or Polylength with a height: its wall area as a row of its own)
+                out.append(dict(row, kind="wall", type=tr("Wall area"), value=wall[0],
+                                unit=wall[1]))
     return out
 
 
@@ -100,7 +106,8 @@ def write_xlsx(doc, path, rows=None):
     kind and Count group with their subtotals, and a total of each kind and unit), and Items
     (every measurement on a row, with filters, for a pivot table or a bill of quantities).
     Subtotals are SUBTOTAL formulas, worked out when Excel opens the file (so a quantity
-    changed there changes them). Returns the number of measurements written."""
+    changed there changes them). Returns the number of rows written in Items (a measurement's
+    wall area is a row of its own)."""
     from openpyxl import Workbook
     from openpyxl.styles import Font, PatternFill
     from openpyxl.utils import get_column_letter
