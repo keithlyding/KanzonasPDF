@@ -12839,7 +12839,14 @@ class DocumentView(QScrollArea):
         # them, even one taken back. It then works on a copy (one more write, only then)
         journal = self._journal if self._journal is not None and self._journal.alive and \
             self._journal.doc is self.doc else None
-        keep_redo = journal is not None and any(isinstance(s, _JStep) for s in self._redo)
+        # Fonts cut down (subset_fonts) go on a copy too: cut down in the document, between
+        # edits, the change joined the journal's latest entry, which isn't the latest edit's
+        # when that edit has none of its own (it changed nothing the journal keeps: nothing,
+        # or only the document's info): undoing that edit left the fonts cut down, and the
+        # one before took them back to whole (random battery, seed 41). The document keeps
+        # its whole fonts; each save cuts them down in what it writes.
+        keep_redo = journal is not None and (
+            any(isinstance(s, _JStep) for s in self._redo) or self._fonts_added)
         real = self.doc
         if keep_redo:
             self.doc = self._open_snapshot(self._snapshot())

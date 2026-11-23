@@ -448,6 +448,42 @@ APP_EDITS = [
 ]
 
 
+class FontsCutDownOnSave(Quiet):
+    def test_an_edit_with_no_entry_of_its_own_is_undone_with_the_fonts_whole(self):
+        # (Save cuts the fonts edits embedded down to the letters used. Cut down in the
+        # document, between edits, the change joined the journal's latest entry, which
+        # isn't the latest edit's when that edit has none of its own: undoing it left the
+        # fonts cut down. Random battery, seed 41.)
+        v = self.view()
+
+        def fonts():
+            out = {}
+            for x in range(1, v.doc.xref_length()):
+                m = re.search(r"/FontFile\d? (\d+) 0 R", v.doc.xref_object(x, compressed=True))
+                if m:
+                    out[int(m.group(1))] = len(v.doc.xref_stream(int(m.group(1))) or b"")
+            return out
+        whole = pymupdf.Font("cjk").buffer
+
+        def embed():
+            pg = v.doc[0]
+            pg.insert_font(fontname="KZcjk", fontbuffer=whole)
+            pg.insert_text((72, 300), "letters", fontname="KZcjk", fontsize=12)
+        self.assertTrue(v.modify(embed, [0]))
+        v._fonts_added = True
+        before = fonts()
+        v.modify(lambda: None, [0])             # (an edit the journal keeps nothing of)
+        self.assertEqual(v._undo[-1].names, [])
+        v.save()
+        with pymupdf.open(v.path) as saved:     # (the file has them cut down)
+            sizes = [len(saved.xref_stream(x) or b"") for x in range(1, saved.xref_length())
+                     if saved.xref_is_stream(x)]
+        self.assertLess(max(sizes), max(before.values()) // 2)
+        self.assertEqual(fonts(), before)       # (the document has them whole)
+        v.undo()
+        self.assertEqual(fonts(), before)
+
+
 class SameAsCopies(Quiet):
     def run_sequence(self, v, edit):
         states = [canon(v.doc)]
