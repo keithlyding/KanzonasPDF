@@ -1597,6 +1597,10 @@ polilinea, Aree, Perimetri e Volumi hanno il proprio <b>Sfrido / extra</b> in Pr
 il computo in Excel mostrano allora i conteggi, una riga per ogni articolo con la quantità risultante (8 Scatola
 pz per 4 apparecchi) e una colonna <b>Con sfrido</b> con lo sfrido aggiunto. L'impostazione di un gruppo è
 salvata nel PDF, e Ctrl+Z annulla una sua modifica.</li>
+<li><b>Pendenza per le aree di copertura:</b> un'Area ha una <b>Pendenza</b> in Proprietà: digita la pendenza di
+una copertura come alzata su base (6:12, 6/12) o in gradi (30&deg;) e premi Invio. L'area che mostra, somma ed
+esporta è allora l'area inclinata, calcolata dalla sua area in pianta (al netto dei ritagli): l'etichetta le dice
+entrambe ("Inclinata 1,341.64 sq ft", "In pianta 1,200.00 sq ft a 6:12"). Lasciala vuota per un'area piana.</li>
 <li><b>Spazio</b> (scheda Misure, gruppo "Altro", il menu Misure e il pulsante Misura della scheda CAD),
 come gli Spaces di Bluebeam: un'area con un nome in una tavola (una stanza, una zona, un piano). Fai clic su
 ogni angolo, doppio clic o premi Invio, e digita il suo nome (viene proposto Spazio 1, Spazio 2...). È un

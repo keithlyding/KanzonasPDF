@@ -6,6 +6,7 @@ moving a vertex or changing the scale updates the number.
 """
 
 import math
+import re
 from fractions import Fraction
 
 import pymupdf
@@ -234,6 +235,33 @@ def depth_m(props, unit):
         return UNITS[base]
 
 
+_SLOPE_RATIO = re.compile(r"\s*(\d+(?:\.\d+)?)\s*(?::|/|in)\s*(\d+(?:\.\d+)?)\s*")
+_SLOPE_DEG = re.compile(r"\s*(\d+(?:\.\d+)?)\s*(?:\u00b0|deg(?:rees?)?)\s*", re.I)
+
+
+def slope_factor(text):
+    """How much bigger a roof's sloped area is than its plan area, for a pitch typed as
+    "6:12" (or 6/12, 6 in 12: rise to run) or "30\u00b0" (or 30 deg): 1 / cos(its angle), and
+    its angle in degrees. (1.0, 0.0) for none or anything else; at most 80 degrees."""
+    t = (text or "").strip().replace(",", ".")
+    if not t:
+        return 1.0, 0.0
+    m = _SLOPE_RATIO.fullmatch(t)
+    if m:
+        rise, run = float(m.group(1)), float(m.group(2))
+        if run <= 0:
+            return 1.0, 0.0
+        ang = math.degrees(math.atan2(rise, run))
+    else:
+        m = _SLOPE_DEG.fullmatch(t)
+        if not m:
+            return 1.0, 0.0
+        ang = float(m.group(1))
+    if not 0 < ang <= 80:
+        return 1.0, 0.0
+    return 1.0 / math.cos(math.radians(ang)), ang
+
+
 def drops_m(props, n=None):
     """A Polylength's drops and rises, [(point number, meters)] (the vertical runs at its
     points that the plan doesn't show: conduit, wire, pipe), sorted; those past its n points
@@ -329,7 +357,13 @@ def measure_text(kind, points, page, group="", props=None, holes=None):
         return fmt_length(length(points[:2]) * f, unit)
     holes = [h for h in (holes or ()) if len(h) >= 3]
     if kind == "m_area":
-        a = fmt_area(net_area(points, holes) * f * f, unit)
+        plan = net_area(points, holes) * f * f
+        k, _ang = slope_factor((props or {}).get("slope"))
+        a = fmt_area(plan * k, unit)
+        if k != 1.0:
+            # (a roof's: its sloped area, and the plan area it's worked out from)
+            a = tr("Sloped {area}").format(area=a) + "\n" + tr("Plan {area} at {slope}").format(
+                area=fmt_area(plan, unit), slope=(props or {}).get("slope", "").strip())
         per = fmt_length(length(points + points[:1]) * f, unit)
         return a + "\n" + tr("Perimeter {length}").format(length=per) + _cut_line(
             points, holes, f, unit)
@@ -374,7 +408,8 @@ def raw_values(kind, points, page, props=None, holes=None):
     if kind == "m_dim":
         return length(points[:2]) * f / UNITS[base], base
     if kind == "m_area":
-        return net_area(points, holes) * f * f / UNITS[base] ** 2, "sq " + base
+        k, _ang = slope_factor((props or {}).get("slope"))     # (a roof's: its sloped area)
+        return net_area(points, holes) * f * f * k / UNITS[base] ** 2, "sq " + base
     if kind == "m_perimeter":
         return length(points + points[:1]) * f / UNITS[base], base
     if kind == "m_volume":

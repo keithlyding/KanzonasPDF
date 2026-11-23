@@ -1595,6 +1595,11 @@ polilínea, Áreas, Perímetros y Volúmenes tienen su propio <b>Desperdicio / e
 de mediciones y la medición en Excel muestran entonces los conteos, una fila por artículo con su cantidad
 resultante (8 Caja ud para 4 aparatos) y una columna <b>Con desperdicio</b> con el desperdicio sumado. La
 configuración de un grupo se guarda en el PDF, y Ctrl+Z deshace un cambio en ella.</li>
+<li><b>Pendiente para áreas de cubierta:</b> un Área tiene una <b>Pendiente</b> en Propiedades: escriba la
+pendiente de una cubierta como subida a recorrido (6:12, 6/12) o en grados (30&deg;) y presione Enter. El área que
+muestra, suma y exporta es entonces el área inclinada, calculada a partir de su área en planta (neta de sus
+recortes): la etiqueta dice ambas ("Inclinada 1,341.64 sq ft", "En planta 1,200.00 sq ft a 6:12"). Déjela vacía para
+un área plana.</li>
 <li><b>Espacio</b> (pestaña Medir, grupo "Más", el menú Medir y el botón Medir de la pestaña
 CAD), como los Espacios de Bluebeam: un área con nombre de un plano (una habitación, una zona,
 un nivel). Haga clic en cada esquina, doble clic o pulse Enter, y escriba su nombre (se ofrece

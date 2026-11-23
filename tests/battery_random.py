@@ -1113,7 +1113,7 @@ class Battery:
         props = v.selected_model["props"]
         choices = [k for k in ("stroke", "fill", "width", "opacity", "fontsize", "text_color",
                                "head_start", "head", "mid", "dash", "height", "depth",
-                               "waste")
+                               "waste", "slope")
                    if k in props]
         if not choices:
             v.clear_selection()
@@ -1135,7 +1135,9 @@ class Battery:
                  "height": self.rnd.choice([0.0, 2.5, 8.0, 12.0]),
                  "depth": self.rnd.choice([0.5, 1.0, 3.0]),
                  # (1.16.5: a measurement's waste or extra percent, for the takeoff)
-                 "waste": self.rnd.choice([0.0, 5.0, 12.5])}[k]
+                 "waste": self.rnd.choice([0.0, 5.0, 12.5]),
+                 # (1.16.6: a roof Area's pitch)
+                 "slope": self.rnd.choice(["", "6:12", "4/12", "30\u00b0"])}[k]
         v.update_selected_props({k: value})
         v.clear_selection()
 

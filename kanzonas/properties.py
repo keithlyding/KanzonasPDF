@@ -330,6 +330,12 @@ class PropertiesPanel(QWidget):
                                        "takeoff show the resulting quantities"))
         self.count_setup.clicked.connect(
             lambda: self.countSetup.emit(self._props.get("group") or ""))
+        # a roof Area's pitch: its value is the sloped area (measure.slope_factor)
+        self.slope = QLineEdit()
+        self.slope.setPlaceholderText(tr("6:12 or 30\u00b0"))
+        self.slope.setToolTip(tr("A roof's pitch, rise to run (6:12) or in degrees (30\u00b0): the "
+                                 "area shown, summed and exported is then the sloped area. "
+                                 "Empty for a flat area."))
         # a measurement's waste or extra percent (the takeoff adds it)
         self.waste = QDoubleSpinBox()
         self.waste.setRange(0, 1000)
@@ -366,6 +372,7 @@ class PropertiesPanel(QWidget):
                               ("layer", tr("Layer"), self.layer),
                               ("setup", tr("Takeoff"), self.count_setup),
                               ("waste", tr("Waste / extra"), self.waste),
+                              ("slope", tr("Slope"), self.slope),
                               ("side", tr("Position"), self.side),
                               ("inside", "", self.inside),
                               ("font", tr("Font"), font_row),
@@ -403,6 +410,7 @@ class PropertiesPanel(QWidget):
         self.depth.valueChanged.connect(self._emit)
         self.height.valueChanged.connect(self._emit)
         self.waste.valueChanged.connect(self._emit)
+        self.slope.editingFinished.connect(self._emit)
         self.opacity.sliderReleased.connect(self._emit)
         # (a click on the slider's track or the arrow keys move it without a release: they
         # apply too; a drag applies once, when it's let go)
@@ -569,6 +577,8 @@ class PropertiesPanel(QWidget):
             self.height.setValue(float(props["height"] or 0))
         if "waste" in props:
             self.waste.setValue(float(props["waste"] or 0))
+        if "slope" in props:
+            self.slope.setText(str(props["slope"] or ""))
         if "label" in props:
             self._fill_labels(props["label"])
         if "date" in props:
@@ -992,6 +1002,8 @@ class PropertiesPanel(QWidget):
             p["height"] = self.height.value()
         if "waste" in p:
             p["waste"] = self.waste.value()
+        if "slope" in p:
+            p["slope"] = self.slope.text().strip()
         if "markup" in p:
             p["markup"] = A.COMMENT_STYLES[self.markup.currentIndex()]
         if "label" in p:

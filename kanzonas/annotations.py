@@ -117,8 +117,10 @@ DEFAULTS = {
     # total (measure.drops_m)
     "m_poly": {"stroke": "#d00000", "width": 1.0, "fontsize": 9, "opacity": 1.0,
                "height": 0.0, "drops": [], "waste": 0.0},
+    # slope: a roof's pitch, "6:12" (rise to run) or "30°" ("" for none): its area is
+    # the sloped one (measure.slope_factor)
     "m_area": {"stroke": "#d00000", "fill": None, "width": 1.0, "fontsize": 9, "opacity": 1.0,
-               "waste": 0.0},
+               "waste": 0.0, "slope": ""},
     "m_angle": {"stroke": "#d00000", "width": 1.0, "fontsize": 9, "opacity": 1.0},
     "m_radius": {"stroke": "#d00000", "width": 1.0, "fontsize": 9, "opacity": 1.0},
     "m_perimeter": {"stroke": "#d00000", "fill": None, "width": 1.0, "fontsize": 9, "opacity": 1.0,

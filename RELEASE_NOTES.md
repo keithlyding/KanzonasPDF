@@ -9,6 +9,21 @@ Spanish translation under `## <version> (es)`. The Windows build fails without t
 translation under `## <version> (it)` is shown to Italian users (since 1.13); without one they
 see the English.
 
+## 1.16.6
+
+**New**
+- Slope for roof areas: type a pitch (6:12, or 30°) in an Area measurement's Slope in Properties, and it shows, sums and exports the sloped area, for roofing and framing.
+
+## 1.16.6 (es)
+
+**Novedades**
+- Pendiente para áreas de cubierta: escriba una pendiente (6:12, o 30°) en la Pendiente de una medición de Área en Propiedades, y muestra, suma y exporta el área inclinada, para cubiertas y estructura.
+
+## 1.16.6 (it)
+
+**Novità**
+- Pendenza per le aree di copertura: digita una pendenza (6:12, o 30°) nella Pendenza di una misura di Area in Proprietà, e mostra, somma ed esporta l'area inclinata, per coperture e carpenteria.
+
 ## 1.16.5
 
 **New**

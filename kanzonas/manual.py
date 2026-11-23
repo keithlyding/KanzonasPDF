@@ -1613,6 +1613,10 @@ Perimeters and Volumes have their own <b>Waste / extra</b> in Properties. The Me
 and the Excel takeoff then show the counts, a row for each item with its resulting quantity (8
 Box ea for 4 fixtures), and a <b>With waste</b> column with the waste added. A group's setup is
 kept in the PDF, and Ctrl+Z undoes a change to it.</li>
+<li><b>Slope for roof areas:</b> an Area has a <b>Slope</b> in Properties: type a roof's pitch as
+rise to run (6:12, 6/12) or in degrees (30&deg;) and press Enter. The area it shows, sums and
+exports is then the sloped area, worked out from its plan area (net of its cut-outs): the label
+says both ("Sloped 1,341.64 sq ft", "Plan 1,200.00 sq ft at 6:12"). Empty it for a flat area.</li>
 <li><b>Space</b> (Measure tab, "More" group, the Measure menu and the CAD tab's Measure
 button), like Bluebeam's Spaces: a named area of a sheet (a room, a zone, a level). Click each
 corner, double-click or press Enter, and type its name (Space 1, Space 2... is offered). It is

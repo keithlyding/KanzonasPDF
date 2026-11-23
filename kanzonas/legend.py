@@ -166,7 +166,8 @@ def _item(page, a, scale):
         elif m["kind"] == "m_perimeter":
             item["m"] = M.length(pts + pts[:1]) * f
         elif m["kind"] == "m_area":
-            item["m2"] = M.net_area(pts, m.get("holes")) * f * f       # (less its cut-outs)
+            item["m2"] = M.net_area(pts, m.get("holes")) * f * f * \
+                M.slope_factor(m["props"].get("slope"))[0]      # (less its cut-outs; sloped)
         elif len(pts) >= 3:
             item["m3"] = M.net_area(pts, m.get("holes")) * f * f * M.depth_m(m["props"], unit)
     return item
