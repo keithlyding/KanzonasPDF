@@ -271,19 +271,10 @@ def paint_selected_rects(p, rects):
 def paint_grips(p, points):
     """Grips: small filled squares on the selected things' ends and corners, as AutoCAD
     marks a selection (points: widget coordinates)."""
-    paint_grip_rects(p, grip_rects((q.x(), q.y()) for q in points))
-
-
-def grip_rects(points):
-    """The grips' squares around points ((x, y), widget coordinates)."""
-    h = 6
-    return [QRectF(x - h / 2, y - h / 2, h, h) for x, y in points]
-
-
-def paint_grip_rects(p, rects):
     p.setPen(QPen(Qt.white, 1))
     p.setBrush(SELECTED)
-    p.drawRects(rects)                  # (one call)
+    h = 6
+    p.drawRects([QRectF(q.x() - h / 2, q.y() - h / 2, h, h) for q in points])   # (one call)
     p.setBrush(Qt.NoBrush)
 
 
@@ -1573,10 +1564,14 @@ class PageWidget(QWidget):
                     lines += self._model_lines(m, page, curved)
                 except Exception:
                     continue        # (a markup that can't be outlined: the rest are)
-            got = self._cad_marks = (key, list(models), lines_path(lines),
-                                     grip_rects(grip_points(lines)))
+            path = lines_path(lines)
+            got = self._cad_marks = (key, list(models), path,
+                                     [QPointF(x, y) for x, y in grip_points(lines)],
+                                     path.boundingRect().adjusted(-5, -5, 5, 5))
+        if p.device() is not self and QRectF(self.rect()).contains(got[4]):
+            return              # (drawn on the gray around the page: none of it would show)
         paint_selected_path(p, got[2])
-        paint_grip_rects(p, got[3])
+        paint_grips(p, got[3])
 
     def _paint_selection(self, p, page):
         model = self._selected_here()
