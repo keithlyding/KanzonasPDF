@@ -84,7 +84,8 @@ def hold(w):
         say = tr("Move to turn it, click to set the angle; Shift: 15° steps (Escape or a "
                  "right-click puts it back)")
     elif what == "move":
-        say = tr("Move it, click where it goes (Escape or a right-click puts it back)")
+        say = tr("Move it, click where it goes, or type the distance toward the pointer and "
+                 "press Enter (Escape or a right-click puts it back)")
     else:
         say = tr("Move the grip, click where it goes (Escape or a right-click puts it back)")
     v.statusMessage.emit(say)
@@ -180,6 +181,51 @@ def press(w, e):
         cancel(v)
     else:
         place(hot, e if hot is w else mapped(hot, e))
+    return True
+
+
+def typed(v, text):
+    """Text and Enter on the CAD command line while no command runs. With the selection
+    picked up, a length moves it that far toward the pointer, as AutoCAD's direct distance
+    entry (in the page's measuring unit, as Circle's radius; True: it was taken). With a grip
+    hot, the grip is put back and the text runs as typed (False)."""
+    w = owner(v)
+    if w is None:
+        return False
+    if _busy(w) != "move":
+        cancel(v, quiet=True)
+        return False
+    t = text.strip()
+    if not t:
+        return True                     # (Enter alone: it still follows the pointer)
+    from . import measure, measure_ui
+    page = v.doc[w.index]
+    m_per_pt, unit, _label, _set = measure.get_scale(page)
+    del page
+    if t.count(",") == 1 and "." not in t:
+        t = t.replace(",", ".")         # (a decimal comma, as the command line takes it)
+    try:
+        far = measure_ui.parse_length(t, unit) / m_per_pt
+    except (ValueError, ZeroDivisionError, KeyError):
+        far = None
+    d = w._cad_down
+    a, b = w.to_pdf(d["start"]), w.to_pdf(d["now"] if d["now"] is not None else d["start"])
+    way = b - a
+    if far is None or not 0 < far < 1e6 or abs(way) < 1e-6:
+        v.statusMessage.emit(tr("Point the way it goes, then type the distance as a number (or "
+                                "12'-6\") and press Enter; or click where it goes"))
+        return True
+    import pymupdf
+    step = way * (far / abs(way))
+    v._cad_hot = None
+    w._cad_down = None
+    w._snap_mark = None
+    from . import cad_select
+    cad_select._clear(w)
+    cad_select._outside_update(w)
+    w.unsetCursor()
+    w.update()
+    v.cad_apply(tr("Moved"), pymupdf.Matrix(1, 0, 0, 1, step.x, step.y))
     return True
 
 

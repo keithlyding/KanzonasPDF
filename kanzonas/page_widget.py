@@ -271,10 +271,19 @@ def paint_selected_rects(p, rects):
 def paint_grips(p, points):
     """Grips: small filled squares on the selected things' ends and corners, as AutoCAD
     marks a selection (points: widget coordinates)."""
+    paint_grip_rects(p, grip_rects((q.x(), q.y()) for q in points))
+
+
+def grip_rects(points):
+    """The grips' squares around points ((x, y), widget coordinates)."""
+    h = 6
+    return [QRectF(x - h / 2, y - h / 2, h, h) for x, y in points]
+
+
+def paint_grip_rects(p, rects):
     p.setPen(QPen(Qt.white, 1))
     p.setBrush(SELECTED)
-    h = 6
-    p.drawRects([QRectF(q.x() - h / 2, q.y() - h / 2, h, h) for q in points])   # (one call)
+    p.drawRects(rects)                  # (one call)
     p.setBrush(Qt.NoBrush)
 
 
@@ -1533,15 +1542,24 @@ class PageWidget(QWidget):
         """Selected markups in CAD mode (changed by commands, not handles): dashed over white
         with grips on their ends and corners, as selected drawing objects are, so a blue
         markup shows as selected too."""
-        lines = []
-        curved = len(models) <= CURVED_MAX
-        for m in models:
-            try:
-                lines += self._model_lines(m, page, curved)
-            except Exception:
-                continue
-        paint_selected_path(p, lines_path(lines))
-        paint_grips(p, [QPointF(x, y) for x, y in grip_points(lines)])
+        # (worked out once for the same markups and zoom: painted again on each pointer move
+        # while a click, move, click follows the pointer, 2,000 markups' outlines took 75 ms
+        # a paint. The models are kept with it, so their ids stay theirs)
+        t = self._screen_transform(page)
+        key = (tuple(map(id, models)), t.m11(), t.m12(), t.m21(), t.m22(), t.dx(), t.dy())
+        got = getattr(self, "_cad_marks", None)
+        if got is None or got[0] != key:
+            lines = []
+            curved = len(models) <= CURVED_MAX
+            for m in models:
+                try:
+                    lines += self._model_lines(m, page, curved)
+                except Exception:
+                    continue        # (a markup that can't be outlined: the rest are)
+            got = self._cad_marks = (key, list(models), lines_path(lines),
+                                     grip_rects(grip_points(lines)))
+        paint_selected_path(p, got[2])
+        paint_grip_rects(p, got[3])
 
     def _paint_selection(self, p, page):
         model = self._selected_here()
@@ -2303,8 +2321,8 @@ class PageWidget(QWidget):
                     self.setCursor(handle_cursor(hid))
                     return
         if self.view.cad_select:
-            # (CAD mode: dragging draws a lasso, nothing moves; what a click takes, markups
-            # too, gets the pick box cursor and fades: cad_select.rollover)
+            # (CAD mode: what a click takes, markups too, gets the pick box cursor and fades:
+            # cad_select.rollover; what's selected, the four-way arrow)
             cad_select.apply_cursor(self)
             item = None
         else:
@@ -3054,8 +3072,8 @@ class PageWidget(QWidget):
             over = self._card_at(pos)
         if over is not None:
             if self.view.cad_select and self.view.tool == "select":
-                # CAD mode: dragging draws a lasso, nothing moves; the pick box shows a
-                # click takes it (cad_select.rollover)
+                # CAD mode: the pick box shows a click takes it (cad_select.rollover), the
+                # four-way arrow that a click on what's selected picks it up
                 cad_select.apply_cursor(self)
             else:
                 self.setCursor(Qt.SizeAllCursor)

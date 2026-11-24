@@ -601,7 +601,9 @@ momento mientras se mueve.</li>
 <li><b>Mover:</b> haga clic en lo seleccionado para levantarlo: sobre un elemento seleccionado el puntero es la flecha
 de cuatro puntas, y después del clic toda la selección (marcas y las líneas, el texto y las imágenes propios de la página
 a la vez) sigue al puntero, con su contorno discontinuo, sin presionar ningún botón. Haga clic donde va para dejarla, en
-esta página, en la de al lado o en el gris que la rodea (con el ajuste igual que al dibujar). Un solo paso de deshacer;
+esta página, en la de al lado o en el gris que la rodea (con el ajuste igual que al dibujar), o escriba una distancia en
+la línea de comandos y presione Enter: se mueve esa distancia hacia el puntero, en la unidad de medida de la página
+(12'-6" también sirve), como la entrada directa de distancia de AutoCAD. Un solo paso de deshacer;
 Escape o un clic derecho la deja donde estaba. Un clic en cualquier otro lugar selecciona, o empieza un recuadro, y no
 mueve nada. El doble clic en una marca seleccionada sigue editando su texto. <b>Mover</b> de la pestaña CAD mueve desde
 un punto base.</li>
@@ -652,7 +654,8 @@ programa. Cualquier otra cosa no ejecuta nada: la línea indica <b>Comando desco
 coinciden) y conserva lo que escribió, para corregirlo o para elegir un comando de la lista con Arriba y Abajo y Enter.
 Un ajuste que se activa escribiendo su nombre indica si ahora está activado o desactivado.</li>
 <li>Enter con la línea vacía repite el último comando.</li>
-<li>Mientras se dibuja un círculo (con el centro ya marcado), escriba su radio y presione Enter.</li>
+<li>Mientras se dibuja un círculo (con el centro ya marcado), escriba su radio y presione Enter; mientras la
+selección sigue al puntero (levantada con un clic), escriba cuánto se mueve.</li>
 <li>Mientras se ejecuta un comando, la línea indica qué hacer a continuación y toma lo que escribe: un ángulo, un factor
 de escala o una elección (bastan las primeras letras del nombre de un botón: C para Conservarlos, E para
 Eliminarlos). Una pregunta («¿eliminar los originales?» de Simetría, «¿escalarlo?» de Alinear) también acepta

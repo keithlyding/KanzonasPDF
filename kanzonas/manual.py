@@ -612,7 +612,9 @@ before you let go); once taken, it's drawn dashed with grips. On a very big draw
 the four-way arrow, and after the click the whole selection (markups and the page's own lines,
 text and pictures together) follows the pointer, its outline dashed, with no button held.
 Click where it goes to put it down, on this page, the one beside it or the gray around it
-(snapping as for drawing). One undo step; Escape or a right-click puts it back. A click
+(snapping as for drawing), or type a distance on the command line and press Enter: it moves
+that far toward the pointer, in the page's measuring unit (12'-6" works too), as AutoCAD's
+direct distance entry. One undo step; Escape or a right-click puts it back. A click
 anywhere else selects, or starts a box, and moves nothing. Double-clicking a selected markup
 still edits its text. The CAD tab's <b>Move</b> moves by a base point.</li>
 <li><b>Grips</b> work the same way: click one to make it hot, move, click where it goes. That's
@@ -664,7 +666,8 @@ that several commands fit) and keeps what you typed, to correct it or to pick a 
 list with Up and Down and Enter. A setting switched by typing its name says whether it's now on
 or off.</li>
 <li>Enter on an empty line repeats the last command.</li>
-<li>While a circle is being drawn (its center clicked), type its radius and press Enter.</li>
+<li>While a circle is being drawn (its center clicked), type its radius and press Enter; while
+the selection follows the pointer (picked up by a click), type how far it goes.</li>
 <li>While a command runs, the line says what to do next and takes what you type: an angle, a
 scale factor, or a choice (the first letters of a button's name will do: K for Keep them, D
 for Delete them). A question (Mirror's "delete the originals?", Align's "scale it?") also takes

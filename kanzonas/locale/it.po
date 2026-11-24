@@ -12005,11 +12005,14 @@ msgstr "Sposta il mouse per disegnare, fai clic per finire il tratto (Esc o un c
 msgid "Move to turn it, click to set the angle; Shift: 15° steps (Escape or a right-click puts it back)"
 msgstr "Sposta il mouse per ruotarlo, fai clic per fissare l'angolo; Shift: passi di 15° (Esc o un clic destro lo rimette com'era)"
 
-msgid "Move it, click where it goes (Escape or a right-click puts it back)"
-msgstr "Spostalo, fai clic dove deve andare (Esc o un clic destro lo rimette com'era)"
+msgid "Move it, click where it goes, or type the distance toward the pointer and press Enter (Escape or a right-click puts it back)"
+msgstr "Spostalo, fai clic dove deve andare, oppure digita la distanza verso il puntatore e premi Invio (Esc o un clic destro lo rimette com'era)"
 
 msgid "Move the grip, click where it goes (Escape or a right-click puts it back)"
 msgstr "Sposta il grip, fai clic dove deve andare (Esc o un clic destro lo rimette com'era)"
 
 msgid "Put back as it was"
 msgstr "Rimesso com'era"
+
+msgid "Point the way it goes, then type the distance as a number (or 12'-6\") and press Enter; or click where it goes"
+msgstr "Punta nella direzione in cui deve andare, poi digita la distanza come numero (o 12'-6\") e premi Invio; oppure fai clic dove deve andare"

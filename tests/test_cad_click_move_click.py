@@ -468,6 +468,47 @@ class Clicks(Base):
         self.assertEqual(self.rects()[0], (420, 150, 520, 210))
 
 
+class Typed(Base):
+    def picked_up(self):
+        v = self.v
+        v.set_tool("editobjects")
+        self.click((150, 400))
+        self.click((150, 400))
+        self.hover((180, 440))                          # (toward 3 across, 4 down)
+
+    def test_a_distance_moves_it_that_far_toward_the_pointer(self):
+        v = self.v
+        before = self.drawn()
+        self.picked_up()
+        self.assertTrue(cad_grips.typed(v, "1"))        # 1 inch on paper (no scale): 72 pt
+        self.assertIsNone(cad_grips.owner(v))
+        self.assertIn((143, 458, 343, 458), self.drawn())       # (43.2 across, 57.6 down)
+        v.undo()
+        self.assertEqual(self.drawn(), before)
+
+    def test_what_isnt_a_distance_leaves_it_following(self):
+        v = self.v
+        before = self.drawn()
+        self.picked_up()
+        said = []
+        v.statusMessage.connect(said.append)
+        self.assertTrue(cad_grips.typed(v, "far"))
+        self.assertIn("distance", said[-1])
+        self.assertTrue(cad_grips.typed(v, ""))         # (Enter alone)
+        self.assertIs(cad_grips.owner(v), self.w)
+        self.assertEqual(self.drawn(), before)
+
+    def test_a_hot_grip_lets_a_command_run(self):
+        v = self.v
+        v.set_tool("select")
+        self.click((425, 100))
+        self.click(self.handle("br"))
+        self.assertFalse(cad_grips.typed(v, "M"))       # (the grip goes back; M runs)
+        self.assertIsNone(cad_grips.owner(v))
+        self.assertEqual(self.rects()[0], (400, 100, 500, 160))
+        self.assertFalse(cad_grips.typed(v, "1"))       # (nothing hot: not taken)
+
+
 class Standard(Base):
     MODE = "standard"
 

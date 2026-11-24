@@ -598,7 +598,9 @@ il pulsante); una volta preso, viene disegnato tratteggiato con i grip. In un di
 <li><b>Spostare:</b> fai clic su ciò che è selezionato per sollevarlo: sopra un elemento selezionato il puntatore è la
 freccia a quattro punte, e dopo il clic l'intera selezione (annotazioni e linee, testo e immagini della pagina insieme)
 segue il puntatore, con il contorno tratteggiato, senza tenere premuto alcun pulsante. Fai clic dove deve andare per
-posarla, su questa pagina, su quella accanto o nel grigio intorno (aggancio come nel disegno). Un solo passaggio di
+posarla, su questa pagina, su quella accanto o nel grigio intorno (aggancio come nel disegno), oppure digita una
+distanza nella riga di comando e premi Invio: si sposta di quella distanza verso il puntatore, nell'unità di misura
+della pagina (va bene anche 12'-6"), come l'immissione diretta della distanza di AutoCAD. Un solo passaggio di
 annullamento; Esc o un clic destro la rimette dov'era. Un clic in un altro punto seleziona, o avvia un riquadro, e non
 sposta nulla. Il doppio clic su un'annotazione selezionata ne modifica ancora il testo. <b>Sposta</b> della scheda CAD
 sposta da un punto base.</li>
@@ -651,7 +653,8 @@ un EX digitato per sbaglio non chiude mai il programma. Qualsiasi altro testo no
 scegliere un comando dall'elenco con Freccia su e Freccia giù e Invio. Un'impostazione attivata o disattivata
 digitandone il nome indica se ora è attiva o disattivata.</li>
 <li>Invio su una riga vuota ripete l'ultimo comando.</li>
-<li>Mentre disegni un cerchio (dopo aver fatto clic sul centro), digita il raggio e premi Invio.</li>
+<li>Mentre disegni un cerchio (dopo aver fatto clic sul centro), digita il raggio e premi Invio; mentre la
+selezione segue il puntatore (sollevata con un clic), digita di quanto si sposta.</li>
 <li>Mentre un comando è in corso, la riga indica cosa fare dopo e accetta ciò che digiti: un angolo, un
 fattore di scala o una scelta (bastano le prime lettere del nome di un pulsante: M per Mantienili, E
 per Eliminali). Una domanda («eliminare gli originali?» di Specchia, «scalarlo?» di Allinea) accetta anche
