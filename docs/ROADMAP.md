@@ -145,6 +145,13 @@ a decision changes or a piece of work lands. Details of each version are in
   highlighted in the page itself (each word's own style), as against the Highlight markup.
   Decided against a separate Edit ribbon tab: the Markup tab already holds only markups,
   and the tags and tooltips say which is which.
+- 1.16.4 (the owner, 23 Nov): **Fill opacity** apart from the outline's and text's (the fill
+  drawn in its own graphics state in the markup's appearance, so other viewers show it);
+  **Arrowhead size** (25% to 500% of the size the line's width gives; MuPDF's ends scaled in the
+  appearance, the PDF's line endings kept); **grouping the drawing's own objects on big CAD
+  sheets**: across layers (each object keeps its layer inside the group), shown as one group,
+  and fast (the owner's 174,000-object sheet: 4.6 s to under half a second). The arrowheads of
+  the drawing's own lines (Edit objects) keep their size for now.
 - 1.16.4 (the owner, 23 Nov: "when making custom colors, a recent or currently used colors
   section"): one color picker for every color in the app (`kanzonas/color_picker.py`): Qt's own
   color dialog inside a small dialog, with a Recent row (the last 12 colors picked anywhere,
