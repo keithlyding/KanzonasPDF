@@ -554,6 +554,15 @@ selection. Move, Copy, Rotate, Scale, Mirror, Align, Array and Delete then work 
 together, and one Ctrl+Z undoes it (the drawing's text only moves: it isn't copied, turned,
 scaled or mirrored). <b>Select</b> (the CAD tab, or V when letters aren't going to the command
 line) selects only your markups, or the characters of the page's text, the same way.</p>
+<p><b>Clicks only, as in AutoCAD:</b> in CAD mode you never hold the mouse button down. What
+other programs do by dragging is <b>click, move, click</b> here: click to start (a selection
+box's first corner, a grip, what's selected, a shape's first point), move the mouse with no
+button held (what you're doing follows the pointer, so you see it before it's made), and click
+again to finish. <b>Escape</b> or a <b>right-click</b> stops it and puts everything back as it
+was. Pressing, dragging and letting go counts as a click and a move: nothing is made when you
+let go, the next click finishes it. Each click, move, click is one Ctrl+Z. Holding the
+<b>wheel</b> down and dragging still pans, also halfway through. (Preferences &gt; Mouse, CAD:
+turn off <b>Click, move, click</b> to drag instead.)</p>
 <ul>
 <li><b>Click</b> something to add it to the selection. <b>Shift+click</b> takes it out.
 <b>Escape</b> clears the whole selection, also right after a letter typed for the command line or
@@ -563,9 +572,10 @@ on top of the drawing, so a click on it takes the markup. A locked markup isn't 
 together. Right-click a markup for its own menu, the drawing's objects for theirs.
 <b>Resizing:</b> one selected markup shows its own handles (a rectangle's corners and sides, a
 line's ends); the drawing's own shapes and pictures show handles around them; several items (or
-markups together with the drawing's objects) show one box with handles around them all. Drag a
-handle to resize; a corner keeps the proportions (hold Shift while dragging to resize freely;
-Shift at the click itself takes an item out of the selection). The whole change is one Ctrl+Z.
+markups together with the drawing's objects) show one box with handles around them all. Click a
+handle and it's <b>hot</b>: it follows the pointer; click again where it goes. A corner keeps
+the proportions (hold Shift while you move it and at the second click to resize freely; Shift
+at the first click takes an item out of the selection). The whole change is one Ctrl+Z.
 The drawing's own text only moves. <b>Double-click</b> on text to edit it: the page's own text
 opens in Edit text, a markup's text (a text box, a note, a shape's comment) in its editor.
 What's selected is drawn <b>dashed</b> (blue dashes over white, so it shows on a blue line too)
@@ -581,25 +591,35 @@ again. Left to right it's a solid <b>blue window</b>: it takes what lies entirel
 Right to left it's a dashed <b>green crossing box</b>: it takes everything it touches, a line
 running through it included. The first corner is marked as soon as you click, and the status
 bar asks for the other corner. A quick click counts as a click even if the mouse moved a little
-while you pressed, and clicking the first corner again keeps the box. Escape drops a box you
-started. Hold Shift on the second click to take things out instead. A box (or a lasso) can also
+while you pressed, and clicking the first corner again keeps the box. Pressing on empty paper,
+dragging and letting go starts a box too: its other corner is the next click. Escape drops a
+box you started. Hold Shift on the second click to take things out instead. A box (or a lasso) can also
 start and end on the <b>gray area around the page</b>, handy when the sheet is covered. A filled
 shape or a picture covering the whole sheet (a background, a scan) counts as empty paper here: a
 click on it starts a box, and only a window around the whole sheet takes it (a filled shape also
 a click right on its edge).</li>
-<li><b>Hold the button and drag</b>: a <b>lasso</b> that follows the pointer. Drawn rightward at
+<li><b>Lasso</b>, the one thing in CAD mode that holds the button, so it's off unless you turn
+on <b>Hold the button and drag to draw a lasso</b> in Preferences &gt; Mouse: then holding the
+button and dragging from empty paper draws a lasso that follows the pointer. Drawn rightward at
 first it's a blue window lasso (what's entirely inside it); leftward, a green crossing lasso
 (what it touches). Shift+lasso takes things out.</li>
 <li>With Select, a box or lasso that takes no markups selects text: the characters inside a
 window, or the ones a crossing box touches (Ctrl+C copies them).</li>
 <li>While you draw a box or a lasso, what it would take <b>glows</b> (blue for a window,
-green for a crossing box), so you see what you'll get before the second click or before you
-let go; once taken, it's drawn dashed with grips. On a very big drawing it fills in over a moment while you move.</li>
-<li>Drag what's selected to move it, as in AutoCAD: over a selected item the pointer is the
-four-way arrow, and dragging from it moves the whole selection (markups and the page's own
-lines, text and pictures together; one undo step; snapping as for drawing). A drag that starts
-anywhere else draws a lasso or box and moves nothing. The square handles of one selected markup
-or object resize it, and the CAD tab's <b>Move</b> moves by a base point.</li>
+green for a crossing box), so you see what you'll get before the second click (or, with a lasso,
+before you let go); once taken, it's drawn dashed with grips. On a very big drawing it fills in over a moment while you move.</li>
+<li><b>Moving:</b> click what's selected to pick it up: over a selected item the pointer is
+the four-way arrow, and after the click the whole selection (markups and the page's own lines,
+text and pictures together) follows the pointer, its outline dashed, with no button held.
+Click where it goes to put it down, on this page, the one beside it or the gray around it
+(snapping as for drawing). One undo step; Escape or a right-click puts it back. A click
+anywhere else selects, or starts a box, and moves nothing. Double-clicking a selected markup
+still edits its text. The CAD tab's <b>Move</b> moves by a base point.</li>
+<li><b>Grips</b> work the same way: click one to make it hot, move, click where it goes. That's
+the square handles that resize one markup, the drawing's objects or the box around several
+items, a line's two ends and the diamond in its middle that bends it, the corners of a polygon,
+polyline or measurement, and the round handle above a shape that <b>turns</b> it (the angle
+shows while you move; Shift: 15&deg; steps). The status bar says what the next click does.</li>
 <li>Preferences &gt; Mouse turns each of these on or off (see Preferences).</li>
 </ul>
 <p>The <b>CAD</b> tab (and the CAD menu) shows only in CAD mode. As in AutoCAD, either select
@@ -967,7 +987,8 @@ then flag any later change.</li>
 Polyline (Shift+L), Arc, Curve, Pen (P). The shapes share one toolbar button: click its arrow to pick another.</li>
 <li><b>Arc</b> (as AutoCAD's three-point ARC; on the CAD tab under Circle's arrow): click the start, a point the arc
 passes through, then the end; the arc follows the pointer before the last click. Drag its three points to reshape it.</li>
-<li><b>Bend a line or arrow:</b> select it and drag the diamond in its middle: it becomes a smooth curve through that
+<li><b>Bend a line or arrow:</b> select it and drag the diamond in its middle (in CAD mode: click
+it, move, click): it becomes a smooth curve through that
 point; the ends stay where they are and an arrowhead follows the curve. Drag the diamond back onto the straight line to
 straighten it. The <b>Curve</b> tool draws one directly: click the start, the end, then where it bends to.</li>
 <li><b>Circle</b> (O): drag from the center to a point on the circle. In CAD mode, click the
@@ -984,11 +1005,15 @@ Ellipse, Circle, Cloud, Mask, Text box, Callout, Length, Radius, Calibrate Tape 
 Eraser's box, Erase content, Capture area, Crop pages, Links, signature placeholders, legends) work as in
 AutoCAD: click where it starts, move (the shape follows the pointer with no button held), and
 click where it ends. It snaps, and Shift works, as when dragging; pressing, dragging and letting
-go still works too. A click that shakes a little is still a click. Escape or a right-click
+go is a click and a move: the shape goes on following the pointer until you click where it
+ends. A click that shakes a little is still a click. Escape or a right-click
 cancels the shape being drawn; zooming or scrolling between the two clicks doesn't move its first
 point. A click on a markup with the Eraser still deletes it at once, a click on a link with the
 Links tool still opens it, and two clicks on the same spot with Text box make one of the default
-size. Note, Stamp, Count, Numbered dot and Image still place with one click.</li>
+size. Note, Stamp, Count, Numbered dot and Image still place with one click. The <b>Pen</b> draws
+from one click to the next: click to start, move to draw (no button held), click to end; Escape
+drops the stroke. A <b>Dimension</b>'s points are clicks too (in the other modes a drag gives
+its first two).</li>
 <li><b>Polygon / polyline:</b> click each point; double-click or Enter to finish, Backspace to take back the last point,
 Escape to cancel.</li>
 <li>With a drawing tool, clicking an existing markup selects it, and dragging moves it or its
@@ -1151,7 +1176,8 @@ Import tool chest shares a chest with others.</li>
 
 <h2 id="rotate">Rotating markups</h2>
 <ul>
-<li>Select a shape and drag the <b>round handle</b> above it. Hold Shift for 15&deg; steps.</li>
+<li>Select a shape and drag the <b>round handle</b> above it (in CAD mode: click it, move, click).
+Hold Shift for 15&deg; steps.</li>
 <li>Or type an angle in <b>Rotation</b> in the Properties panel (counterclockwise).</li>
 <li>Text boxes and callouts rotate in 90&deg; steps (a limitation of PDF text boxes).</li>
 </ul>
@@ -1334,7 +1360,8 @@ over another page and it moves there (its outline shows where it lands); markups
 Select do the same.
 Drag a corner handle to resize it, keeping its proportions
 (hold Shift to stretch freely), or a side handle to make it wider or taller. Resizing a shape also
-scales its line thickness. <b>Turn it</b> by dragging the <b>round handle</b> above it: it turns
+scales its line thickness (in CAD mode a handle is clicked, moved and clicked again: see CAD
+mode). <b>Turn it</b> by dragging the <b>round handle</b> above it: it turns
 about its middle, the angle shows in the status bar, and Shift turns it in 15&deg; steps. To turn
 it by an exact angle, right-click &gt; <b>Rotate by an angle...</b> and type the degrees
 (counterclockwise, as a markup's Rotation; -90 turns it a quarter clockwise). The <b>Properties</b>
@@ -2507,11 +2534,14 @@ is the one KanzonasPDF starts with and Escape goes back to), and each mode's own
 <li>Standard: Scroll one page per wheel step (on), Free page movement (off).</li>
 <li>Hand: Free page movement (on), Scroll one page per wheel step (on).</li>
 <li>CAD: The wheel zooms at the cursor (Ctrl+wheel scrolls), Plus cursor, Open canvas around the
-pages, Window (blue) and crossing (green) selection, Click, move, click draws the selection box,
-Hold the button and drag to draw a lasso, Show the CAD tab, Letters typed over the drawing go to
-the command line: all on (the last one is off for whoever had the CAD-style mouse before 1.5, so
-the one-letter tool shortcuts they used keep working). With the click, move, click box and the
-lasso off, a press, drag and release draws a box.</li>
+pages, Window (blue) and crossing (green) selection, Click, move, click, never holding the
+button: selection boxes, grips, moving the selection, drawing (off: drag them), Hold the button
+and drag to draw a lasso, Show the CAD tab, Letters typed over the drawing go to the command
+line: all on but the lasso (off since 1.17: CAD mode holds no button unless you ask for it), and
+the last one off for whoever had the CAD-style mouse before 1.5, so the one-letter tool
+shortcuts they used keep working. With Click, move, click off, CAD mode drags as the other
+modes do: a press, drag and release draws a selection box (or a lasso), moves the selection,
+a grip or a shape.</li>
 <li>Middle-click on a link opens: Ask each time, A new tab, or The split view (see Moving
 around).</li>
 </ul>

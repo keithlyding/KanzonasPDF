@@ -7229,8 +7229,8 @@ msgid "Window (blue) and crossing (green) selection: clicks add to the selection
 msgstr "Selección por ventana (azul) y por captura (verde): los clics agregan a la selección, Shift quita y Escape la borra"
 
 #: cad
-msgid "Click, move, click draws the selection box"
-msgstr "Clic, mover, clic dibuja el recuadro de selección"
+msgid "Click, move, click, never holding the button: selection boxes, grips, moving the selection, drawing (off: drag them)"
+msgstr "Clic, mover, clic, sin mantener nunca el botón presionado: recuadros de selección, pinzamientos, mover la selección, dibujar (desactivado: se arrastran)"
 
 #: cad
 msgid "Hold the button and drag to draw a lasso"
@@ -11934,3 +11934,18 @@ msgstr "Grupo (1 objeto)"
 
 msgid "Group ({n} objects)"
 msgstr "Grupo ({n} objetos)"
+
+msgid "Move to draw, click to end the stroke (Escape or a right-click cancels)"
+msgstr "Mueva para dibujar, haga clic para terminar el trazo (Escape o un clic derecho cancela)"
+
+msgid "Move to turn it, click to set the angle; Shift: 15° steps (Escape or a right-click puts it back)"
+msgstr "Mueva para girarlo, haga clic para fijar el ángulo; Shift: pasos de 15° (Escape o un clic derecho lo deja como estaba)"
+
+msgid "Move it, click where it goes (Escape or a right-click puts it back)"
+msgstr "Muévalo, haga clic donde va (Escape o un clic derecho lo deja como estaba)"
+
+msgid "Move the grip, click where it goes (Escape or a right-click puts it back)"
+msgstr "Mueva el pinzamiento, haga clic donde va (Escape o un clic derecho lo deja como estaba)"
+
+msgid "Put back as it was"
+msgstr "Se dejó como estaba"

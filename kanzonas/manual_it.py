@@ -541,6 +541,14 @@ Scala, Specchia, Allinea, Serie ed Elimina agiscono poi su tutto insieme, e un s
 testo del disegno si sposta soltanto: non viene copiato, ruotato, scalato né specchiato). <b>Seleziona</b> (nella
 scheda CAD, oppure V quando le lettere non vanno alla riga di comando) seleziona allo stesso modo solo le tue
 annotazioni o i caratteri del testo della pagina.</p>
+<p><b>Solo clic, come in AutoCAD:</b> in modalità CAD non si tiene mai premuto il pulsante del mouse. Ciò che altri
+programmi fanno trascinando qui è <b>clic, sposta, clic</b>: fai clic per iniziare (il primo angolo di un riquadro di
+selezione, un grip, ciò che è selezionato, il primo punto di una forma), sposta il mouse senza tenere premuto alcun
+pulsante (ciò che stai facendo segue il puntatore, così lo vedi prima che venga fatto) e fai di nuovo clic per finire.
+<b>Esc</b> o un <b>clic destro</b> lo interrompe e rimette tutto com'era. Premere, trascinare e rilasciare conta come
+un clic e uno spostamento: al rilascio non succede nulla, il clic successivo lo completa. Ogni clic, sposta, clic si
+annulla con un solo Ctrl+Z. Tenere premuta la <b>rotellina</b> e trascinare sposta ancora la vista, anche a metà.
+(Preferenze &gt; Mouse, CAD: disattiva <b>Clic, sposta, clic</b> per trascinare invece.)</p>
 <ul>
 <li><b>Fai clic</b> su un elemento per aggiungerlo alla selezione. <b>Shift+clic</b> lo toglie.
 <b>Esc</b> annulla l'intera selezione, anche subito dopo una lettera scritta per la riga di comando o un clic che ha
@@ -550,9 +558,10 @@ sopra il disegno, quindi un clic su di essa prende l'annotazione. Un'annotazione
 clic destro su un'annotazione per il suo menu, sugli oggetti del disegno per il loro.
 <b>Ridimensionamento:</b> una sola annotazione selezionata mostra le sue maniglie (gli angoli e i lati di un
 rettangolo, le estremità di una linea); le forme e le immagini del disegno mostrano maniglie intorno a sé; più elementi
-(o annotazioni insieme a oggetti del disegno) mostrano un unico riquadro con maniglie intorno a tutti. Trascina una
-maniglia per ridimensionare; un angolo mantiene le proporzioni (tieni premuto Shift mentre trascini per ridimensionare
-liberamente; Shift al momento del clic toglie invece un elemento dalla selezione). L'intera modifica si annulla con un
+(o annotazioni insieme a oggetti del disegno) mostrano un unico riquadro con maniglie intorno a tutti. Fai clic su
+una maniglia e diventa <b>attiva</b>: segue il puntatore; fai di nuovo clic dove deve andare. Un angolo mantiene le
+proporzioni (tieni premuto Shift mentre la sposti e al secondo clic per ridimensionare liberamente; Shift al primo clic
+toglie invece un elemento dalla selezione). L'intera modifica si annulla con un
 solo Ctrl+Z.
 Il testo del disegno si sposta soltanto. <b>Fai doppio clic</b> su un testo per modificarlo: il testo della pagina si
 apre in Modifica testo, il testo di un'annotazione (una casella di testo, una nota, il commento di una forma) nel suo
@@ -570,24 +579,34 @@ di nuovo clic. Da sinistra a destra è una <b>finestra blu</b> a tratto continuo
 interno. Da destra a sinistra è un <b>riquadro di intersezione verde</b> tratteggiato: prende tutto ciò che tocca,
 compresa una linea che lo attraversa. Il primo angolo viene segnato appena fai clic, e la barra di stato chiede l'altro
 angolo. Un clic rapido conta come clic anche se il mouse si è mosso un po' mentre premevi, e un nuovo clic sul primo
-angolo mantiene il riquadro. Esc elimina un riquadro iniziato. Tieni premuto Shift al secondo clic per togliere invece
+angolo mantiene il riquadro. Anche premere su un punto vuoto del foglio, trascinare e rilasciare avvia un riquadro: il
+suo altro angolo è il clic successivo. Esc elimina un riquadro iniziato. Tieni premuto Shift al secondo clic per togliere invece
 gli elementi. Un riquadro (o un lazo) può anche iniziare e finire nell'<b>area grigia intorno alla pagina</b>, comodo
 quando la tavola è tutta coperta. Una forma piena o un'immagine che copre l'intera tavola (uno sfondo, una scansione)
 qui conta come foglio vuoto: un clic su di essa avvia un riquadro, e solo una finestra attorno all'intera tavola la
 prende (una forma piena anche un clic proprio sul suo bordo).</li>
-<li><b>Tieni premuto il pulsante e trascina</b>: un <b>lazo</b> che segue il puntatore. Se all'inizio lo disegni verso
-destra è un lazo a finestra blu (prende ciò che sta interamente al suo interno); verso sinistra, un lazo di
+<li><b>Lazo</b>, l'unica cosa della modalità CAD che tiene premuto il pulsante, quindi è disattivato a meno che tu non
+attivi <b>Tieni premuto il pulsante e trascina per disegnare un lazo</b> in Preferenze &gt; Mouse: allora tenendo premuto
+il pulsante e trascinando da un punto vuoto del foglio disegni un lazo che segue il puntatore. Se all'inizio lo disegni
+verso destra è un lazo a finestra blu (prende ciò che sta interamente al suo interno); verso sinistra, un lazo di
 intersezione verde (prende ciò che tocca). Shift+lazo toglie gli elementi.</li>
 <li>Con Seleziona, un riquadro o un lazo che non prende annotazioni seleziona il testo: i caratteri dentro una
 finestra, o quelli toccati da un riquadro di intersezione (Ctrl+C li copia).</li>
 <li>Mentre disegni un riquadro o un lazo, ciò che prenderebbe si <b>illumina</b> (in blu per una finestra,
-in verde per un riquadro di intersezione), così vedi cosa otterrai prima del secondo clic o prima di rilasciare il
-pulsante; una volta preso, viene disegnato tratteggiato con i grip. In un disegno molto grande si completa in un attimo mentre ti muovi.</li>
-<li>Trascina ciò che è selezionato per spostarlo, come in AutoCAD: sopra un elemento selezionato il puntatore è la
-freccia a quattro punte, e trascinando da lì sposti l'intera selezione (annotazioni e linee, testo e immagini della
-pagina insieme; un solo passaggio di annullamento; aggancio come nel disegno). Un trascinamento che parte da un
-altro punto disegna un lazo o un riquadro e non sposta nulla. Le maniglie quadrate di un'annotazione o di un
-oggetto selezionato lo ridimensionano, e <b>Sposta</b> della scheda CAD sposta da un punto base.</li>
+in verde per un riquadro di intersezione), così vedi cosa otterrai prima del secondo clic (o, con un lazo, prima di rilasciare
+il pulsante); una volta preso, viene disegnato tratteggiato con i grip. In un disegno molto grande si completa in un attimo mentre ti muovi.</li>
+<li><b>Spostare:</b> fai clic su ciò che è selezionato per sollevarlo: sopra un elemento selezionato il puntatore è la
+freccia a quattro punte, e dopo il clic l'intera selezione (annotazioni e linee, testo e immagini della pagina insieme)
+segue il puntatore, con il contorno tratteggiato, senza tenere premuto alcun pulsante. Fai clic dove deve andare per
+posarla, su questa pagina, su quella accanto o nel grigio intorno (aggancio come nel disegno). Un solo passaggio di
+annullamento; Esc o un clic destro la rimette dov'era. Un clic in un altro punto seleziona, o avvia un riquadro, e non
+sposta nulla. Il doppio clic su un'annotazione selezionata ne modifica ancora il testo. <b>Sposta</b> della scheda CAD
+sposta da un punto base.</li>
+<li>I <b>grip</b> funzionano allo stesso modo: fai clic su uno per attivarlo, sposta il mouse, fai clic dove deve
+andare. Sono le maniglie quadrate che ridimensionano un'annotazione, gli oggetti del disegno o il riquadro intorno a più
+elementi, le due estremità di una linea e il rombo al centro che la curva, gli angoli di un poligono, di una polilinea o
+di una misura, e la maniglia rotonda sopra una forma che la <b>ruota</b> (l'angolo si vede mentre sposti il mouse;
+Shift: passi di 15&deg;). La barra di stato dice cosa fa il clic successivo.</li>
 <li>Preferenze &gt; Mouse attiva o disattiva ciascuna di queste funzioni (vedi Preferenze).</li>
 </ul>
 <p>La scheda <b>CAD</b> (e il menu CAD) compare solo in modalità CAD. Come in AutoCAD, puoi selezionare prima e poi
@@ -954,7 +973,8 @@ segnalano allora qualsiasi modifica successiva.</li>
 Polilinea (Shift+L), Arco, Curva, Penna (P). Le forme condividono un unico pulsante della barra degli strumenti: fai clic sulla sua freccia per sceglierne un'altra.</li>
 <li><b>Arco</b> (come l'ARC a tre punti di AutoCAD; nella scheda CAD sotto la freccia di Cerchio): fai clic sull'inizio, su un punto
 per cui passa l'arco, poi sulla fine; l'arco segue il puntatore prima dell'ultimo clic. Trascina i suoi tre punti per cambiarne la forma.</li>
-<li><b>Curvare una linea o una freccia:</b> selezionala e trascina il rombo al centro: diventa una curva morbida che passa per quel
+<li><b>Curvare una linea o una freccia:</b> selezionala e trascina il rombo al centro (in modalità CAD: clic su di
+esso, sposta, clic): diventa una curva morbida che passa per quel
 punto; le estremità restano dove sono e la punta di freccia segue la curva. Trascina di nuovo il rombo sulla linea retta per
 raddrizzarla. Lo strumento <b>Curva</b> ne disegna una direttamente: fai clic sull'inizio, sulla fine, poi sul punto verso cui si piega.</li>
 <li><b>Cerchio</b> (O): trascina dal centro a un punto della circonferenza. In modalità CAD, fai clic sul
@@ -970,12 +990,16 @@ definitivamente.</li>
 Ellisse, Cerchio, Nuvola, Maschera, Casella di testo, Richiamo, Lunghezza, Raggio, Calibra metro a nastro, il
 riquadro della Gomma, Cancella contenuto, Cattura area, Ritaglia pagine, Collegamenti, segnaposto firma, legende) funzionano come in
 AutoCAD: fai clic dove inizia, sposta il mouse (la forma segue il puntatore senza tenere premuto alcun pulsante) e
-fai clic dove finisce. L'aggancio e Shift funzionano come durante il trascinamento; anche premere, trascinare e rilasciare
-funziona ancora. Un clic con un leggero tremolio resta un clic. Esc o un clic con il tasto destro
+fai clic dove finisce. L'aggancio e Shift funzionano come durante il trascinamento; premere, trascinare e rilasciare è un
+clic e uno spostamento: la forma segue il puntatore finché non fai clic dove finisce. Un clic con un leggero tremolio
+resta un clic. Esc o un clic con il tasto destro
 annulla la forma che stai disegnando; lo zoom o lo scorrimento tra i due clic non sposta il suo primo
 punto. Un clic su un'annotazione con la Gomma la elimina comunque subito, un clic su un collegamento con lo strumento
 Collegamenti lo apre comunque, e due clic nello stesso punto con Casella di testo ne creano una delle dimensioni
-predefinite. Nota, Timbro, Conteggio, Punto numerato e Immagine si posizionano ancora con un solo clic.</li>
+predefinite. Nota, Timbro, Conteggio, Punto numerato e Immagine si posizionano ancora con un solo clic. La <b>Penna</b>
+disegna da un clic al successivo: fai clic per iniziare, sposta il mouse per disegnare (senza tenere premuto alcun
+pulsante) e fai clic per finire; Esc elimina il tratto. Anche i punti di una <b>Quota</b> sono clic (nelle altre
+modalità un trascinamento dà i primi due).</li>
 <li><b>Poligono / polilinea:</b> fai clic su ogni punto; doppio clic o Invio per terminare, Backspace per togliere l'ultimo punto,
 Esc per annullare.</li>
 <li>Con uno strumento di disegno, un clic su un'annotazione esistente la seleziona, e il trascinamento sposta l'annotazione o i suoi
@@ -1139,7 +1163,8 @@ Importa cassetta degli attrezzi condivide una cassetta con altre persone.</li>
 
 <h2 id="rotate">Ruotare le annotazioni</h2>
 <ul>
-<li>Seleziona una forma e trascina la <b>maniglia rotonda</b> sopra di essa. Tieni premuto Shift per passi di 15&deg;.</li>
+<li>Seleziona una forma e trascina la <b>maniglia rotonda</b> sopra di essa (in modalità CAD: clic su di essa, sposta,
+clic). Tieni premuto Shift per passi di 15&deg;.</li>
 <li>Oppure digita un angolo in <b>Rotazione</b> nel pannello Proprietà (in senso antiorario).</li>
 <li>Le caselle di testo e i richiami ruotano a passi di 90&deg; (un limite delle caselle di testo PDF).</li>
 </ul>
@@ -1324,7 +1349,8 @@ su un'altra pagina e si sposta lì (il contorno mostra dove arriva); le annotazi
 Seleziona fanno lo stesso.
 Trascina una maniglia d'angolo per ridimensionarla mantenendo le proporzioni
 (tieni premuto Shift per deformarla liberamente), o una maniglia laterale per renderla più larga o più alta. Ridimensionare una forma
-ne scala anche lo spessore delle linee. <b>Ruotala</b> trascinando la <b>maniglia rotonda</b> sopra di essa: ruota attorno al
+ne scala anche lo spessore delle linee (in modalità CAD si fa clic su una maniglia, la si sposta e si fa di nuovo clic:
+vedi Modalità CAD). <b>Ruotala</b> trascinando la <b>maniglia rotonda</b> sopra di essa: ruota attorno al
 suo centro, l'angolo appare nella barra di stato e Shift la ruota a passi di 15&deg;. Per ruotarla di un angolo esatto, fai
 clic con il tasto destro &gt; <b>Ruota di un angolo...</b> e digita i gradi (in senso antiorario, come la Rotazione di
 un'annotazione; -90 la ruota di un quarto in senso orario). Anche il pannello <b>Proprietà</b> la mostra: un'immagine o un
@@ -2517,11 +2543,14 @@ esistenti si aggiornano la prossima volta che le sposti o le modifichi.</li>
 <li>Standard: Scorri di una pagina per ogni scatto della rotellina (attivato), Movimento libero della pagina (disattivato).</li>
 <li>Mano: Movimento libero della pagina (attivato), Scorri di una pagina per ogni scatto della rotellina (attivato).</li>
 <li>CAD: La rotellina esegue lo zoom sul cursore (Ctrl+rotellina scorre), Cursore a croce, Area di lavoro libera attorno alle
-pagine, Selezione a finestra (blu) e intersecante (verde), Clic, sposta, clic disegna il riquadro di selezione,
-Tieni premuto il pulsante e trascina per disegnare un lazo, Mostra la scheda CAD, Le lettere digitate sul disegno vanno alla
-riga di comando: tutte attivate (l'ultima è disattivata per chi usava il mouse in stile CAD prima della 1.5, così
-le scorciatoie degli strumenti a una lettera che usava continuano a funzionare). Con il riquadro clic, sposta, clic e il
-lazo disattivati, premere, trascinare e rilasciare disegna un riquadro.</li>
+pagine, Selezione a finestra (blu) e intersecante (verde), Clic, sposta, clic, senza mai tenere premuto il pulsante:
+riquadri di selezione, grip, spostare la selezione, disegnare (disattivato: si trascinano), Tieni premuto il pulsante e
+trascina per disegnare un lazo, Mostra la scheda CAD, Le lettere digitate sul disegno vanno alla riga di comando: tutte
+attivate tranne il lazo (disattivato dalla 1.17: la modalità CAD non tiene premuto alcun pulsante a meno che tu non lo
+chieda), e l'ultima disattivata per chi usava il mouse in stile CAD prima della 1.5, così le scorciatoie degli
+strumenti a una lettera che usava continuano a funzionare. Con Clic, sposta, clic disattivato, la modalità CAD
+trascina come le altre modalità: premere, trascinare e rilasciare disegna un riquadro di selezione (o un lazo), sposta
+la selezione, un grip o una forma.</li>
 <li>Il clic centrale su un collegamento apre: Chiedi ogni volta, Una nuova scheda o La vista divisa (vedi Spostarsi nel
 documento).</li>
 </ul>
