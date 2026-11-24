@@ -6,7 +6,8 @@ anything"):
   polygon's corner, the round handle that turns it) makes the grip hot: it follows the
   pointer with no button held, and the next click puts it there;
 - a click on what's selected (not on a grip) picks it up: it follows the pointer, and the next
-  click puts it down;
+  click puts it down, or a distance typed on the command line moves it that far toward the
+  pointer (typed below);
 - with the Pen, a click starts the stroke, the pointer draws it and the next click ends it;
 - Escape or a right-click puts everything back as it was. A press, drag and release is a
   click and a move: the next click still places.
@@ -242,6 +243,6 @@ def double_click(w, e):
         d = hot._cad_down
         at = mapped(hot, e).position()
         if (at - d["start"]).manhattanLength() < cad_select.STILL_PX:
-            cancel(w.view)
+            cancel(w.view, quiet=True)
             return False
     return press(w, e)
