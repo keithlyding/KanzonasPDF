@@ -166,7 +166,7 @@ a decision changes or a piece of work lands. Details of each version are in
   selected picks it up and the next click puts it down; a click on a grip (a markup's
   handles and line ends, the box around several items, the drawing's objects' handles and
   round turning handle) makes it hot until the next click; the Pen draws from one click to
-  the next; a press, drag and release is a click and a move everywhere (selection box,
+  the next, and Highlight and the other text tools mark from one click to the next; a press, drag and release is a click and a move everywhere (selection box,
   shapes, a Dimension's points). Escape or a right-click puts it back; one undo step each;
   the middle button still pans; a distance typed on the command line moves the picked-up
   selection that far toward the pointer (AutoCAD's direct distance entry). The lasso, which can only be held, is off by default; the
