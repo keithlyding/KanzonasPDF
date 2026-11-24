@@ -99,10 +99,21 @@ and all 100 steps fit even on very large PDFs; the history still stays within a 
 When Undo turns gray before you're back to where you started, the steps before it are past the
 100 kept (or the memory budget) and can't be undone; the file as it was opened is still on disk
 until you save over it.</li>
-<li><b>Panels:</b> Pages/Bookmarks/Layers on the left (F4), Properties on the right (F6),
-Markups list (F7), Tool chest (F8), Bookmarks (F9), Split view (F10). The panels you had open
-when you closed KanzonasPDF (and their sizes, sides and which of Properties / Tool chest was in
-front) come back the next time it starts; the Split view always starts closed.</li>
+<li><b>Panels:</b> Pages (F4), Bookmarks (F9), Layers, Objects and Sets start on the left,
+Properties (F6) and the Tool chest (F8) on the right, the Markups list (F7) at the bottom; the
+Split view is F10. View &gt; <b>Layers panel</b>, <b>Objects panel</b> and <b>Sets panel</b>
+open and close the other three (View &gt; Keyboard shortcuts can give them keys).
+Each key, menu command and panel strip icon opens its panel, or closes it when it's showing.
+<b>Several panels at once:</b> open panels on the same side are stacked one above the other;
+drag the handle between two of them to give one more height, and the handle between the panels
+and the page to make that side wider. Drag a panel by its title to the other side or to another
+place on its own (above or below the panels there), or onto another panel to make the two tabs
+of one panel. Or
+right-click its title &gt; <b>Move to the left side</b> / <b>Move to the right side</b>; the rest
+of that menu lists the panels and toolbars to show or hide. The panels you had open when you
+closed KanzonasPDF (their sides, sizes, and which is in front where panels are tabs) come back the
+next time it starts; a window a tab is pulled out into starts with the panels of the window it
+came from. The Split view always starts closed.</li>
 <li><b>A document in its own window</b> (for a second monitor): drag its tab up or down out
 of the tab bar and let go, or right-click the tab &gt; <b>Move to new window</b>, or View &gt;
 <b>Move tab to new window</b> (Ctrl+Shift+N). The document isn't reopened: unsaved changes
@@ -153,10 +164,12 @@ of the ribbon tabs has every menu, and all keyboard shortcuts still work. <b>Col
 (Ctrl+F1, or double-click a tab) shows only the tab names; click a tab to open it again. Untick
 View &gt; <b>Ribbon (instead of toolbars)</b> for the classic compact toolbars (zoom, page number
 and Find then go back to the top toolbar). The menus always have every command.</li>
-<li><b>Panel strip:</b> the icons on the left edge open the Pages, Bookmarks, Layers, Objects
-and Sets panels; click the lit icon again to fold the panel away and get more room for the page.
-The Markups list and Attachments icons are there too. View &gt; <b>Show panel strip (left
-edge)</b> hides the strip; the panels then show their names as tabs at the bottom instead.</li>
+<li><b>Panel strip:</b> the icons on the left edge open the Pages, Bookmarks, Layers, Objects,
+Sets, Properties, Tool chest and Markups list panels, as many at once as you like; a lit icon is
+a panel showing. Click a lit icon again to close its panel and get more room for the page (a
+panel that is a tab behind another comes to the front first). The Attachments icon is there
+too. View &gt; <b>Show panel strip (left edge)</b> hides the strip; the View menu and each
+panel's close button still open and close the panels.</li>
 <li><b>Command palette</b> (Ctrl+Shift+P; Help menu, View tab): type a few letters of what you
 want to do and pick the command from the list; Enter runs it. Every menu command and tool is
 there with its menu and shortcut, so nothing has to be hunted for on the ribbon. The letters
@@ -346,7 +359,7 @@ Fit width (Ctrl+2), fit page (Ctrl+0), actual size (Ctrl+1). Documents open at F
 the page you were on last time; change this in File &gt; Preferences &gt; Opening documents.
 Fit width and Fit page keep fitting when the window or a side panel changes size, until you
 choose a zoom yourself.</li>
-<li><b>Page thumbnails</b> (F4) shows or hides the left panel.</li>
+<li><b>Page thumbnails</b> (F4) shows or hides the Pages panel.</li>
 <li><b>Links in the PDF:</b> point at a link to see where it goes. With the <b>Hand</b> tool, click
 it (the pointer becomes a hand). With any other tool, in every mouse mode (Standard, Hand, CAD),
 <b>Ctrl+click</b> it (holding Ctrl over a link shows a hand and where it goes): a plain click
@@ -1212,7 +1225,7 @@ you click. Text keeps reading the right way round.</li>
 
 <h2 id="objects">Objects panel and locking</h2>
 <ul>
-<li><b>Objects</b> tab (left panel, next to Pages, Bookmarks and Layers): every markup on the
+<li><b>Objects</b> panel (View &gt; Objects panel, or its icon on the panel strip): every markup on the
 current page, from front (top of the list) to back. Click a row to select that markup even
 when it's completely covered by others; Ctrl/Shift+click selects several. Front, Up, Down
 and Back change the stacking order.</li>
@@ -1759,7 +1772,7 @@ it.</li>
 pages to new file (to a new file, not the document itself), Delete pages (the pages selected in
 the page list, or the current page; it asks first, and Ctrl+Z brings them back). A bookmark to a
 deleted page then goes to the page after it (or the last page).</li>
-<li><b>Layers</b> tab: show or hide CAD / optional-content layers. <b>Markups on layers</b>
+<li><b>Layers</b> panel (View &gt; Layers panel): show or hide CAD / optional-content layers. <b>Markups on layers</b>
 (as in Bluebeam): <b>New layer...</b> adds a layer to the document, and <b>New markups go on</b>
 picks the layer the markups you draw go on (No layer: none). To put markups already drawn on a
 layer, select them and right-click &gt; <b>Layer</b> &gt; a layer, No layer, or New layer....
@@ -1791,7 +1804,7 @@ of the <b>Sets</b> panel): pick the PDFs, then where to save the set. A set is a
 its own (.kzset) listing the PDFs; the ones in its folder or below are kept by their place
 next to it, so the folder can be moved or shared with the set in it. <b>Open set...</b>
 opens one (so does dragging a .kzset file onto the window).</li>
-<li>The <b>Sets</b> panel (a tab of the left panel, and an icon on the panel strip) lists each
+<li>The <b>Sets</b> panel (View &gt; Sets panel, and an icon on the panel strip) lists each
 file with its pages under it. On drawing-size pages (11x17 and larger) the sheet number and
 title are read from the title block (SHEET NO, SHEET TITLE), so A-101 FLOOR PLAN is listed;
 other pages by their page label or number. A file that can't be found is listed grayed out.
@@ -1807,7 +1820,7 @@ to the set is saved in its file at once.</li>
 </ul>
 
 <h2 id="bookmarks">Bookmarks and table of contents</h2>
-<p>Bookmarks (the PDF's outline) are listed in the <b>Bookmarks</b> panel (F9). Click one to go
+<p>Bookmarks (the PDF's outline) are listed in the <b>Bookmarks</b> panel (F9 opens and closes it). Click one to go
 to its place. The buttons above the list add a bookmark to the current page (+), rename, delete,
 move up and down, and indent (make it a child of the one above) or outdent. The <b>⋯</b> button,
 a right-click in the list, and <b>Document &gt; Bookmark tools</b> have the rest. Every change is

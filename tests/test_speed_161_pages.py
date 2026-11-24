@@ -657,11 +657,15 @@ class Thumbnails(unittest.TestCase):
         p = mock.patch.object(QMessageBox, "question", return_value=QMessageBox.Yes)
         p.start()
         self.addCleanup(p.stop)
+        # (the usual panels, whatever an earlier test left open: Pages alone on its side,
+        # the full height, so the rows in view are the same every run)
+        from kanzonas import paths
+        paths.settings().remove("window_state")
         self.w = MainWindow()
         self.w.resize(1200, 800)
         self.w.show()
         self.w.dock.show()
-        self.w.left_tabs.setCurrentIndex(0)
+        self.w.dock.raise_()
         self.drawn = []
         # (1.7: a thumbnail is drawn by page_widget.thumbnail, from the page's render on
         # screen when it has one, else with get_pixmap as before: each one drawn counts)

@@ -91,10 +91,21 @@ y los 100 pasos caben incluso en PDF muy grandes; el historial sigue sin superar
 Si Deshacer se pone gris antes de volver al punto de partida, los pasos anteriores quedan fuera de
 los 100 que se conservan (o del límite de memoria) y no se pueden deshacer; el archivo tal como se
 abrió sigue en el disco hasta que lo guarde encima.</li>
-<li><b>Paneles:</b> Páginas/Marcadores/Capas a la izquierda (F4), Propiedades a la derecha (F6),
-Lista de marcas (F7), Caja de herramientas (F8), Marcadores (F9), Vista dividida (F10). Los paneles que tenía abiertos
-al cerrar KanzonasPDF (y sus tamaños, sus lados y cuál de Propiedades / Caja de herramientas estaba
-delante) vuelven la próxima vez que se inicia; la Vista dividida siempre se inicia cerrada.</li>
+<li><b>Paneles:</b> Páginas (F4), Marcadores (F9), Capas, Objetos y Conjuntos empiezan a la izquierda,
+Propiedades (F6) y la Caja de herramientas (F8) a la derecha, la Lista de marcas (F7) abajo; la
+Vista dividida es F10. Ver &gt; <b>Panel de capas</b>, <b>Panel de objetos</b> y <b>Panel de conjuntos</b>
+abren y cierran los otros tres (Ver &gt; Métodos abreviados de teclado puede darles teclas).
+Cada tecla, comando de menú e icono de la franja de paneles abre su panel, o lo cierra cuando está a la vista.
+<b>Varios paneles a la vez:</b> los paneles abiertos del mismo lado se apilan uno encima de otro;
+arrastre el asa entre dos de ellos para dar más altura a uno, y el asa entre los paneles y la
+página para ensanchar ese lado. Arrastre un panel por su título al otro lado o a otro lugar del
+suyo (encima o debajo de los paneles que hay allí), o sobre otro panel para que los dos sean
+pestañas de un mismo panel. O haga clic con el botón derecho en su título &gt; <b>Mover al lado
+izquierdo</b> / <b>Mover al lado derecho</b>; el resto de ese menú enumera los paneles y las barras
+de herramientas que se pueden mostrar u ocultar. Los paneles que tenía abiertos al cerrar
+KanzonasPDF (sus lados, sus tamaños y cuál está delante donde los paneles son pestañas) vuelven la
+próxima vez que se inicia; una ventana a la que se saca una pestaña empieza con los paneles de la
+ventana de la que viene. La Vista dividida siempre se inicia cerrada.</li>
 <li><b>Un documento en su propia ventana</b> (para un segundo monitor): arrastre su pestaña hacia arriba o hacia abajo fuera
 de la barra de pestañas y suéltela, o haga clic con el botón derecho en la pestaña &gt; <b>Mover a una nueva ventana</b>, o Ver &gt;
 <b>Mover pestaña a una nueva ventana</b> (Ctrl+Shift+N). El documento no se vuelve a abrir: los cambios sin guardar
@@ -146,9 +157,11 @@ de las pestañas de la cinta tiene todos los menús, y todos los métodos abrevi
 Ver &gt; <b>Cinta (en lugar de barras de herramientas)</b> para usar las barras de herramientas compactas clásicas (el zoom, el número de página
 y Buscar vuelven entonces a la barra de herramientas superior). Los menús siempre tienen todos los comandos.</li>
 <li><b>Franja de paneles:</b> los iconos del borde izquierdo abren los paneles Páginas, Marcadores, Capas,
-Objetos y Conjuntos; haga clic de nuevo en el icono iluminado para plegar el panel y tener más espacio para la página.
-Los iconos de Lista de marcas y Archivos adjuntos también están allí. Ver &gt; <b>Mostrar franja de paneles (borde
-izquierdo)</b> oculta la franja; los paneles muestran entonces sus nombres como pestañas en la parte inferior.</li>
+Objetos, Conjuntos, Propiedades, Caja de herramientas y Lista de marcas, tantos a la vez como quiera; un icono
+iluminado es un panel a la vista. Haga clic de nuevo en un icono iluminado para cerrar su panel y tener más
+espacio para la página (un panel que es una pestaña detrás de otro pasa primero al frente). El icono de
+Archivos adjuntos también está allí. Ver &gt; <b>Mostrar franja de paneles (borde izquierdo)</b> oculta la
+franja; el menú Ver y el botón de cerrar de cada panel siguen abriendo y cerrando los paneles.</li>
 <li><b>Paleta de comandos</b> (Ctrl+Shift+P; menú Ayuda, pestaña Ver): escriba algunas letras de lo que
 quiere hacer y elija el comando en la lista; Enter lo ejecuta. Todos los comandos de menú y todas las herramientas están
 allí con su menú y su método abreviado, así que no hay que buscar nada en la cinta. Las letras
@@ -334,7 +347,7 @@ Ajustar al ancho (Ctrl+2), ajustar página (Ctrl+0), tamaño real (Ctrl+1). Los 
 la página donde estaba la última vez; cámbielo en Archivo &gt; Preferencias &gt; Inicio y apertura.
 Ajustar al ancho y Ajustar página siguen ajustando cuando la ventana o un panel lateral cambian de tamaño, hasta que
 usted elige un zoom.</li>
-<li><b>Miniaturas de páginas</b> (F4) muestra u oculta el panel izquierdo.</li>
+<li><b>Miniaturas de páginas</b> (F4) muestra u oculta el panel Páginas.</li>
 <li><b>Vínculos del PDF:</b> coloque el puntero sobre un vínculo para ver a dónde lleva. Con la herramienta <b>Mano</b>, haga clic
 en él (el puntero se convierte en una mano). Con cualquier otra herramienta, en todos los modos del mouse (Estándar, Mano,
 CAD), haga <b>Ctrl+clic</b> en él (al mantener Ctrl sobre un vínculo se ve una mano y adónde lleva): un clic normal
@@ -1198,7 +1211,7 @@ El texto se sigue leyendo al derecho.</li>
 
 <h2 id="objects">Panel Objetos y bloqueo</h2>
 <ul>
-<li>Pestaña <b>Objetos</b> (panel izquierdo, junto a Páginas, Marcadores y Capas): todas las marcas de la
+<li>Panel <b>Objetos</b> (Ver &gt; Panel de objetos, o su icono en la franja de paneles): todas las marcas de la
 página actual, de delante (arriba en la lista) hacia atrás. Haga clic en una fila para seleccionar esa marca incluso
 cuando está completamente tapada por otras; Ctrl/Shift+clic selecciona varias. Al frente, Subir, Bajar
 y Al fondo cambian el orden de apilamiento.</li>
@@ -1743,7 +1756,7 @@ documento protegido contra cambios lo rechaza.</li>
 páginas a un archivo nuevo (a un archivo nuevo, no al propio documento), Eliminar páginas (las páginas seleccionadas en
 la lista de páginas, o la página actual; pregunta primero, y Ctrl+Z las recupera). Un marcador a una
 página eliminada lleva entonces a la página siguiente (o a la última página).</li>
-<li>Pestaña <b>Capas</b>: muestre u oculte las capas de CAD / de contenido opcional. <b>Marcas en capas</b> (como en
+<li>Panel <b>Capas</b> (Ver &gt; Panel de capas): muestre u oculte las capas de CAD / de contenido opcional. <b>Marcas en capas</b> (como en
 Bluebeam): <b>Nueva capa...</b> agrega una capa al documento, y <b>Las marcas nuevas van en</b> elige la capa en la que van
 las marcas que dibuja (Sin capa: ninguna). Para poner en una capa marcas ya dibujadas, selecciónelas y haga clic con el
 botón derecho &gt; <b>Capa</b> &gt; una capa, Sin capa o Nueva capa.... Una marca en una capa oculta no se dibuja y no se puede
@@ -1777,7 +1790,7 @@ conjunto es un pequeño archivo propio (.kzset) que enumera los PDF; los que est
 o por debajo se guardan por su lugar junto a él, de modo que la carpeta se puede mover o
 compartir con el conjunto dentro. <b>Abrir conjunto...</b> abre uno (también
 arrastrar un archivo .kzset a la ventana).</li>
-<li>El panel <b>Conjuntos</b> (una pestaña del panel izquierdo y un icono de la franja de
+<li>El panel <b>Conjuntos</b> (Ver &gt; Panel de conjuntos, y un icono de la franja de
 paneles) muestra cada archivo con sus páginas debajo. En las páginas de tamaño de plano (11x17 y
 mayores) el número y el título del plano se leen del cajetín (SHEET NO, SHEET TITLE), así que se
 muestra A-101 FLOOR PLAN; las demás páginas, por su etiqueta o número de página. Un archivo que
@@ -1796,7 +1809,7 @@ momento.</li>
 </ul>
 
 <h2 id="bookmarks">Marcadores y tabla de contenido</h2>
-<p>Los marcadores (el esquema del PDF) aparecen en el panel <b>Marcadores</b> (F9). Haga clic en
+<p>Los marcadores (el esquema del PDF) aparecen en el panel <b>Marcadores</b> (F9 lo abre y lo cierra). Haga clic en
 uno para ir a su lugar. Los botones sobre la lista agregan un marcador a la página actual (+),
 cambian el nombre, eliminan, suben y bajan, y aplican sangría (lo convierten en secundario del de
 arriba) o la reducen. El botón <b>⋯</b>, un clic derecho en la lista y <b>Documento &gt;

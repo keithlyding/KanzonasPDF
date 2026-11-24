@@ -88,10 +88,21 @@ e tutti i 100 passaggi entrano anche in PDF molto grandi; la cronologia resta co
 Se Annulla diventa grigio prima di tornare al punto di partenza, i passaggi precedenti sono oltre i
 100 conservati (o il limite di memoria) e non si possono annullare; il file com'era all'apertura
 resta sul disco finché non lo salvi sopra.</li>
-<li><b>Pannelli:</b> Pagine/Segnalibri/Livelli a sinistra (F4), Proprietà a destra (F6),
-Elenco annotazioni (F7), Cassetta degli attrezzi (F8), Segnalibri (F9), Vista divisa (F10). I pannelli che avevi aperti
-quando hai chiuso KanzonasPDF (con le loro dimensioni, i loro lati e quale tra Proprietà / Cassetta degli attrezzi era in
-primo piano) ricompaiono al successivo avvio; la Vista divisa all'avvio è sempre chiusa.</li>
+<li><b>Pannelli:</b> Pagine (F4), Segnalibri (F9), Livelli, Oggetti e Raccolte partono a sinistra,
+Proprietà (F6) e la Cassetta degli attrezzi (F8) a destra, l'Elenco annotazioni (F7) in basso; la
+Vista divisa è F10. Visualizza &gt; <b>Pannello Livelli</b>, <b>Pannello Oggetti</b> e <b>Pannello Raccolte</b>
+aprono e chiudono gli altri tre (Visualizza &gt; Scorciatoie da tastiera può assegnare loro dei tasti).
+Ogni tasto, comando di menu e icona della barra dei pannelli apre il suo pannello, o lo chiude quando è visibile.
+<b>Più pannelli insieme:</b> i pannelli aperti sullo stesso lato sono impilati uno sopra l'altro;
+trascina la maniglia tra due di essi per dare più altezza a uno, e la maniglia tra i pannelli e
+la pagina per allargare quel lato. Trascina un pannello per il titolo sull'altro lato o in un altro
+punto del suo (sopra o sotto i pannelli che ci sono), oppure su un altro pannello per farne due
+schede dello stesso pannello. Oppure fai clic con il tasto destro sul titolo &gt; <b>Sposta sul lato
+sinistro</b> / <b>Sposta sul lato destro</b>; il resto di quel menu elenca i pannelli e le barre
+degli strumenti da mostrare o nascondere. I pannelli che avevi aperti quando hai chiuso
+KanzonasPDF (i loro lati, le loro dimensioni e quale è in primo piano dove i pannelli sono schede)
+ricompaiono al successivo avvio; una finestra in cui si estrae una scheda parte con i pannelli della
+finestra da cui proviene. La Vista divisa all'avvio è sempre chiusa.</li>
 <li><b>Un documento in una finestra a sé</b> (per un secondo monitor): trascina la sua scheda verso l'alto o verso il basso fuori
 dalla barra delle schede e rilasciala, oppure fai clic destro sulla scheda &gt; <b>Sposta in una nuova finestra</b>, oppure Visualizza &gt;
 <b>Sposta scheda in una nuova finestra</b> (Ctrl+Shift+N). Il documento non viene riaperto: le modifiche non salvate
@@ -142,10 +153,12 @@ delle schede della barra multifunzione contiene tutti i menu, e tutte le scorcia
 (Ctrl+F1, o doppio clic su una scheda) mostra solo i nomi delle schede; fai clic su una scheda per riaprirla. Togli la spunta da
 Visualizza &gt; <b>Barra multifunzione (al posto delle barre degli strumenti)</b> per le classiche barre degli strumenti compatte (zoom, numero di pagina
 e Trova tornano allora nella barra degli strumenti superiore). I menu contengono sempre tutti i comandi.</li>
-<li><b>Barra dei pannelli:</b> le icone sul bordo sinistro aprono i pannelli Pagine, Segnalibri, Livelli, Oggetti
-e Raccolte; fai di nuovo clic sull'icona illuminata per richiudere il pannello e avere più spazio per la pagina.
-Ci sono anche le icone di Elenco annotazioni e Allegati. Visualizza &gt; <b>Mostra barra dei pannelli (bordo
-sinistro)</b> nasconde la barra; i pannelli mostrano allora i loro nomi come schede in basso.</li>
+<li><b>Barra dei pannelli:</b> le icone sul bordo sinistro aprono i pannelli Pagine, Segnalibri, Livelli, Oggetti,
+Raccolte, Proprietà, Cassetta degli attrezzi ed Elenco annotazioni, quanti ne vuoi insieme; un'icona illuminata
+è un pannello visibile. Fai di nuovo clic su un'icona illuminata per chiudere il suo pannello e avere più spazio
+per la pagina (un pannello che è una scheda dietro un altro passa prima in primo piano). C'è anche l'icona
+Allegati. Visualizza &gt; <b>Mostra barra dei pannelli (bordo sinistro)</b> nasconde la barra; il menu
+Visualizza e il pulsante di chiusura di ogni pannello continuano ad aprire e chiudere i pannelli.</li>
 <li><b>Tavolozza dei comandi</b> (Ctrl+Shift+P; menu Guida, scheda Visualizza): digita alcune lettere di ciò che
 vuoi fare e scegli il comando dall'elenco; Invio lo esegue. Ogni comando di menu e ogni strumento è
 presente con il suo menu e la sua scorciatoia, quindi non devi cercare nulla nella barra multifunzione. Le lettere
@@ -334,7 +347,7 @@ Adatta alla larghezza (Ctrl+2), Adatta alla pagina (Ctrl+0), Dimensioni reali (C
 Adatta alla larghezza, alla pagina in cui eri l'ultima volta; puoi cambiarlo in File &gt; Preferenze &gt; Avvio e apertura.
 Adatta alla larghezza e Adatta alla pagina continuano ad adattare la vista quando la finestra o un pannello laterale
 cambiano dimensione, finché non scegli tu uno zoom.</li>
-<li><b>Miniature delle pagine</b> (F4) mostra o nasconde il pannello a sinistra.</li>
+<li><b>Miniature delle pagine</b> (F4) mostra o nasconde il pannello Pagine.</li>
 <li><b>Collegamenti nel PDF:</b> punta un collegamento per vedere dove porta. Con lo strumento <b>Mano</b>, fai clic
 su di esso (il puntatore diventa una mano). Con qualsiasi altro strumento, in ogni modalità del mouse (Standard, Mano,
 CAD), fai <b>Ctrl+clic</b> su di esso (tenendo premuto Ctrl sopra un collegamento compaiono una mano e la destinazione):
@@ -1202,7 +1215,7 @@ stesso attorno a qualsiasi linea su cui fai clic. Il testo continua a leggersi n
 
 <h2 id="objects">Pannello Oggetti e blocco</h2>
 <ul>
-<li>Scheda <b>Oggetti</b> (pannello sinistro, accanto a Pagine, Segnalibri e Livelli): tutte le annotazioni della
+<li>Pannello <b>Oggetti</b> (Visualizza &gt; Pannello Oggetti, o la sua icona sulla barra dei pannelli): tutte le annotazioni della
 pagina corrente, dalla più in primo piano (in cima all'elenco) alla più in fondo. Fai clic su una riga per selezionare quell'annotazione anche
 quando è completamente coperta da altre; Ctrl/Shift+clic ne seleziona diverse. Primo piano, Su, Giù
 e Secondo piano cambiano l'ordine di sovrapposizione.</li>
@@ -1742,7 +1755,7 @@ consente.</li>
 pagine in un nuovo file (in un nuovo file, non nel documento stesso), Elimina pagine (le pagine selezionate nell'elenco
 delle pagine, o la pagina corrente; chiede conferma, e Ctrl+Z le ripristina). Un segnalibro a una
 pagina eliminata porta poi alla pagina successiva (o all'ultima pagina).</li>
-<li>Scheda <b>Livelli</b>: mostra o nascondi i livelli CAD / di contenuto opzionale. <b>Annotazioni sui
+<li>Pannello <b>Livelli</b> (Visualizza &gt; Pannello Livelli): mostra o nascondi i livelli CAD / di contenuto opzionale. <b>Annotazioni sui
 livelli</b> (come in Bluebeam): <b>Nuovo livello...</b> aggiunge un livello al documento, e <b>Le nuove
 annotazioni vanno su</b> sceglie il livello su cui vanno le annotazioni che disegni (Nessun livello: nessuno).
 Per mettere su un livello annotazioni già disegnate, selezionale e fai clic destro &gt; <b>Livello</b> &gt; un
@@ -1775,7 +1788,7 @@ Raccolta del pannello <b>Raccolte</b>): scegli i PDF, poi dove salvare la raccol
 piccolo file a sé (.kzset) che elenca i PDF; quelli nella sua cartella o sotto vengono tenuti in base alla
 loro posizione rispetto a esso, così la cartella si può spostare o condividere con la raccolta dentro.
 <b>Apri raccolta...</b> ne apre una (come trascinare un file .kzset sulla finestra).</li>
-<li>Il pannello <b>Raccolte</b> (una scheda del pannello di sinistra e un'icona sulla barra dei pannelli)
+<li>Il pannello <b>Raccolte</b> (Visualizza &gt; Pannello Raccolte, e un'icona sulla barra dei pannelli)
 elenca ogni file con le sue pagine sotto. Nelle pagine di formato da disegno (11x17 e più grandi) il numero
 e il titolo della tavola vengono letti dal cartiglio (SHEET NO, SHEET TITLE), così compare A-101 FLOOR PLAN;
 le altre pagine con la loro etichetta o il loro numero. Un file che non si trova viene elencato in grigio.
@@ -1791,7 +1804,7 @@ Una modifica alla raccolta viene salvata subito nel suo file.</li>
 </ul>
 
 <h2 id="bookmarks">Segnalibri e sommario</h2>
-<p>I segnalibri (la struttura del PDF) sono elencati nel pannello <b>Segnalibri</b> (F9). Fai clic su uno per andare
+<p>I segnalibri (la struttura del PDF) sono elencati nel pannello <b>Segnalibri</b> (F9 lo apre e lo chiude). Fai clic su uno per andare
 al suo punto. I pulsanti sopra l'elenco aggiungono un segnalibro alla pagina corrente (+), rinominano, eliminano,
 spostano su e giù, e aumentano il rientro (lo rendono figlio di quello sopra) o lo riducono. Il pulsante <b>⋯</b>,
 il clic con il pulsante destro nell'elenco e <b>Documento &gt; Strumenti segnalibri</b> offrono il resto. Ogni modifica è
