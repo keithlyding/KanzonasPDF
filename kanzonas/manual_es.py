@@ -1438,8 +1438,11 @@ grosores de línea.</li>
 (formas rellenas), tal como los tiene el dibujo; <b>Estilo de línea</b> (continua, discontinua, punteada, raya y punto);
 y, para las líneas (rectas, polilíneas y curvas, no formas cerradas), <b>Punta de flecha inicial</b>, <b>Punta de flecha
 final</b> y <b>Flecha central</b>: ninguna, abierta o cerrada (un triángulo de contorno). Las puntas de flecha pasan a
-formar parte de la línea: se mueven, giran y cambian de color con ella, y tienen su mismo grosor. Cada cambio es un paso
-que Deshacer revierte; elegir ninguna las quita de nuevo. En una línea discontinua o punteada se dibujan continuas.</li>
+formar parte de la línea: se mueven, giran y cambian de color con ella, y tienen su mismo grosor. <b>Tamaño de punta
+de flecha</b> las hace del 25% al 500% del tamaño que da el grosor de la línea (100%); se mantiene cuando cambian el
+grosor, el Estilo de línea o las puntas de flecha. Cada cambio es un paso que Deshacer revierte; elegir ninguna las
+quita de nuevo. En una línea discontinua o punteada se dibujan continuas. Las herramientas Línea, Flecha, Polilínea y
+Arco de la pestaña Dibujo también tienen Tamaño de punta de flecha.</li>
 <li>Supr (o Retroceso) elimina la selección. Haga clic con el botón derecho para Cortar, Copiar, Pegar y Duplicar,
 Desagrupar (grupos), Girar en el sentido de las agujas del reloj, Girar
 en sentido contrario a las agujas del reloj, Girar un ángulo..., los comandos de orden de apilamiento y Eliminar, y, para una sola imagen, Copiar imagen

@@ -1449,8 +1449,11 @@ color</b> (filled shapes), as the drawing has them; <b>Line style</b> (solid, da
 dash-dot); and, for lines (straight, polylines and curves, not closed shapes), <b>Start
 arrowhead</b>, <b>End arrowhead</b> and <b>Middle arrow</b>: none, open or closed (an outlined
 triangle). The arrowheads become part of the line: they move, turn and change color with it,
-and they're as wide as the line. Each change is one step Undo takes back; picking none takes
-them off again. On a dashed or dotted line they're still drawn solid.</li>
+and they're as wide as the line. <b>Arrowhead size</b> makes them from 25% to 500% of the size
+the line's width gives (100%); it stays when the line's width, Line style or arrowheads change.
+Each change is one step Undo takes back; picking none takes them off again. On a dashed or
+dotted line they're still drawn solid. The Drawing tab's Line, Arrow, Polyline and Arc tools
+have Arrowhead size too.</li>
 <li>Delete (or Backspace) deletes the selection. Right-click for Cut, Copy, Paste and Duplicate,
 Ungroup (groups), Rotate clockwise, Rotate
 counterclockwise, Rotate by an angle..., the stacking order commands and Delete, and, for one picture, Copy picture

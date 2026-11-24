@@ -359,11 +359,11 @@ def shape_piece(page, model):
     if lines and stroke is not None and any(h in ("open", "closed") for h in heads):
         heads = tuple(h if h in po.HEAD_KINDS else "none" for h in heads)
         first = po._first_dash(b"", po._dash_op(p.get("dash") or "solid", width))
-        length = max(6.0, 3.0 * width + 3.0)
-        body, count = po._with_heads(body, heads, 0, length, first * 0.9 if first else None)
+        size = po.head_scale(p.get("head_size", 1.0))
+        body, count = po._with_heads(body, heads, 0, po.head_length(width, size),
+                                     first * 0.9 if first else None)
         if count:
-            marker = b"/KZHeads <</S/%s/E/%s/M/%s/N %d>> DP\n" % (
-                heads[0].encode(), heads[1].encode(), heads[2].encode(), count)
+            marker = po.head_marker(heads, count, size)
     piece = b"q\n" + b" ".join(ops) + b"\n" + marker + body + b"\nQ\n"
     outer = []
     opacity = min(1.0, max(0.0, float(p.get("opacity", 1.0))))

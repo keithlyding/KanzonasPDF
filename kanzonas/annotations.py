@@ -193,7 +193,7 @@ PAGE_TEXT_TOOLS = {
 # the Drawing tab's tools (drawing.py): shapes written into the page itself, on the layer
 # "KanzonasPDF drawing"; black by default, as a drawing's own lines usually are
 _DRAW_LINE = {"stroke": "#000000", "width": 1.0, "dash": "solid", "head_start": "none",
-              "head": "none", "mid": "none", "opacity": 1.0}
+              "head": "none", "mid": "none", "head_size": 1.0, "opacity": 1.0}
 _DRAW_SHAPE = {"stroke": "#000000", "fill": None, "width": 1.0, "dash": "solid",
                "opacity": 1.0, "fill_opacity": 1.0}
 DRAW_TOOLS = {

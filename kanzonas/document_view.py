@@ -10069,8 +10069,9 @@ class DocumentView(QScrollArea):
     def object_style(self):
         """For Properties: what the selected shapes are drawn with ({"stroke", "fill",
         "dash"}: the outlined ones' color and Line style, the filled ones' fill color) and the
-        arrowheads of the open lines among them ({"start", "end", "mid"}); each value "" when
-        they differ, and a key left out when none of them has it."""
+        arrowheads of the open lines among them ({"start", "end", "mid"} and their Arrowhead
+        size "head_size", 1 the size the line width gives); each value "" when they differ,
+        and a key left out when none of them has it."""
         from . import page_objects as P
         if self.obj_sel is None:
             return {}
@@ -10078,7 +10079,8 @@ class DocumentView(QScrollArea):
         objs = self._obj_cache.get(index)
         if objs is None or not objs.found:
             return {}
-        vals = {k: set() for k in ("stroke", "fill", "dash", "start", "end", "mid")}
+        vals = {k: set() for k in ("stroke", "fill", "dash", "start", "end", "mid",
+                                   "head_size")}
         for it in items:
             if it["kind"] != "shape" or it["n"] >= len(objs.found):
                 continue
@@ -10092,15 +10094,17 @@ class DocumentView(QScrollArea):
             h = P.heads_of(objs.data, d)
             body = P._split(objs.data[d["start"]:d["end"]])[1]
             if st["stroke"] and P.can_have_heads(body, h[3] if h else 0):
-                h = h or ("none", "none", "none", 0)
+                h = h or ("none", "none", "none", 0, 1.0)
                 for k, v in zip(("start", "end", "mid"), h):
                     vals[k].add(v)
+                vals["head_size"].add(round(h[4], 4))
         return {k: (v.pop() if len(v) == 1 else "") for k, v in vals.items() if v}
 
     def style_objects(self, stroke=None, fill=None, dash=None, heads=None):
         """Properties on the page's own shapes: Line color / Fill color (#rrggbb), Line style
         (a key of page_objects.DASHES) and arrowheads ({"start", "end", "mid"} -> none, open
-        or closed, on open lines), in one undo step; they stay selected."""
+        or closed, and "size" -> their Arrowhead size, on open lines), in one undo step; they
+        stay selected."""
         from . import page_objects
         if self.obj_sel is None or (stroke is None and fill is None and dash is None and
                                     not heads):

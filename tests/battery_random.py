@@ -1764,9 +1764,12 @@ class Battery:
             others = self.other_letters(i, [])
             rev = v.revision
             if "start" in style and self.rnd.random() < 0.6:
-                v.style_objects(heads={k: self.rnd.choice(P.HEAD_KINDS)
-                                       for k in self.rnd.sample(["start", "end", "mid"],
-                                                                self.rnd.randint(1, 3))})
+                heads = {k: self.rnd.choice(P.HEAD_KINDS)
+                         for k in self.rnd.sample(["start", "end", "mid"],
+                                                  self.rnd.randint(1, 3))}
+                if self.rnd.random() < 0.3:
+                    heads["size"] = round(self.rnd.uniform(*P.HEAD_SCALES), 2)   # (1.17)
+                v.style_objects(heads=heads)
             elif "dash" in style:
                 v.style_objects(dash=self.rnd.choice(list(P.DASHES)))
             v.clear_object_selection()
@@ -1797,6 +1800,8 @@ class Battery:
                 props["dash"] = self.rnd.choice(["solid", "dash", "dot", "dashdot"])
             if "head" in props:
                 props["head"] = self.rnd.choice(["none", "open", "closed"])
+            if "head_size" in props and self.rnd.random() < 0.3:
+                props["head_size"] = round(self.rnd.uniform(0.25, 5), 2)
             if "opacity" in props and self.rnd.random() < 0.3:
                 props["opacity"] = round(self.rnd.uniform(0.2, 1), 2)
             annotations.set_tool_props(tool, props)

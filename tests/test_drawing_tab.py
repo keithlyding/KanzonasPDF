@@ -267,7 +267,8 @@ class EachTool(Base):
         # what Properties shows for them
         v.select_objects(0, [line])
         self.assertEqual(v.object_style(), {"stroke": "#00a000", "dash": "dot",
-                                            "start": "closed", "end": "open", "mid": "none"})
+                                            "start": "closed", "end": "open", "mid": "none",
+                                            "head_size": 1.0})
         self.assertTrue(v.objects_drawn())
 
     def test_no_outline_and_no_fill_draws_nothing(self):

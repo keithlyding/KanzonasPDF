@@ -2330,9 +2330,10 @@ _STROKE_SET = _STROKE | {b"CS"}
 _OWN_COLOR = re.compile(
     rb"\nq\n((?:(?:-?[\d.]+ -?[\d.]+ -?[\d.]+ (?:RG|rg)|-?[\d.]+ w|\[[-\d. ]*\] -?[\d.]+ d) ?)*)"
     rb"\n(/KZHeads <<[^<>]*>> DP\n)?((?:\nq (?:-?[\d.]+ +){6}cm\n)*)\Z")
-_HEADS_MARK = re.compile(rb"/KZHeads <</S/(\w+)/E/(\w+)/M/(\w+)/N (\d+)>> DP")
+_HEADS_MARK = re.compile(rb"/KZHeads <</S/(\w+)/E/(\w+)/M/(\w+)/N (\d+)(?:/Z ([\d.]+))?>> DP")
 _OC_MARK = re.compile(rb"^/OC\s*/[^\s/\[\]()<>{}%]+\s*BDC$")       # (a layer's marked content)
 HEAD_KINDS = ("none", "open", "closed")      # a drawing line's arrowheads (closed: outlined)
+HEAD_SCALES = (0.25, 5.0)    # their Arrowhead size's range (as annotations.HEAD_SCALES)
 # a Line style's dash pattern, in line widths (as annotations.DASHES)
 DASHES = {"solid": None, "dash": (3, 2), "dot": (1, 1.5), "dashdot": (3, 1.5, 1, 1.5)}
 
@@ -2364,12 +2365,38 @@ def _own(data, d):
 
 def heads_of(data, d):
     """The arrowheads a drawing line was given (Properties > Start / End arrowhead, Middle
-    arrow): (start, end, middle, how many subpaths they added), or None when it has none."""
+    arrow, Arrowhead size): (start, end, middle, how many subpaths they added, their size:
+    1 the size the line width gives), or None when it has none."""
     m = _own(data, d)
     h = _HEADS_MARK.search(m.group(2) or b"") if m else None
     if not h:
         return None
-    return tuple(x.decode() for x in h.groups()[:3]) + (int(h.group(4)),)
+    return tuple(x.decode() for x in h.groups()[:3]) + (int(h.group(4)),
+                                                         head_scale(h.group(5) or 1))
+
+
+def head_scale(v):
+    """An Arrowhead size (1 = the size the line width gives) within HEAD_SCALES."""
+    try:
+        v = float(v)
+    except (TypeError, ValueError):
+        return 1.0
+    return min(HEAD_SCALES[1], max(HEAD_SCALES[0], v)) if v == v else 1.0
+
+
+def head_length(width, size=1.0):
+    """How long a line's arrowheads are drawn: from its width on the page (points), times
+    its Arrowhead size."""
+    return max(6.0, 3.0 * width + 3.0) * head_scale(size)
+
+
+def head_marker(heads, count, size=1.0):
+    """The /KZHeads marked-content point recording a line's arrowheads (heads: start, end,
+    middle), the subpaths they added (count) and their Arrowhead size (left out at 1)."""
+    size = head_scale(size)
+    z = b"" if abs(size - 1.0) < 1e-6 else b"/Z %.4g" % size
+    return b"/KZHeads <</S/%s/E/%s/M/%s/N %d%s>> DP\n" % (
+        heads[0].encode(), heads[1].encode(), heads[2].encode(), count, z)
 
 
 def _color_hex(op, args):
@@ -2545,8 +2572,8 @@ def recolor(page, ns, stroke=None, fill=None, objs=None, width=None, dash=None, 
     """Give shapes ns (path objects) a new line color (stroke) and/or fill color (fill), each
     (r, g, b) from 0 to 1 or None to keep it; a new line width (width: points on the page,
     whatever the shape's own scale); a Line style (dash: a key of DASHES); and arrowheads
-    (heads: {"start", "end", "mid"} -> a key of HEAD_KINDS, on open lines only, added to the
-    line's own path, so they move and turn with it). They're set in a  q ... Q  of the
+    (heads: {"start", "end", "mid"} -> a key of HEAD_KINDS, and "size" -> their Arrowhead size,
+    on open lines only, added to the line's own path, so they move and turn with it). They're set in a  q ... Q  of the
     shape's own, so what's drawn after it keeps its settings; a shape restyled this way before
     has its settings replaced in that one (no nesting), and its arrowheads replaced. Pictures
     and groups are left as they are. objs: the page's Objects (already read). Returns the
@@ -2585,17 +2612,16 @@ def recolor(page, ns, stroke=None, fill=None, objs=None, width=None, dash=None, 
             want = (heads.get("start", had[0] if had else "none"),
                     heads.get("end", had[1] if had else "none"),
                     heads.get("mid", had[2] if had else "none"))
+            size = head_scale(heads.get("size", had[4] if had else 1.0))
             w_page = (width if width is not None else page_width(d))
-            length = max(6.0, 3.0 * w_page + 3.0) / k
+            length = head_length(w_page, size) / k
             first = _first_dash(d.get("state"),
                                 _dash_op(dash, (width / k) if width is not None
                                          else d.get("width", 1.0)) if dash is not None
                                 else None)
             body, count = _with_heads(body, want, had[3] if had else 0, length,
                                       first * 0.9 if first else None)
-            marker = (b"/KZHeads <</S/%s/E/%s/M/%s/N %d>> DP\n" % (
-                want[0].encode(), want[1].encode(), want[2].encode(), count)) \
-                if count else None
+            marker = head_marker(want, count, size) if count else None
         if m:
             # restyled before: its settings (the line after its own  q ) replaced there, not
             # a wrapper in a wrapper

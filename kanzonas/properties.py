@@ -878,6 +878,14 @@ class PropertiesPanel(QWidget):
                 for w in self.rows[row]:
                     w.show()
             self.rows["head"][0].setText(tr("End arrowhead"))
+        if "head_size" in style:
+            # (several of different sizes: shown blank, and the size set goes to all)
+            size = style["head_size"]
+            self.head_size.setSpecialValueText("" if size != "" else " ")
+            self.head_size.setValue(int(round(float(size) * 100)) if size != ""
+                                    else self.head_size.minimum())
+            for w in self.rows["head_size"]:
+                w.show()
         if self._obj_text is not None:
             # the page's text: its font, size, bold, italic, underline, strikethrough and
             # color (several: Font size blank, the color "several"; what's set goes to all)
@@ -985,6 +993,11 @@ class PropertiesPanel(QWidget):
                                ("mid", self.mid.currentData())):
                 if key in style and value and value != style[key]:
                     changed[key] = value
+            if "head_size" in style and self.sender() is self.head_size:
+                size = self.head_size.value() / 100
+                if style["head_size"] == "" or abs(size - float(style["head_size"])) > 1e-6:
+                    changed["head_size"] = size
+                    self.head_size.setSpecialValueText("")
             if changed:
                 style.update(changed)
                 self.objectsStyle.emit(changed)

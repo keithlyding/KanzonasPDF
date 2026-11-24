@@ -6218,11 +6218,14 @@ class MainWindow(QMainWindow):
                                      tr("Lines drawn at their true width"), 3000)
 
     def _objects_style(self, changed):
-        """Properties on the page's own shapes: a color, the Line style or an arrowhead."""
+        """Properties on the page's own shapes: a color, the Line style, an arrowhead or the
+        Arrowhead size."""
         v = self.view()
         if v is None:
             return
         heads = {k: changed[k] for k in ("start", "end", "mid") if k in changed}
+        if "head_size" in changed:
+            heads["size"] = changed["head_size"]
         v.style_objects(stroke=changed.get("stroke"), fill=changed.get("fill"),
                         dash=changed.get("dash"), heads=heads or None)
 

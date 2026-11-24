@@ -1441,8 +1441,11 @@ spessori di linea.</li>
 (forme piene), come li ha il disegno; <b>Stile linea</b> (continua, tratteggiata, punteggiata, tratto-punto); e, per le
 linee (rette, polilinee e curve, non forme chiuse), <b>Punta di freccia iniziale</b>, <b>Punta di freccia finale</b> e
 <b>Freccia centrale</b>: nessuna, aperta o chiusa (un triangolo di contorno). Le punte di freccia diventano parte della
-linea: si spostano, ruotano e cambiano colore con essa, e hanno il suo stesso spessore. Ogni modifica è un passaggio che
-Annulla annulla; scegliere nessuna le toglie di nuovo. Su una linea tratteggiata o punteggiata sono disegnate continue.</li>
+linea: si spostano, ruotano e cambiano colore con essa, e hanno il suo stesso spessore. <b>Dimensione punta di
+freccia</b> le rende dal 25% al 500% della dimensione data dallo spessore della linea (100%); resta quando cambiano lo
+spessore, lo Stile linea o le punte di freccia. Ogni modifica è un passaggio che Annulla annulla; scegliere nessuna le
+toglie di nuovo. Su una linea tratteggiata o punteggiata sono disegnate continue. Anche gli strumenti Linea, Freccia,
+Polilinea e Arco della scheda Disegno hanno Dimensione punta di freccia.</li>
 <li>Canc (o Backspace) elimina la selezione. Fai clic con il tasto destro per Taglia, Copia, Incolla e Duplica,
 Separa (gruppi), Ruota in senso orario, Ruota
 in senso antiorario, Ruota di un angolo..., i comandi dell'ordine di sovrapposizione ed Elimina e, per una sola immagine, Copia immagine
