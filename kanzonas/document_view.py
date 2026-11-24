@@ -4374,6 +4374,10 @@ class DocumentView(QScrollArea):
         page, on the drawing layer, in one undo step. Nothing is selected: Properties keeps
         showing the tool's style for the next one. Returns True when drawn."""
         from . import drawing
+        if not drawing.draws(model):
+            self.statusMessage.emit(tr("Nothing to draw: give the tool a line color or a fill "
+                                       "in Properties"))
+            return None
         had = drawing.layer_xref(self.doc) is not None
         made = {}
 

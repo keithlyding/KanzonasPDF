@@ -64,6 +64,14 @@ def base_tool(tool):
     return TOOLS.get(tool)
 
 
+def draws(model):
+    """Whether a Drawing tool's shape draws anything: a line color, or a fill on a shape
+    that has one."""
+    p = model.get("props") or {}
+    return bool(p.get("stroke")) or bool(p.get("fill")) and \
+        model.get("kind") in ("rect", "ellipse", "polygon")
+
+
 def convertible(model):
     """Whether Convert to drawing takes this markup (a model from annotations.read)."""
     return model is not None and model.get("kind") in CONVERTIBLE and \
