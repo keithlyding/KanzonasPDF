@@ -1680,7 +1680,7 @@ class PageWidget(QWidget):
         items = self._objects_here()
         if not names:
             return items, []
-        mine = [it for it in items if drawing.on_layer(it["obj"].get("ctx"), names)]
+        mine = [it for it in items if drawing.on_layer((it.get("obj") or {}).get("ctx"), names)]
         if not mine:
             return items, []
         ids = {id(it) for it in mine}
@@ -1744,7 +1744,7 @@ class PageWidget(QWidget):
         hover = self._obj_hover
         if hover is not None and hover["n"] not in chosen:
             from . import drawing
-            drawn = drawing.on_layer(hover["obj"].get("ctx") if "obj" in hover else None,
+            drawn = drawing.on_layer((hover.get("obj") or {}).get("ctx"),
                                      self.view.drawing_names(self.index))
             color = QColor(DRAWING_SELECTED if drawn else blue)
             color.setAlpha(200)

@@ -710,6 +710,34 @@ class InTheWindow(Base):
         self.assertEqual(len(list(v.doc[0].annots())), 1)
         self.assertEqual(len(self.drawn(v)), 1)
 
+    def test_selected_shows_orange(self):
+        from kanzonas import page_widget
+        w, v = self.w, self.v
+        w.set_tool("d_rect")
+        v.apply_drag_tool(0, "rect", P(100, 300), P(300, 400), False)
+        w.set_tool("editobjects")
+        APP.processEvents()
+        mine = self.drawn(v)
+        own = v.content_objects(0).items[0]
+        text = list(v.text_objects(0))[:1]
+        v.select_objects(0, mine + [own] + text)
+        APP.processEvents()
+        pw = v.pages[0]
+        others, drawn = pw._selection_parts(v.doc[0])
+        self.assertFalse(drawn.isEmpty())
+        self.assertFalse(others.isEmpty())
+        img = pw.grab().toImage()
+        # (the rectangle's selection in the Drawing tab's color; the page's own line in blue)
+        on = pw.to_screen_pt(P(200, 300))
+        found = {img.pixelColor(int(on.x()) + dx, int(on.y()) + dy).name()
+                 for dx in range(-3, 4) for dy in range(-3, 4)}
+        self.assertIn(page_widget.DRAWING_SELECTED.name(), found)
+        line = pw.to_screen_pt(P(300, 60))
+        found = {img.pixelColor(int(line.x()) + dx, int(line.y()) + dy).name()
+                 for dx in range(-3, 4) for dy in range(-3, 4)}
+        self.assertIn(page_widget.SELECTED.name(), found)
+        self.assertNotIn(page_widget.DRAWING_SELECTED.name(), found)
+
     def test_right_click_converts(self):
         from unittest import mock
         from PySide6.QtWidgets import QMenu

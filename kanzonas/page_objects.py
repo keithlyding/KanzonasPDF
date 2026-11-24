@@ -2960,8 +2960,9 @@ def _clip_holds(key, area):
     """Whether clip key (a clip_shapes entry) is a rectangle, not turned, holding area (PDF
     space): it cuts nothing of what's drawn there."""
     path, ctm = key
-    if path is None or len(ctm) != 6 or abs(ctm[1]) > 1e-9 or abs(ctm[2]) > 1e-9:
-        return False
+    if not isinstance(path, bytes) or not isinstance(ctm, tuple) or len(ctm) != 6 or \
+            abs(ctm[1]) > 1e-9 or abs(ctm[2]) > 1e-9:
+        return False                    # (a clip that couldn't be read: as it was, apart)
     t = path.split()
     if len(t) != 6 or t[4] != b"re" or t[5] not in (b"W", b"W*"):
         return False
