@@ -218,6 +218,28 @@ class Speed(View):
             v._cad_prepare_step()
         self.assertEqual(unread(), 0)
 
+    def test_idle_preparation_waits_while_a_grip_is_hot(self):
+        # (1.17: CAD mode moves by click, move, click, no button held: the pointer's moves
+        # mustn't wait for a slice of it either)
+        from kanzonas import cad_grips
+        v = self.view()
+        v.cad_select = True
+        v._prep_timer = QTimer(v)
+        v._prep_timer.setSingleShot(True)
+
+        def unread():
+            return sum(1 for it in self.objs.items if it["kind"] == "shape" and "lines" not in it)
+        todo = unread()
+        self.assertGreater(todo, 0)
+        with mock.patch.object(cad_grips, "owner", return_value=v.pages[0]):
+            for _ in range(5):
+                v._cad_prepare_step()
+            self.assertEqual(unread(), todo)
+            self.assertTrue(v._prep_timer.isActive())
+        for _ in range(5):
+            v._cad_prepare_step()
+        self.assertEqual(unread(), 0)
+
 
 class OneBox(Window):
     def test_a_group_shows_one_box_and_says_what_it_holds(self):

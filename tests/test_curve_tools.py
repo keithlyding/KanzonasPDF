@@ -2,7 +2,8 @@
 
 - the Arc tool, as AutoCAD's three-point ARC: click the start, a point it passes through and
   the end; the preview follows the pointer; Escape cancels, Backspace takes back a point;
-- a Line or Arrow bends by dragging its middle grip (a diamond): it becomes a smooth curve
+- a Line or Arrow bends by dragging its middle grip (a diamond; in CAD mode a click on it, a
+  move and a click): it becomes a smooth curve
   through the grip (a quadratic Bezier curve), its ends stay, an arrowhead points along the
   curve; dragged back onto the straight line it's straight again. One undo step per drag;
 - the Curve tool: click the start, the end, then where it bends to (a bent line).
@@ -101,9 +102,12 @@ class Geometry(unittest.TestCase):
 
 class Tools(unittest.TestCase):
     def setUp(self):
-        for key in ("cad_select", "snap_objects", "snap_grid", "snap_page"):
+        for key in ("cad_select", "snap_objects", "snap_grid", "snap_page", "mouse_mode",
+                    "click_click"):
             self.addCleanup(setattr, DocumentView, key, getattr(DocumentView, key))
         DocumentView.cad_select = True                  # CAD mouse mode: clicks, no drags
+        DocumentView.mouse_mode = "cad"
+        DocumentView.click_click = True
         DocumentView.snap_objects = DocumentView.snap_grid = DocumentView.snap_page = False
 
     def view(self, tool, path=None):
@@ -148,8 +152,16 @@ class Tools(unittest.TestCase):
         return [(a.xref, a.type[0], A.read(a)) for a in A.each_annot(page)]
 
     def drag(self, v, a, b):
-        """Press at a, move to b with the button held, release (page points)."""
+        """Press at a, move to b with the button held, release (page points). In CAD mode
+        (1.17: no button held there) a click at a, the move with no button held, a click at
+        b."""
         w = v.pages[0]
+        if DocumentView.mouse_mode == "cad":
+            self.click(v, a)
+            self.hover(v, ((a[0] + b[0]) / 2, (a[1] + b[1]) / 2))
+            self.hover(v, b)
+            self.click(v, b)
+            return
 
         def send(kind, pt, buttons):
             pos = QPointF(self.at(v, pt))
@@ -440,6 +452,7 @@ class Tools(unittest.TestCase):
 
     def test_the_grip_bends_a_line_in_the_standard_mouse_mode_too(self):
         DocumentView.cad_select = False
+        DocumentView.mouse_mode = "standard"
         v = self.view("select")
         self.line(v, "arrow")
         self.drag(v, (250, 300), (260, 360))

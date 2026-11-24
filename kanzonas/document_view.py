@@ -8320,10 +8320,12 @@ class DocumentView(QScrollArea):
         if not self.cad_select or getattr(self, "doc", None) is None or self.doc.is_closed or \
                 not getattr(self, "pages", None):
             return
-        if QApplication.mouseButtons() != Qt.NoButton:
-            # a mouse button held (a drag, a box): not now. A slice run between two mouse
+        from . import cad_grips
+        if QApplication.mouseButtons() != Qt.NoButton or cad_grips.owner(self) is not None:
+            # a mouse button held (a drag, a box), or a grip or the selection following the
+            # pointer after a click (cad_grips.py): not now. A slice run between two mouse
             # moves made each move of a drag on a big sheet wait for it (41 ms a move on the
-            # owner's 174,000-object sheet, 23 Nov); it goes on once the button is let go
+            # owner's 174,000-object sheet, 23 Nov); it goes on once it's placed
             self._prep_timer.start(self.PREP_WAIT)
             return
         index = self.current_page()

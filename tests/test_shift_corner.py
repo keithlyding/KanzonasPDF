@@ -9,7 +9,9 @@ The owner, 20 Nov 2026: "when lengthening or shortening lines of the polygon (to
 connect straight and at right angles), holding shift did not work to make the lines
 straight when I adjusted them".
 
-Real mouse events go through the page widget (Shift held during the drag, as a person does).
+Real mouse events go through the page widget (Shift held during the drag, as a person does;
+in CAD mode, while the corner made hot by a click follows the pointer, and at the click that
+places it).
 
     QT_QPA_PLATFORM=offscreen python -m unittest tests.test_shift_corner
 """
@@ -45,17 +47,26 @@ class Corner(Base):
         self.assertTrue(v.selected_xrefs())
 
     def drag_corner(self, start, end, mods=Qt.ShiftModifier):
-        """Presses on the corner at start, then drags it to end with mods held."""
+        """Presses on the corner at start, then drags it to end with mods held. In CAD mode
+        (1.17: no button held there) a click on the corner, the move with no button held,
+        and a click at end with mods held."""
         w = self.w()
-        QTest.mousePress(w, Qt.LeftButton, Qt.NoModifier, self.at(start))
+        cad = self.MODE == "cad"
+        if cad:
+            QTest.mouseClick(w, Qt.LeftButton, Qt.NoModifier, self.at(start))
+        else:
+            QTest.mousePress(w, Qt.LeftButton, Qt.NoModifier, self.at(start))
         mid = ((start[0] + end[0]) / 2, (start[1] + end[1]) / 2)
         for xy in (mid, end):
             p = QPointF(self.at(xy))
             w.mouseMoveEvent(QMouseEvent(QEvent.MouseMove, p, w.mapToGlobal(p), Qt.NoButton,
-                                         Qt.LeftButton, mods))
+                                         Qt.NoButton if cad else Qt.LeftButton, mods))
         p = QPointF(self.at(end))
-        w.mouseReleaseEvent(QMouseEvent(QEvent.MouseButtonRelease, p, w.mapToGlobal(p),
-                                        Qt.LeftButton, Qt.NoButton, mods))
+        if cad:
+            QTest.mouseClick(w, Qt.LeftButton, mods, self.at(end))
+        else:
+            w.mouseReleaseEvent(QMouseEvent(QEvent.MouseButtonRelease, p, w.mapToGlobal(p),
+                                            Qt.LeftButton, Qt.NoButton, mods))
         APP.processEvents()
         return markups(self.v)[0][2]
 

@@ -71,6 +71,17 @@ class CadWindow(unittest.TestCase):
         self.w.raise_()
         self.w.activateWindow()
 
+    def lasso(self):
+        """Preferences > Mouse, CAD: the lasso on (off by default since 1.17: no button
+        is held in CAD mode unless it's asked for)."""
+        key = "mouse/cad/lasso"
+        old = self.w.settings.value(key)
+        self.addCleanup(lambda: (self.w.settings.setValue(key, old) if old is not None
+                                 else self.w.settings.remove(key),
+                                 mouse_modes.apply(self.w.settings)))
+        mouse_modes.set_option(self.w.settings, "cad", "lasso", True)
+        mouse_modes.apply(self.w.settings)
+
     def at(self, x, y):
         o = self.v.pages[0].offset()        # (the working space around the page, if shown)
         return QPoint(int(o.x() + x * self.v.zoom), int(o.y() + y * self.v.zoom))
@@ -291,6 +302,7 @@ class CoveredSheet(CadWindow):
         self.assertEqual(len(got), 1)                        # (the first line, inside it)
 
     def test_a_held_drag_from_the_canvas_is_a_lasso(self):
+        self.lasso()
         v = self.sheet(lambda p: None)
         canvas = v.widget()
         g = self.page.geometry()
@@ -323,12 +335,24 @@ class Clicks(CadWindow):
         self.assertTrue(self.started())
 
     def test_holding_and_dragging_is_still_a_lasso(self):
+        self.lasso()
         w, a = self.page, self.at(300, 150)
         QTest.mousePress(w, Qt.LeftButton, Qt.NoModifier, a)
         for k in range(1, 12):
             QTest.mouseMove(w, a + QPoint(8 * k, 5 * k), 40)    # (40 ms apart: a held drag)
         QTest.mouseRelease(w, Qt.LeftButton, Qt.NoModifier, a + QPoint(88, 55), 40)
         self.assertFalse(self.started())
+
+    def test_with_the_lasso_off_a_held_drag_is_the_boxs_first_click(self):
+        w, a = self.page, self.at(300, 150)
+        QTest.mousePress(w, Qt.LeftButton, Qt.NoModifier, a)
+        for k in range(1, 12):
+            QTest.mouseMove(w, a + QPoint(8 * k, 5 * k), 40)
+        QTest.mouseRelease(w, Qt.LeftButton, Qt.NoModifier, a + QPoint(88, 55), 40)
+        pk = self.v._cad_pick
+        self.assertIsNotNone(pk)                    # (the box goes on to the next click)
+        self.assertEqual(QPoint(round(pk["now"].x()), round(pk["now"].y())), a + QPoint(88, 55))
+        self.assertTrue(self.started())
 
     def test_clicking_the_first_corner_again_keeps_the_box(self):
         w, a = self.page, self.at(420, 60)

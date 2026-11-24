@@ -3104,8 +3104,9 @@ class PageWidget(QWidget):
         if self._dim_press is not None:
             start, self._dim_press = self._dim_press, None
             if tool == "m_dim" and len(self._poly) == 1 and \
-                    not cad_draw.is_click(start, pos, None):
+                    not cad_draw.is_click(start, pos, None) and not cad_grips.clicks(self.view):
                 # released after a drag: that's its second point; a click then places its line
+                # (in CAD mode a drag is a click and a move: the next click is the point)
                 if tool in SNAP_TOOLS:
                     pos = self._snap(pos, e)
                 if shift_held(e):
