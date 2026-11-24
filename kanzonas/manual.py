@@ -984,7 +984,8 @@ then flag any later change.</li>
 <h2 id="shapes">Shapes, lines and the pen</h2>
 <ul>
 <li>Rectangle (R), Ellipse (E), Circle (O), Cloud (D), Mask, Polygon (Y), Line (L), Arrow (A),
-Polyline (Shift+L), Arc, Curve, Pen (P). The shapes share one toolbar button: click its arrow to pick another.</li>
+Polyline (Shift+L), Arc, Curve, Pen (P). The shapes share one toolbar button: click its arrow to pick another.
+These are markups; to draw into the page itself, use the Drawing tab (see Drawing tab).</li>
 <li><b>Arc</b> (as AutoCAD's three-point ARC; on the CAD tab under Circle's arrow): click the start, a point the arc
 passes through, then the end; the arc follows the pointer before the last click. Drag its three points to reshape it.</li>
 <li><b>Bend a line or arrow:</b> select it and drag the diamond in its middle: it becomes a smooth curve through that
@@ -1088,8 +1089,8 @@ Markup tab's tools, stamps, measurements) sit <b>on top of the page</b>. They ca
 hidden, deleted, put on layers or flattened, and the page under them stays as it was; other
 PDF readers list them as comments.</li>
 <li><b>Page content</b> is the page itself: its own text, lines and pictures. <b>Edit text</b>,
-<b>Add text</b>, <b>Edit objects</b>, the <b>Image</b> tool and <b>Erase content</b> change
-it. What they write is part of the page: every reader shows and prints it, and it can't be
+<b>Add text</b>, <b>Edit objects</b>, the <b>Image</b> tool, <b>Erase content</b> and the
+<b>Drawing</b> tab's tools change it. What they write is part of the page: every reader shows and prints it, and it can't be
 hidden or taken off as a markup can.</li>
 <li><b>How to tell:</b> the Properties panel shows a tag above its title, <b>Markup: on top of
 the page</b> (violet) or <b>Page content: changes the page itself</b> (teal), for what's
@@ -1113,6 +1114,46 @@ written where they are, their lines spread apart (or drawn together) as much as 
 (or shrinks). Text at an angle other than a quarter turn (a diagonal watermark) gets no
 underline, strikethrough or background. To change single words, edit the text (Edit text) and
 select them in the box.</li>
+</ul>
+
+<h2 id="drawing">Drawing tab: lines and shapes drawn into the page</h2>
+<p>The <b>Drawing</b> tab draws lines and shapes into the page itself, as its own vector
+drawing, the way a CAD program's lines are part of a plotted sheet. The Markup tab's shapes stay
+markups, on top of the page (see Markup or page content).</p>
+<ul>
+<li><b>Tools:</b> Line, Arrow, Polyline, Polygon, Rectangle, Ellipse, Circle, Arc, Cloud and
+Pen (also in Tools &gt; Drawing). They're drawn exactly as the Markup tab's shapes of the same
+name: a drag (in CAD mode, click, move, click); Polyline and Polygon a click at each point,
+double-click or Enter to finish; Arc the start, a point it passes through, then the end. The
+previews, snapping, Shift (45&deg; steps, squares and circles) and the CAD command line work
+the same. A Drawing tool always draws: a click on a markup doesn't pick it. On the CAD command
+line, "rect" is still the Markup tab's Rectangle: type "drawing rect" for this one.</li>
+<li><b>Style:</b> with a Drawing tool picked, the Properties panel shows that tool's style for
+the next shapes: Line color, Fill (and No border, No fill), Line width, Line style, the Start
+and End arrowhead and Middle arrow of lines (none, open or closed), Opacity and Fill opacity.
+Black, 1 pt, by default, as a drawing's lines usually are; saved for next time, apart from the
+markup tools' styles. A shape with neither a line color nor a fill draws nothing.</li>
+<li><b>Its own layer:</b> everything the Drawing tab draws goes on one layer of the PDF,
+<b>KanzonasPDF drawing</b>, made the first time you draw. The Layers panel lists it: untick it
+to hide the drawing, on screen and in print, as other PDF programs that show layers do.
+Drawing on it again while it's hidden shows it.</li>
+<li><b>Telling it apart from markups:</b> its own tab, its own layer, the Properties tag
+<b>Page content: changes the page itself</b> for its tools and for what they drew, and an
+<b>orange</b> selection when Edit objects or CAD mode selects it (the page's other lines and
+shapes show blue); Properties also says it's on the layer KanzonasPDF drawing.</li>
+<li><b>Changing it afterwards:</b> it's the page's own drawing, so <b>Edit objects</b> (on the
+Drawing tab too) works on it as on any of the page's lines: select, move, resize, rotate,
+delete and copy it; change its Line color, Fill color, Line width, Line style and arrowheads in
+Properties; put it To front, Forward, Backward or To back; Group it with the drawing's own lines
+(each keeps its layer inside the group) and Ungroup. It isn't in the Markups list and can't be
+flattened: it's already part of the page.</li>
+<li><b>Convert to drawing</b> (Drawing tab, Tools &gt; Drawing, a markup's right-click menu):
+the selected shape and line markups (rectangles, ellipses, circles, clouds, polygons, lines,
+arrows, polylines, arcs and pen strokes) become page drawing on the KanzonasPDF drawing layer,
+looking exactly as they did, and are no longer markups. Measurements, notes, stamps, text
+boxes, callouts and highlights stay markups.</li>
+<li><b>Undo:</b> each shape drawn is one step, and so is each Convert to drawing. Save keeps
+them, and the file opened again has them on their layer.</li>
 </ul>
 
 <h2 id="properties">Colors, borders and styles (Properties panel)</h2>

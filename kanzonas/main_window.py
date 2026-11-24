@@ -177,10 +177,31 @@ EXTRA_TOOLS = [  # tools reached from menus, not the toolbar
      tr("Placeholder: drag a box where a signature or initials go (choose which in Properties); "
         "then Apply all signature placeholders")),
 ]
+# the Drawing tab's tools (drawing.py, 1.17, the owner, 23 Nov 2026): the same clicks as the
+# markup shapes, drawn into the page itself on the layer "KanzonasPDF drawing"
+DRAW_TOOLS = [  # (id, label, tooltip)
+    ("d_line", tr("Line"), tr("Line drawn into the page: drag, or click both ends (Shift = "
+                              "45\u00b0 steps)")),
+    ("d_arrow", tr("Arrow"), tr("Arrow drawn into the page: from its tail to its head (Shift = "
+                                "45\u00b0 steps)")),
+    ("d_polyline", tr("Polyline"), tr("Polyline drawn into the page: click each point, "
+                                      "double-click or Enter to finish")),
+    ("d_polygon", tr("Polygon"), tr("Polygon drawn into the page: click each corner, "
+                                    "double-click or Enter to finish")),
+    ("d_rect", tr("Rectangle"), tr("Rectangle drawn into the page: drag a box (Shift = square)")),
+    ("d_ellipse", tr("Ellipse"), tr("Ellipse drawn into the page: drag a box (Shift = circle)")),
+    ("d_circle", tr("Circle"), tr("Circle drawn into the page: from the center to a point on "
+                                  "it")),
+    ("d_arc", tr("Arc"), tr("Arc drawn into the page: click the start, a point it passes "
+                            "through, then the end")),
+    ("d_cloud", tr("Cloud"), tr("Revision cloud drawn into the page: drag a box")),
+    ("d_ink", tr("Pen"), tr("Freehand pen, drawn into the page")),
+]
 # what each tool makes, said first in its tooltip: a markup (on top of the page) or a change
 # to the page's own content (the owner, 22 Nov 2026: "there needs to be a way of
 # differentiating whether what's being edited and added is a markup vs a document change")
-PAGE_CONTENT_TOOLS = ("edittext", "image", "erasecontent", "addtext", "editobjects")
+PAGE_CONTENT_TOOLS = ("edittext", "image", "erasecontent", "addtext", "editobjects") + \
+    tuple(t[0] for t in DRAW_TOOLS)
 MARKUP_TOOLS = ("highlight", "underline", "strikeout", "comment", "note", "textbox", "callout",
                 "dot", "rect", "ellipse", "cloud", "circle", "mask", "polygon", "line", "arrow",
                 "polyline", "arc", "curve", "ink", "stamp", "attach", "m_length", "m_dim",
@@ -1532,6 +1553,24 @@ class MainWindow(QMainWindow):
             a.triggered.connect(lambda _=False, t=tid: self.set_tool(t))
             self.tool_group.addAction(a)
             self.tool_actions[tid] = a
+        for tid, label, tip in DRAW_TOOLS:
+            a = QAction(label, self, checkable=True)
+            # (its own name for Keyboard shortcuts and the palette's recent commands: the
+            # Markup tab's Line is "Line" too)
+            a.setProperty("kz_id", "Drawing " + english_name(label))
+            tip = kind_tip(tid, tip)
+            a.setToolTip(tip)
+            a.setStatusTip(tip)
+            a.triggered.connect(lambda _=False, t=tid: self.set_tool(t))
+            self.tool_group.addAction(a)
+            self.tool_actions[tid] = a
+        self.a_to_drawing = QAction(tr("Convert to drawing"), self)
+        tip = tr("Page content: the selected shape and line markups drawn into the page as "
+                 "they look, on the layer KanzonasPDF drawing (measurements, notes, stamps, "
+                 "text and highlights stay markups)")
+        self.a_to_drawing.setToolTip(tip)
+        self.a_to_drawing.setStatusTip(tip)
+        self.a_to_drawing.triggered.connect(self.convert_to_drawing)
         # (after every tool exists: CAD mode starts with Edit objects, one of the extra tools)
         self.tool_actions[self.tool].setChecked(True)
 
@@ -1628,7 +1667,12 @@ class MainWindow(QMainWindow):
         m.addSeparator()
         m.addActions([self.cad_actions[k] for k in ("align", "array", "trim")])
         m = mb.addMenu(tr("&Tools"))
-        m.addActions(self.tool_group.actions())
+        drawn = [self.tool_actions[t[0]] for t in DRAW_TOOLS]
+        m.addActions([a for a in self.tool_group.actions() if a not in drawn])
+        dm = m.addMenu(tr("&Drawing"))
+        dm.addActions(drawn)
+        dm.addSeparator()
+        dm.addAction(self.a_to_drawing)
         m.addSeparator()
         m.addAction(self.a_props)
         m.addSeparator()
@@ -2905,6 +2949,18 @@ class MainWindow(QMainWindow):
             v.setFocus()
         self._refresh_props()
 
+    def convert_to_drawing(self):
+        """Drawing > Convert to drawing (and a markup's right-click menu): the selected shape
+        and line markups become page drawing (DocumentView.convert_to_drawing)."""
+        v = self.view()
+        if v is None or v.read_only:
+            return 0
+        n = v.convert_to_drawing()
+        if n:
+            self._refresh_layers()
+            self._refresh_props()
+        return n
+
     def _standard_mode(self):
         from . import mouse_modes
         return mouse_modes.mode(self.settings) == "standard"
@@ -2944,9 +3000,10 @@ class MainWindow(QMainWindow):
                                     text=any(it["kind"] == "text" for it in items),
                                     width=v.object_line_width(), style=v.object_style(),
                                     turned=v.objects_turned(),
-                                    text_style=v.object_text_style())
+                                    text_style=v.object_text_style(),
+                                    drawn=v.objects_drawn())
         elif (self.tool in annotations.DEFAULTS and self.tool != "image") or \
-                self.tool in annotations.PAGE_TEXT_TOOLS:
+                self.tool in annotations.PAGE_TEXT_TOOLS or self.tool in annotations.DRAW_TOOLS:
             # (the Image tool writes into the page: no markup settings apply; Add text and
             # Edit text have their font settings here)
             self.props.show_target(self.tool, annotations.tool_props(self.tool))
@@ -3093,7 +3150,7 @@ class MainWindow(QMainWindow):
             before = annotations.tool_props(self.tool).get("group")
             annotations.OVERRIDE["props"] = dict(props)
             self._count_group_picked(v, before, props)
-        elif self.tool in annotations.DEFAULTS or self.tool in annotations.PAGE_TEXT_TOOLS:
+        elif annotations.has_tool_props(self.tool):
             before = annotations.tool_props(self.tool).get("group")
             annotations.set_tool_props(self.tool, props)
             if v is not None and self.tool in annotations.PAGE_TEXT_TOOLS:
@@ -3122,7 +3179,7 @@ class MainWindow(QMainWindow):
         self._refresh_props()
 
     def _reset_tool_defaults(self):
-        if self.tool in annotations.DEFAULTS or self.tool in annotations.PAGE_TEXT_TOOLS:
+        if annotations.has_tool_props(self.tool):
             annotations.reset_tool_props(self.tool)
             self._refresh_props()
 
@@ -6263,7 +6320,7 @@ class MainWindow(QMainWindow):
         "a_sidebar": "page-layout-sidebar-left", "a_props": "tune-variant",
         "a_chest": "toolbox-outline", "a_split": "view-split-vertical", "a_rulers": "ruler-square", "a_labels": "label-outline",
         "a_shortcuts": "keyboard-outline", "a_manual": "help-circle-outline", "a_palette": "console-line",
-        "a_night": "weather-night",
+        "a_night": "weather-night", "a_to_drawing": "vector-arrange-below",
         "a_ribbon": "view-dashboard-outline", "a_collapse": "chevron-double-up", "a_group_names": "label-outline", "a_menu_bar": "menu",
     }
 
@@ -6321,6 +6378,17 @@ class MainWindow(QMainWindow):
                                      t["curve"], t["ink"]]),
             (tr("Erase"), "large", [t["eraser"]]),
             (tr("Styles"), "small", [self.a_props, self.a_chest]),
+        ])
+        # (1.17, the owner, 23 Nov 2026) drawing that isn't a markup: written into the page
+        # itself, on the layer KanzonasPDF drawing; Edit objects selects and changes it
+        r.add_tab(tr("Drawing"), [
+            (tr("Draw"), "small", [t[k] for k, _l, _t in DRAW_TOOLS]),
+            (tr("Convert"), "large", [self.a_to_drawing]),
+            (tr("Edit"), "large", [t["editobjects"]]),
+            (tr("Order"), "small", [A_["z_front"], A_["z_forward"], A_["z_backward"],
+                                    A_["z_back"]]),
+            (tr("Group"), "small", [self.a_group, self.a_ungroup]),
+            (tr("Styles"), "small", [self.a_props]),
         ])
         # snapping is offered where it's used: Measure, Arrange (lining markups up) and View;
         # Grid settings (a window) under the group's arrow

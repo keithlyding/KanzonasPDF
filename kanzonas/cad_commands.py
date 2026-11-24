@@ -183,6 +183,15 @@ WHOLE_NAME_ONLY = {"Exit", "Close tab", "Delete pages", "Remove crop", "Remove s
                    "Clear all digital signatures", "Delete comments", "Remove background",
                    "Remove watermarks", "Delete selected annotation"}
 MIN_TYPED = 3                           # letters needed before a part of a name runs a command
+DRAWING_PREFIX = "Drawing "             # the Drawing tab's tools' names (main_window, kz_id)
+
+
+def _markups_first(found):
+    """[(name, action)] matched by what was typed, the Drawing tab's tools left out when other
+    commands match too: they share the markup tools' names ("rect" stays the Markup tab's
+    Rectangle, as before them); theirs is "drawing rect"."""
+    mine = [(n, a) for n, a in found if not n.startswith(DRAWING_PREFIX)]
+    return mine if mine and len(mine) < len(found) else found
 
 
 class CommandLine(QWidget):
@@ -411,6 +420,7 @@ class CommandLine(QWidget):
                 whole.append((name, a))
             elif any(_word_start(text, n) for n in (shown, name)):
                 starts.append((name, a))
+        whole, starts = _markups_first(whole), _markups_first(starts)
         if len(whole) == 1:
             found = whole
         elif whole:

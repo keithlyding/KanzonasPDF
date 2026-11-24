@@ -968,6 +968,9 @@ class DocumentView(QScrollArea):
         self.dirty = False
         self.zoom = 1.0
         self.tool = "select"
+        # a Drawing tab tool picked (drawing.TOOLS): self.tool is then the markup tool whose
+        # clicks, previews and snapping it uses, and what's drawn goes into the page itself
+        self.drawing_tool = None
         self.selection = None          # (page index, annotation xref): the first one selected
         self.selected_model = None
         self.extra = []                # more selected xrefs on the same page, in click order
@@ -2325,6 +2328,9 @@ class DocumentView(QScrollArea):
         cad_draw.cancel(self)           # (a shape started with a click belongs to the old tool)
         if self._cad_cmd is not None:
             self._cad_cmd.cancel()
+        from . import drawing
+        self.drawing_tool = tool if drawing.base_tool(tool) else None
+        tool = drawing.base_tool(tool) or tool
         self.tool = tool
         for w in getattr(self, "pages", []):
             # a stamp / signature preview or a shape half-drawn belongs to the old tool
@@ -2918,6 +2924,7 @@ class DocumentView(QScrollArea):
         if not source:
             return
         kept = self._selection_kept()
+        layers = self._layer_keys()
         back = self._undo_step(source.pop(), way)
         if back is None:
             # (its entries in the journal are gone: it, and what's before it, can't be
@@ -2930,10 +2937,22 @@ class DocumentView(QScrollArea):
         self._trim_history()
         self._warm_tags()
         self._select_kept(kept)
+        if self._layer_keys() != layers:
+            # (a layer made or taken away, as the first drawing on the Drawing tab makes
+            # one: the Layers panel lists them again)
+            self.layersChanged.emit()
         # (the view told of the change while the step was between the two lists: Redo
         # stayed grayed out after an undo, and Ctrl+Y did nothing. Found by
         # tests/battery_random.py)
         self.historyChanged.emit()
+
+    def _layer_keys(self):
+        """The document's layers (xref and name), to tell whether an undo or redo changed
+        them."""
+        try:
+            return sorted((x, o.get("name")) for x, o in (self.doc.get_ocgs() or {}).items())
+        except Exception:
+            return []                   # (no layers can be read: none to list)
 
     def _selection_kept(self):
         """What's selected before an undo or redo, to select again after it (the owner,
@@ -4302,6 +4321,12 @@ class DocumentView(QScrollArea):
 
     # ---- tool styles --------------------------------------------------------
     def tool_props(self, tool):
+        from . import drawing
+        if self.drawing_tool is not None and drawing.base_tool(self.drawing_tool) == tool:
+            props = annotations.tool_props(self.drawing_tool)
+            if tool == "cloud":
+                props["cloud"] = True
+            return props
         return annotations.tool_props(tool) if tool in annotations.DEFAULTS else {}
 
     def tool_color(self, tool):
@@ -4321,6 +4346,9 @@ class DocumentView(QScrollArea):
         the next markup, not the one just drawn, and seemed to do nothing). In CAD mode, as
         in AutoCAD, what's drawn isn't selected: a selection there shows grips, and the next
         line starting on its end would take a grip instead."""
+        from . import drawing
+        if self.drawing_tool is not None and drawing.makes(self.drawing_tool, model):
+            return self._draw_into_page(index, model)
         if select is None:
             select = self.mouse_mode != "cad"
         made = {}
@@ -4340,6 +4368,102 @@ class DocumentView(QScrollArea):
         if "xref" in made and model.get("kind") in annotations.MEASURES:
             self.note_unscaled(index, model["kind"])
         return made.get("xref")
+
+    # ---- the Drawing tab: shapes written into the page itself (drawing.py) --------------
+    def _draw_into_page(self, index, model):
+        """Draw model (made by a Drawing tool as its markup tool makes a markup) into the
+        page, on the drawing layer, in one undo step. Nothing is selected: Properties keeps
+        showing the tool's style for the next one. Returns True when drawn."""
+        from . import drawing
+        if not drawing.draws(model):
+            self.statusMessage.emit(tr("Nothing to draw: give the tool a line color or a fill "
+                                       "in Properties"))
+            return None
+        had = drawing.layer_xref(self.doc) is not None
+        made = {}
+
+        def do():
+            made["ok"] = drawing.draw(self.doc[index], model)
+        if not self.modify(do, [index]) or not made.get("ok"):
+            return None
+        if not had:
+            self._redraw_all()          # (a new layer: the Layers panel lists it)
+        else:
+            self._show_drawing_layer()
+        if not DocumentView.reuse_tools:
+            self.toolUsed.emit()
+        self.statusMessage.emit(tr("Drawn into the page, on the layer {layer} (Ctrl+Z undoes "
+                                   "it)").format(layer=drawing.LAYER))
+        return True
+
+    def _show_drawing_layer(self):
+        """The drawing layer shown again when it's hidden, so what was just drawn on it shows
+        (a viewing choice, as the Layers panel's)."""
+        from . import drawing
+        ocg = drawing.layer_xref(self.doc)
+        if ocg is None or ocg not in markup_layers.hidden(self.doc):
+            return
+        for number, x in markup_layers.ui_layers(self.doc):
+            if x == ocg:
+                self.set_layer(number, True)
+
+    def convertible_selection(self):
+        """The selected markups Convert to drawing takes: [(xref, model)]."""
+        from . import drawing
+        if self.selection is None or self.read_only:
+            return []
+        return [(x, m) for x, m in self.selected_models() if drawing.convertible(m)]
+
+    def convert_to_drawing(self):
+        """Convert to drawing: the selected shape and line markups drawn into the page as
+        they look, on the drawing layer, and taken off as markups. One undo step. Returns
+        how many."""
+        from . import drawing
+        got = self.convertible_selection()
+        if not got:
+            self.statusMessage.emit(tr("Select a shape or line markup to convert (measurements, "
+                                       "notes, stamps, text and highlights stay markups)"))
+            return 0
+        index = self.selection[0]
+        xrefs = [x for x, _m in got]
+        had = drawing.layer_xref(self.doc) is not None
+        self.clear_selection()
+        made = {}
+
+        def do():
+            made["done"] = drawing.convert(self.doc[index], xrefs)
+        if not self.modify(do, [index], permission=pymupdf.PDF_PERM_MODIFY) or \
+                not made.get("done"):
+            return 0
+        if not had:
+            self._redraw_all()
+        else:
+            self._show_drawing_layer()
+        n = len(made["done"])
+        self.statusMessage.emit(tr("{n} markup(s) converted to drawing, on the layer {layer} "
+                                   "(Ctrl+Z undoes it)").format(n=n, layer=drawing.LAYER))
+        return n
+
+    def drawing_names(self, index):
+        """The names page index's content gives the drawing layer (drawing.layer_names),
+        kept until the page changes."""
+        from . import drawing
+        key = ("drawnames", index)
+        got = self._card_cache.get(key)
+        if got is None or got[0] != getattr(self, "_gen", 0):
+            got = self._card_cache[key] = (getattr(self, "_gen", 0),
+                                           drawing.layer_names(self.doc[index]))
+        return got[1]
+
+    def objects_drawn(self):
+        """Whether the page's own objects selected are all the Drawing tab's (on its layer)."""
+        from . import drawing
+        if self.obj_sel is None or not self.obj_sel[1]:
+            return False
+        index, items = self.obj_sel
+        names = self.drawing_names(index)
+        return bool(names) and all(drawing.on_layer((it.get("obj") or {}).get("ctx"), names)
+                                   for it in items)
 
     def apply_text_tool(self, index, tool, a, b):
         self.apply_text_span(tool, (index, a), (index, b))

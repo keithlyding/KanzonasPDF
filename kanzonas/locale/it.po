@@ -12085,3 +12085,66 @@ msgstr "Le annotazioni della pagina, da quella in primo piano a quella più in f
 
 msgid "The PDFs of a set and their sheets, as one list"
 msgstr "I PDF di una raccolta e i loro fogli, in un unico elenco"
+
+msgid "Nothing to draw: give the tool a line color or a fill in Properties"
+msgstr "Niente da disegnare: dai allo strumento un colore della linea o un riempimento in Proprietà"
+
+msgid "Select a shape or line markup to convert (measurements, notes, stamps, text and highlights stay markups)"
+msgstr "Seleziona un'annotazione di forma o di linea da convertire (misure, note, timbri, testi ed evidenziazioni restano annotazioni)"
+
+msgid "Drawn into the page, on the layer {layer} (Ctrl+Z undoes it)"
+msgstr "Disegnato nella pagina, sul livello {layer} (Ctrl+Z lo annulla)"
+
+msgid "{n} markup(s) converted to drawing, on the layer {layer} (Ctrl+Z undoes it)"
+msgstr "{n} annotazione/i convertita/e in disegno, sul livello {layer} (Ctrl+Z lo annulla)"
+
+msgid "Line drawn into the page: drag, or click both ends (Shift = 45° steps)"
+msgstr "Linea disegnata nella pagina: trascina, o fai clic sulle due estremità (Shift = passi di 45°)"
+
+msgid "Arrow drawn into the page: from its tail to its head (Shift = 45° steps)"
+msgstr "Freccia disegnata nella pagina: dalla coda alla punta (Shift = passi di 45°)"
+
+msgid "Polyline drawn into the page: click each point, double-click or Enter to finish"
+msgstr "Polilinea disegnata nella pagina: fai clic su ogni punto, doppio clic o Invio per finire"
+
+msgid "Polygon drawn into the page: click each corner, double-click or Enter to finish"
+msgstr "Poligono disegnato nella pagina: fai clic su ogni angolo, doppio clic o Invio per finire"
+
+msgid "Rectangle drawn into the page: drag a box (Shift = square)"
+msgstr "Rettangolo disegnato nella pagina: trascina un riquadro (Shift = quadrato)"
+
+msgid "Ellipse drawn into the page: drag a box (Shift = circle)"
+msgstr "Ellisse disegnata nella pagina: trascina un riquadro (Shift = cerchio)"
+
+msgid "Circle drawn into the page: from the center to a point on it"
+msgstr "Cerchio disegnato nella pagina: dal centro a un punto del cerchio"
+
+msgid "Arc drawn into the page: click the start, a point it passes through, then the end"
+msgstr "Arco disegnato nella pagina: fai clic sull'inizio, su un punto da cui passa, poi sulla fine"
+
+msgid "Revision cloud drawn into the page: drag a box"
+msgstr "Nuvola di revisione disegnata nella pagina: trascina un riquadro"
+
+msgid "Freehand pen, drawn into the page"
+msgstr "Penna a mano libera, disegnata nella pagina"
+
+msgid "Page content: the selected shape and line markups drawn into the page as they look, on the layer KanzonasPDF drawing (measurements, notes, stamps, text and highlights stay markups)"
+msgstr "Contenuto della pagina: le annotazioni di forme e linee selezionate disegnate nella pagina così come appaiono, sul livello KanzonasPDF drawing (misure, note, timbri, testi ed evidenziazioni restano annotazioni)"
+
+msgid "Convert to drawing"
+msgstr "Converti in disegno"
+
+msgid "&Drawing"
+msgstr "&Disegno"
+
+msgid "Drawing"
+msgstr "Disegno"
+
+msgid "Draw"
+msgstr "Disegna"
+
+msgid "Drawn with the Drawing tab, on the layer KanzonasPDF drawing."
+msgstr "Disegnato con la scheda Disegno, sul livello KanzonasPDF drawing."
+
+msgid "For the next shapes you draw with this tool, saved for next time. They're drawn into the page itself, on the layer KanzonasPDF drawing; Edit objects selects and changes them."
+msgstr "Per le prossime forme che disegni con questo strumento, salvato per la volta successiva. Vengono disegnate nella pagina stessa, sul livello KanzonasPDF drawing; Modifica oggetti le seleziona e le cambia."

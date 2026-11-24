@@ -11,7 +11,10 @@ from . import stamps as ST
 from .i18n import tr
 
 # the tools that write into the page itself (not markups): Properties tags them "Page content"
-PAGE_TOOLS = frozenset(A.PAGE_TEXT_TOOLS) | {"image", "erasecontent", "editobjects"}
+PAGE_TOOLS = frozenset(A.PAGE_TEXT_TOOLS) | {"image", "erasecontent", "editobjects"} | \
+    frozenset(A.DRAW_TOOLS)
+# the Drawing tab's lines (drawing.py): their arrowheads are the page's own lines' (page_objects)
+DRAW_LINES = ("d_line", "d_arrow", "d_polyline", "d_arc")
 
 # arrowhead and comment-mark names as shown (the stored values are the keys)
 HEAD_NAMES = {"open": tr("open"), "closed": tr("closed"), "open (reversed)": tr("open (reversed)"),
@@ -25,7 +28,8 @@ MARKUP_NAMES = {"highlight": tr("Highlight"), "underline": tr("Underline"),
                 "strikeout": tr("Strikeout"), "squiggly": tr("Squiggly")}
 
 BORDERLESS = ("textbox", "callout", "rect", "ellipse", "circle", "mask", "polygon", "m_area",
-              "m_perimeter", "m_volume")
+              "m_perimeter", "m_volume", "d_rect", "d_ellipse", "d_circle", "d_polygon",
+              "d_cloud")
 
 
 class ColorButton(QToolButton):
@@ -529,6 +533,10 @@ class PropertiesPanel(QWidget):
                           tr("Click the page to place a dot. When it shows a text, you type it "
                              "after the click; double-click a dot to change its text.")
                           if kind == "dot" else
+                          tr("For the next shapes you draw with this tool, saved for next time. "
+                             "They're drawn into the page itself, on the layer KanzonasPDF "
+                             "drawing; Edit objects selects and changes them.")
+                          if kind in A.DRAW_TOOLS else
                           tr("For the next ones you make with this tool, saved for next time. "
                              "To change one already on the page, click it first; right-click "
                              "one and choose Set as Default to use its style here."))
@@ -579,13 +587,17 @@ class PropertiesPanel(QWidget):
         if "head" in props:
             self._fill_heads(kind)
             self.head.setCurrentIndex(max(0, self.head.findData(props["head"])))
-            self.rows["head"][0].setText(tr("End arrowhead") if kind in A.LINE_KINDS
+            self.rows["head"][0].setText(tr("End arrowhead") if kind in A.LINE_KINDS + DRAW_LINES
                                          else tr("Arrowhead"))
-        if "head_start" in props and self.head_start.count() != len(A.HEADS):
-            # (the page's own lines have fewer: see show_objects)
-            self.head_start.clear()
-            for key in A.HEADS:
-                self.head_start.addItem(HEAD_NAMES.get(key, key), key)
+        if "head_start" in props:
+            # (the page's own lines have fewer, the Drawing tab's too: see show_objects)
+            from . import page_objects
+            keys = tuple(page_objects.HEAD_KINDS) if kind in DRAW_LINES else tuple(A.HEADS)
+            if tuple(self.head_start.itemData(i) for i in range(self.head_start.count())) \
+                    != keys:
+                self.head_start.clear()
+                for key in keys:
+                    self.head_start.addItem(HEAD_NAMES.get(key, key), key)
         for key, combo in (("head_start", self.head_start), ("mid", self.mid),
                            ("dash", self.dash)):
             if key in props:
@@ -734,7 +746,8 @@ class PropertiesPanel(QWidget):
         """The arrowheads the kind of markup can have (a dimension's own set)."""
         from . import dimensions, page_objects
         keys = tuple(dimensions.HEADS) if kind == "m_dim" else \
-            tuple(page_objects.HEAD_KINDS) if kind == "objects" else tuple(A.HEADS)
+            tuple(page_objects.HEAD_KINDS) if kind == "objects" or kind in DRAW_LINES \
+            else tuple(A.HEADS)
         if keys != self._heads:
             self.head.clear()
             for key in keys:
@@ -787,7 +800,7 @@ class PropertiesPanel(QWidget):
     _turn_at = 0.0                   # Rotate by: how far they've turned since selected
 
     def show_objects(self, what, angle=None, text=False, width=None, style=None, turned=0.0,
-                     text_style=None):
+                     text_style=None, drawn=False):
         """The page's own objects selected (Edit objects, CAD mode): their rotation, and their
         line width. what: what is selected ("1 picture"). angle: the one picture's or group's
         angle as shown (counterclockwise): Rotation turns it to the angle typed; None (lines
@@ -797,7 +810,8 @@ class PropertiesPanel(QWidget):
         style: DocumentView.object_style() (their colors, Line style, arrowheads).
         turned: how far they've turned since they were selected (Rotate by shows it, and a
         new number turns them by the difference). text_style: the selected text's style
-        (DocumentView.object_text_style), shown in Font, Font size and Text color."""
+        (DocumentView.object_text_style), shown in Font, Font size and Text color. drawn:
+        they're all the Drawing tab's (on the layer KanzonasPDF drawing), which the hint says."""
         self._loading = True
         self._kind = "objects"
         self._props = {}
@@ -896,6 +910,9 @@ class PropertiesPanel(QWidget):
             self.hint.setText(self.hint.text() + " " +
                               tr("A text setting writes the text again in the page where it "
                                  "is: each word keeps the rest of its style."))
+        if drawn:
+            self.hint.setText(tr("Drawn with the Drawing tab, on the layer KanzonasPDF "
+                                 "drawing.") + " " + self.hint.text())
         if width is not None:
             # (several of different widths: shown blank, and the width typed goes to all)
             self.rows["width"][0].setText(tr("Line width"))

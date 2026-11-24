@@ -782,6 +782,8 @@ class Battery:
             # (1.15) Line color / Fill color / Text color of the page's own drawing and text
             (self.op_recolor_objects, 3),
             (self.op_text_style, 3),
+            # (1.17) the Drawing tab: shapes drawn into the page, Convert to drawing
+            (self.op_drawing, 3), (self.op_to_drawing, 2),
             (self.op_undo, 14), (self.op_redo, 9), (self.op_save, 2),
         ]
 
@@ -1776,6 +1778,66 @@ class Battery:
         rev = v.revision
         v.recolor_objects(**{what: rgb})
         v.clear_object_selection()
+        self.check_letters(i, others)
+        return "edit" if v.revision != rev else "none"
+
+    def op_drawing(self):
+        """The Drawing tab (drawing.py): a shape drawn into the page itself, on the layer
+        KanzonasPDF drawing, with its tool's style (sometimes a new one)."""
+        from kanzonas import drawing
+        v = self.v
+        i = self.page()
+        tool = self.rnd.choice(sorted(drawing.TOOLS))
+        if self.rnd.random() < 0.3:
+            props = dict(annotations.tool_props(tool), stroke=self.color(),
+                         width=round(self.rnd.uniform(0.25, 4), 2))
+            if "fill" in props:
+                props["fill"] = self.rnd.choice([None, self.color()])
+            if "dash" in props:
+                props["dash"] = self.rnd.choice(["solid", "dash", "dot", "dashdot"])
+            if "head" in props:
+                props["head"] = self.rnd.choice(["none", "open", "closed"])
+            if "opacity" in props and self.rnd.random() < 0.3:
+                props["opacity"] = round(self.rnd.uniform(0.2, 1), 2)
+            annotations.set_tool_props(tool, props)
+        before = v.tool
+        v.set_tool(tool)
+        base = drawing.base_tool(tool)
+        others = self.other_letters(i, [])
+        rev = v.revision
+        try:
+            if base in ("polyline", "polygon", "arc"):
+                n = 3 if base == "arc" else self.rnd.randint(3, 6)
+                v.apply_poly(i, base, [self.point(i, 40) for _ in range(n)])
+            elif base == "ink":
+                p = self.point(i, 60)
+                pts = [p]
+                for _ in range(self.rnd.randint(2, 20)):
+                    p = pymupdf.Point(p.x + self.rnd.uniform(-8, 8),
+                                      p.y + self.rnd.uniform(-8, 8))
+                    pts.append(p)
+                v.apply_ink(i, pts)
+            else:
+                a, b = self.box(i)
+                v.apply_drag_tool(i, base, a, b, False)
+        finally:
+            v.set_tool(before)
+        self.check_letters(i, others)
+        return "edit" if v.revision != rev else "none"
+
+    def op_to_drawing(self):
+        """Convert to drawing (drawing.py): some selected markups drawn into the page."""
+        v = self.v
+        i = self.select_some()
+        if i is None:
+            return "none"
+        if not v.convertible_selection():
+            v.clear_selection()
+            return "none"
+        others = self.other_letters(i, [])
+        rev = v.revision
+        v.convert_to_drawing()
+        v.clear_selection()
         self.check_letters(i, others)
         return "edit" if v.revision != rev else "none"
 

@@ -235,21 +235,24 @@ def _boxed(quad):
 
 
 SELECTED = QColor(0, 120, 215)
+# the Drawing tab's shapes (drawing.py) selected with Edit objects: told apart at a glance from
+# markups and from the drawing's other lines, as page content on its own layer
+DRAWING_SELECTED = QColor(214, 90, 0)
 GRIPS_MAX = 1500        # grips drawn for a selection at most (a huge one shows its outline)
 CURVED_MAX = 300        # selected markups whose curves are drawn along them (more: 2,000 bent
                         # lines took 0.14 s a paint)
 
 
-def paint_selected_path(p, path):
+def paint_selected_path(p, path, color=SELECTED):
     """What's selected, drawn so it shows on anything, a blue line included: a white line
-    under a dashed blue one (AutoCAD draws a selection dashed too)."""
+    under a dashed blue one (AutoCAD draws a selection dashed too); color: the dashes'."""
     p.setBrush(Qt.NoBrush)
     # (square ends: Qt strokes a path of many pieces with round ends a hundred times slower,
     # 380 ms a paint for 2,500 selected lines)
     under = QPen(QColor(255, 255, 255, 230), 4)
     p.setPen(under)
     p.drawPath(path)
-    dash = QPen(SELECTED, 2, Qt.CustomDashLine)
+    dash = QPen(color, 2, Qt.CustomDashLine)
     dash.setDashPattern([3, 2])
     p.setPen(dash)
     p.drawPath(path)
@@ -268,11 +271,11 @@ def paint_selected_rects(p, rects):
     p.drawRects(rects)
 
 
-def paint_grips(p, points):
+def paint_grips(p, points, color=SELECTED):
     """Grips: small filled squares on the selected things' ends and corners, as AutoCAD
     marks a selection (points: widget coordinates)."""
     p.setPen(QPen(Qt.white, 1))
-    p.setBrush(SELECTED)
+    p.setBrush(color)
     h = 6
     p.drawRects([QRectF(q.x() - h / 2, q.y() - h / 2, h, h) for q in points])   # (one call)
     p.setBrush(Qt.NoBrush)
@@ -1672,37 +1675,67 @@ class PageWidget(QWidget):
         p.drawPath(self._screen_transform(page).map(
             lines_path(self.view.object_lines(self.index, item))))
 
-    def _selection_path(self, page):
-        """The selected objects' lines on screen, as one path (made once per selection,
-        moved onto the screen again only when the zoom or the page's turn changes)."""
+    def _drawn_split(self):
+        """The selected objects: (the others, the Drawing tab's shapes on its layer)."""
+        from . import drawing
+        names = self.view.drawing_names(self.index)
+        items = self._objects_here()
+        if not names:
+            return items, []
+        mine = [it for it in items if drawing.on_layer((it.get("obj") or {}).get("ctx"), names)]
+        if not mine:
+            return items, []
+        ids = {id(it) for it in mine}
+        return [it for it in items if id(it) not in ids], mine
+
+    def _selection_parts(self, page):
+        """The selected objects' lines on screen, as two paths: the others' and the Drawing
+        tab's shapes' (made once per selection, moved onto the screen again only when the
+        zoom or the page's turn changes)."""
         sel = self.view.obj_sel
         t = self._screen_transform(page)
         key = (t.m11(), t.m12(), t.m21(), t.m22(), t.dx(), t.dy())
         got = getattr(self, "_sel_path", None)
         if got is None or got[0] is not sel or got[1] != self.index:
-            path = lines_path(line for it in self._objects_here()
-                              for line in self.view.object_lines(self.index, it))
-            got = self._sel_path = (sel, self.index, path, None, None)
+            paths = tuple(lines_path(line for it in part
+                                     for line in self.view.object_lines(self.index, it))
+                          for part in self._drawn_split())
+            got = self._sel_path = (sel, self.index, paths, None, None)
         if got[3] != key:
-            got = self._sel_path = got[:3] + (key, t.map(got[2]))
+            got = self._sel_path = got[:3] + (key, tuple(t.map(q) for q in got[2]))
         return got[4]
 
+    def _selection_path(self, page):
+        """The selected objects' lines on screen, as one path."""
+        others, drawn = self._selection_parts(page)
+        if drawn.isEmpty():
+            return others
+        path = QPainterPath(others)
+        path.addPath(drawn)
+        return path
+
     def _selection_grips(self, page):
-        """The selected objects' grips on the screen (worked out once per selection, put on
-        the screen again only when the zoom or the page's turn changes)."""
+        """The selected objects' grips on the screen, as _selection_path parts them (worked
+        out once per selection, put on the screen again only when the zoom or the page's
+        turn changes)."""
         sel = self.view.obj_sel
         t = self._screen_transform(page)
         key = (t.m11(), t.m12(), t.m21(), t.m22(), t.dx(), t.dy())
         got = getattr(self, "_sel_grips", None)
         if got is None or got[0] is not sel or got[1] != self.index:
-            out, seen = [], set()
-            for it in self._objects_here():
-                grip_points(self.view.object_lines(self.index, it), out, seen)
-                if len(out) >= GRIPS_MAX:
-                    break
-            got = self._sel_grips = (sel, self.index, out, None, None)
+            parts, seen, total = [], set(), 0
+            for part in self._drawn_split():
+                out = []
+                for it in part:
+                    if total + len(out) >= GRIPS_MAX:
+                        break
+                    grip_points(self.view.object_lines(self.index, it), out, seen)
+                total += len(out)
+                parts.append(out)
+            got = self._sel_grips = (sel, self.index, tuple(parts), None, None)
         if got[3] != key:
-            got = self._sel_grips = got[:3] + (key, [t.map(QPointF(x, y)) for x, y in got[2]])
+            got = self._sel_grips = got[:3] + (key, tuple([t.map(QPointF(x, y)) for x, y in part]
+                                                         for part in got[2]))
         return got[4]
 
     def _paint_objects(self, p, page):
@@ -1712,7 +1745,12 @@ class PageWidget(QWidget):
         chosen = {it["n"] for it in items}
         hover = self._obj_hover
         if hover is not None and hover["n"] not in chosen:
-            p.setPen(QPen(QColor(0, 120, 215, 200), 2, Qt.DashLine))
+            from . import drawing
+            drawn = drawing.on_layer((hover.get("obj") or {}).get("ctx"),
+                                     self.view.drawing_names(self.index))
+            color = QColor(DRAWING_SELECTED if drawn else blue)
+            color.setAlpha(200)
+            p.setPen(QPen(color, 2, Qt.DashLine))
             self._draw_object(p, hover, page)
         ed = self._obj_edit
         if ed is not None and ed["mode"] == "box" and ed.get("now") is not None:
@@ -1733,8 +1771,13 @@ class PageWidget(QWidget):
             if len(items) <= 3000 and self._selected_size(items) <= 30000:
                 # (dashed over white, and grips on its ends and corners: a selection shows
                 # on a blue drawing too, and doesn't look like the box's preview glow)
-                paint_selected_path(p, self._selection_path(page))
-                paint_grips(p, self._selection_grips(page))
+                others, drawn = self._selection_parts(page)
+                grips, drawn_grips = self._selection_grips(page)
+                paint_selected_path(p, others)
+                paint_grips(p, grips)
+                if not drawn.isEmpty():
+                    paint_selected_path(p, drawn, DRAWING_SELECTED)
+                    paint_grips(p, drawn_grips, DRAWING_SELECTED)
             elif len(items) <= 3000:            # (a huge drawing: each one's box)
                 for it in items:
                     p.drawRect(self.to_screen(it["rect"], page))
@@ -2214,6 +2257,9 @@ class PageWidget(QWidget):
                 menu.addAction(tr("Add leader"), lambda: v.add_callout_leader(pdf))
                 if len(v.selected_model["points"]) > 1:
                     menu.addAction(tr("Remove leader"), lambda: v.remove_callout_leader(pdf))
+            if v.convertible_selection() and hasattr(win, "a_to_drawing"):
+                # (drawing.py: shapes and lines drawn into the page, on its drawing layer)
+                menu.addAction(win.a_to_drawing)
             if v.can_fit_to_text():
                 # (issue #90) the box as tall as its text, and following it from then on
                 menu.addAction(tr("Fit to text"), v.fit_selected_to_text)
@@ -2537,10 +2583,12 @@ class PageWidget(QWidget):
             self._objects_press(e, pos, pdf)
             return
         if tool in EDIT_IN_PLACE and not self._poly:
-            if shift_held(e) or self.view.cad_select:
+            if shift_held(e) or self.view.cad_select or self.view.drawing_tool is not None:
                 # Shift = draw a new one here even on top of a markup (to start a line at the
                 # end of another, say): no selecting or moving. In CAD mode always, as in
-                # AutoCAD: a drawing tool draws (snapped to that end); Edit objects selects
+                # AutoCAD: a drawing tool draws (snapped to that end); Edit objects selects.
+                # A Drawing tab tool always: it makes page content, and a markup under it
+                # isn't what it edits
                 if self.view.selection is not None:
                     self.view.clear_selection()
             elif self._press_on_markup(pos, pdf, ctrl_held(e)):
@@ -2950,7 +2998,8 @@ class PageWidget(QWidget):
                     self._hover = r
                     self.update()
             elif tool in EDIT_IN_PLACE and not self._poly and \
-                    (shift_held(e) or self.view.cad_select):
+                    (shift_held(e) or self.view.cad_select or
+                     self.view.drawing_tool is not None):
                 self.unsetCursor()              # (the view's own: a plus in CAD mode)
             elif tool == "select" or (tool in EDIT_IN_PLACE and not self._poly):
                 self._update_select_cursor(pos, restore=tool != "select")

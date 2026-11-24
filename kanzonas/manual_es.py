@@ -970,7 +970,8 @@ señalan entonces cualquier cambio posterior.</li>
 <h2 id="shapes">Formas, líneas y el lápiz</h2>
 <ul>
 <li>Rectángulo (R), Elipse (E), Círculo (O), Nube (D), Máscara, Polígono (Y), Línea (L), Flecha (A),
-Polilínea (Shift+L), Arco, Curva, Lápiz (P). Las formas comparten un botón de la barra de herramientas: haga clic en su flecha para elegir otra.</li>
+Polilínea (Shift+L), Arco, Curva, Lápiz (P). Las formas comparten un botón de la barra de herramientas: haga clic en su flecha para elegir otra.
+Son marcas; para dibujar en la propia página, use la pestaña Dibujo (vea Pestaña Dibujo).</li>
 <li><b>Arco</b> (como el ARCO de tres puntos de AutoCAD; en la pestaña CAD bajo la flecha de Círculo): haga clic en el inicio, en
 un punto por el que pasa el arco y luego en el final; el arco sigue al puntero antes del último clic. Arrastre sus tres puntos para
 cambiar su forma.</li>
@@ -1076,8 +1077,8 @@ las herramientas de la pestaña Marcas, sellos, mediciones) quedan <b>encima de 
 pueden mover, ocultar, eliminar, poner en capas o acoplar, y la página de debajo queda como
 estaba; otros lectores de PDF las muestran como comentarios.</li>
 <li><b>El contenido de la página</b> es la propia página: su texto, sus líneas y sus imágenes.
-<b>Editar texto</b>, <b>Agregar texto</b>, <b>Editar objetos</b>, la herramienta <b>Imagen</b> y
-<b>Borrar contenido</b> lo cambian. Lo que escriben forma parte de la página: todos los lectores
+<b>Editar texto</b>, <b>Agregar texto</b>, <b>Editar objetos</b>, la herramienta <b>Imagen</b>,
+<b>Borrar contenido</b> y las herramientas de la pestaña <b>Dibujo</b> lo cambian. Lo que escriben forma parte de la página: todos los lectores
 lo muestran y lo imprimen, y no se puede ocultar ni quitar como una marca.</li>
 <li><b>Cómo saberlo:</b> el panel de propiedades muestra una etiqueta sobre su título, <b>Marca:
 encima de la página</b> (violeta) o <b>Contenido de la página: cambia la propia página</b>
@@ -1100,6 +1101,53 @@ párrafo de varias líneas a su propio ancho, como Editar texto; una sola línea
 bloques de Agregar texto se escriben donde están, con sus líneas separadas (o juntas) tanto como crece (o se achica)
 el tamaño. El texto en un ángulo que no es un cuarto de vuelta (una marca de agua en diagonal) no lleva subrayado,
 tachado ni fondo. Para cambiar palabras sueltas, edite el texto (Editar texto) y selecciónelas en el cuadro.</li>
+</ul>
+
+<h2 id="drawing">Pestaña Dibujo: líneas y formas dibujadas en la página</h2>
+<p>La pestaña <b>Dibujo</b> dibuja líneas y formas en la propia página, como su propio dibujo
+vectorial, igual que las líneas de un programa de CAD forman parte de un plano trazado. Las formas
+de la pestaña Marcas siguen siendo marcas, encima de la página (vea Marca o contenido de la
+página).</p>
+<ul>
+<li><b>Herramientas:</b> Línea, Flecha, Polilínea, Polígono, Rectángulo, Elipse, Círculo, Arco,
+Nube y Lápiz (también en Herramientas &gt; Dibujo). Se dibujan igual que las formas del mismo
+nombre de la pestaña Marcas: arrastrando (en el modo CAD, clic, mover, clic); Polilínea y
+Polígono con un clic en cada punto, doble clic o Enter para terminar; Arco con el inicio, un punto
+por el que pasa y el final. Las vistas previas, el ajuste, Shift (pasos de 45&deg;, cuadrados y
+círculos) y la línea de comandos de CAD funcionan igual. Una herramienta de Dibujo siempre
+dibuja: un clic sobre una marca no la elige. En la línea de comandos de CAD, "rect" sigue siendo
+el Rectángulo de la pestaña Marcas: escriba "drawing rect" (su nombre en inglés) para este.</li>
+<li><b>Estilo:</b> con una herramienta de Dibujo elegida, el panel de propiedades muestra el
+estilo de esa herramienta para las próximas formas: Color de línea, Relleno (y Sin borde, Sin
+relleno), Grosor de línea, Estilo de línea, la Punta de flecha inicial y final y la Flecha
+central de las líneas (ninguna, abierta o cerrada), Opacidad y Opacidad del relleno. Negro, de
+1 pt, por omisión, como suelen ser las líneas de un dibujo; se guarda para la próxima vez,
+aparte de los estilos de las herramientas de marcas. Una forma sin color de línea ni relleno no
+dibuja nada.</li>
+<li><b>Su propia capa:</b> todo lo que dibuja la pestaña Dibujo va a una capa del PDF,
+<b>KanzonasPDF drawing</b>, creada la primera vez que dibuja. El panel Capas la muestra:
+desmárquela para ocultar el dibujo, en pantalla y al imprimir, como hacen otros programas de PDF
+que muestran capas. Si vuelve a dibujar mientras está oculta, se muestra de nuevo.</li>
+<li><b>Cómo distinguirlo de las marcas:</b> su propia pestaña, su propia capa, la etiqueta de
+Propiedades <b>Contenido de la página: cambia la propia página</b> para sus herramientas y para lo
+que dibujaron, y una selección <b>naranja</b> cuando Editar objetos o el modo CAD lo seleccionan
+(las demás líneas y formas de la página se ven en azul); Propiedades dice además que está en la
+capa KanzonasPDF drawing.</li>
+<li><b>Cambiarlo después:</b> es el propio dibujo de la página, así que <b>Editar objetos</b>
+(también en la pestaña Dibujo) trabaja con él como con cualquier línea de la página: selecciónelo,
+muévalo, cambie su tamaño, gírelo, elimínelo y cópielo; cambie su Color de línea, Color de
+relleno, Grosor de línea, Estilo de línea y puntas de flecha en Propiedades; llévelo Al frente,
+Adelante, Atrás o Al fondo; agrúpelo con las líneas del propio dibujo (cada una conserva su capa
+dentro del grupo) y desagrúpelo. No aparece en la lista de marcas ni se puede acoplar: ya forma
+parte de la página.</li>
+<li><b>Convertir en dibujo</b> (pestaña Dibujo, Herramientas &gt; Dibujo, el menú del clic
+derecho de una marca): las marcas de formas y líneas seleccionadas (rectángulos, elipses,
+círculos, nubes, polígonos, líneas, flechas, polilíneas, arcos y trazos de lápiz) pasan a ser
+dibujo de la página en la capa KanzonasPDF drawing, con el mismo aspecto exacto, y dejan de ser
+marcas. Las mediciones, notas, sellos, cuadros de texto, llamadas y resaltados siguen siendo
+marcas.</li>
+<li><b>Deshacer:</b> cada forma dibujada es un paso, y también cada Convertir en dibujo. Guardar
+los conserva, y el archivo abierto de nuevo los tiene en su capa.</li>
 </ul>
 
 <h2 id="properties">Colores, bordes y estilos (Panel de propiedades)</h2>
