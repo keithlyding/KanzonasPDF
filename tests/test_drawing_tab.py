@@ -649,6 +649,94 @@ class TurnedPages(Base):
                 self.assertEqual(self.drawn(v), [])
 
 
+class InTheWindow(Base):
+    """The Drawing tab, the Tools menu, Properties and the right-click menu."""
+
+    def setUp(self):
+        super().setUp()
+        from kanzonas import main_window
+        self.addCleanup(lambda: [setattr(x, "_close_confirmed", True) or x.close()
+                                 for x in main_window.windows()])
+        w = self.w = main_window.MainWindow()
+        w.resize(1366, 800)
+        w.show()
+        w.open_file(sheet())
+        APP.processEvents()
+        self.v = w.view()
+        self.addCleanup(setattr, self.v, "dirty", False)
+
+    def test_tab_menu_and_properties(self):
+        from kanzonas import page_objects
+        w, v = self.w, self.v
+        tabs = [w.ribbon.tabText(i) for i in range(w.ribbon.count())]
+        self.assertEqual(tabs.index("Drawing"), tabs.index("Markup") + 1)
+        menu = [a for a in w.menuBar().actions() if a.text() == "&Tools"][0].menu()
+        sub = [a for a in menu.actions() if a.text() == "&Drawing"][0].menu()
+        names = [a.text() for a in sub.actions() if not a.isSeparator()]
+        self.assertEqual(names, ["Line", "Arrow", "Polyline", "Polygon", "Rectangle", "Ellipse",
+                                 "Circle", "Arc", "Cloud", "Pen", "Convert to drawing"])
+        for tid in drawing.TOOLS:
+            self.assertTrue(w.tool_actions[tid].toolTip().startswith("Page content:"), tid)
+        w.set_tool("d_arrow")
+        APP.processEvents()
+        self.assertEqual((v.tool, v.drawing_tool), ("arrow", "d_arrow"))
+        p = w.props
+        self.assertEqual(p.tag.text(), "Page content: changes the page itself")
+        self.assertEqual(p.title.text(), "Arrow: default style")
+        heads = [p.head.itemData(i) for i in range(p.head.count())]
+        self.assertEqual(heads, list(page_objects.HEAD_KINDS))
+        self.assertEqual(p.head.currentData(), "open")
+        # a style picked there is the tool's, for the next arrows (not the Markup tab's)
+        p.width.setValue(2.5)
+        APP.processEvents()
+        self.assertEqual(A.tool_props("d_arrow")["width"], 2.5)
+        self.assertEqual(A.tool_props("arrow")["width"], A.DEFAULTS["arrow"]["width"])
+        v.apply_drag_tool(0, "arrow", P(100, 300), P(300, 300), False)
+        APP.processEvents()
+        got = self.drawn(v)
+        self.assertEqual(len(got), 1)
+        self.assertAlmostEqual(po.page_width(got[0]["obj"]), 2.5, places=3)
+        self.assertEqual(w.layers.list.count(), 1)              # (the Layers panel lists it)
+        self.assertEqual(w.layers.list.item(0).text().strip(), drawing.LAYER)
+        # Edit objects shows it as the Drawing tab's
+        w.set_tool("editobjects")
+        v.select_objects(0, got)
+        w._refresh_props()
+        self.assertTrue(p.hint.text().startswith("Drawn with the Drawing tab"))
+        # back to a markup tool: a markup again
+        w.set_tool("arrow")
+        self.assertIsNone(v.drawing_tool)
+        v.apply_drag_tool(0, "arrow", P(100, 400), P(300, 400), False)
+        self.assertEqual(len(list(v.doc[0].annots())), 1)
+        self.assertEqual(len(self.drawn(v)), 1)
+
+    def test_right_click_converts(self):
+        from unittest import mock
+        from PySide6.QtWidgets import QMenu
+        w, v = self.w, self.v
+        w.set_tool("polygon")
+        v.apply_poly(0, "polygon", [P(80, 120), P(260, 140), P(170, 300)])
+        x = [an.xref for an in v.doc[0].annots()][0]
+        w.set_tool("select")
+        v.clear_selection()
+        seen = []
+
+        class Menu(QMenu):
+            def exec(self, *_a):
+                seen.extend(self.actions())
+        ev = mock.Mock()
+        ev.globalPosition.return_value.toPoint.return_value = QPoint(0, 0)
+        with mock.patch("PySide6.QtWidgets.QMenu", Menu):
+            v.pages[0]._content_menu(ev, P(80, 120))
+        self.assertEqual(v.selected_xrefs(), [x])     # (the right-click selected it)
+        acts = {a.text(): a for a in seen}
+        acts["Convert to drawing"].trigger()
+        APP.processEvents()
+        self.assertEqual(list(v.doc[0].annots()), [])
+        self.assertGreaterEqual(len(self.drawn(v)), 1)
+        self.assertEqual(w.layers.list.count(), 1)
+
+
 class CadMode(Base):
     """In CAD mode the tools draw click, move, click, as the markup tools do there."""
     MODE = "cad"
