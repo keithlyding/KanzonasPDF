@@ -9,6 +9,42 @@ Spanish translation under `## <version> (es)`. The Windows build fails without t
 translation under `## <version> (it)` is shown to Italian users (since 1.13); without one they
 see the English.
 
+## 1.16.4
+
+**New**
+- Fill opacity: text boxes, callouts, rectangles, ellipses, polygons, clouds and Area, Perimeter and Volume measurements have a Fill opacity in Properties. The fill can be see-through while the outline and the text stay solid, and other PDF viewers show it too.
+- Arrowhead size: lines, arrows, polylines, arcs, curves, callouts and dimensions have an Arrowhead size in Properties, from 25% to 500%, so a thin line can have big arrowheads.
+- Colors: the color window shows your recent colors and the colors already used in the open document. One click picks one.
+- Grouping the drawing's own objects on big CAD sheets (Edit objects > Group): objects on different layers can be one group, each keeping its layer (turning a layer off still hides just its own objects); a selected group shows as one box, and Properties says Group (n objects). It's much faster: a fork truck of 216 shapes on a 174,000-object sheet groups in under half a second (it took 4.6 s), and dragging a group no longer stutters.
+
+**Fixed**
+- The page's text moved with the arrow keys to just after other text in the same style stays selected (it was unselected after the first press).
+- A tab moved to a window of its own (View > Move tab to new window) leaves nothing behind when that window is closed in the classic layout.
+
+## 1.16.4 (es)
+
+**Novedades**
+- Opacidad del relleno: los cuadros de texto, llamadas, rectángulos, elipses, polígonos, nubes y las mediciones de Área, Perímetro y Volumen tienen una Opacidad del relleno en Propiedades. El relleno puede ser transparente mientras el contorno y el texto siguen sólidos, y otros visores de PDF también lo muestran.
+- Tamaño de punta de flecha: las líneas, flechas, polilíneas, arcos, curvas, llamadas y cotas tienen un Tamaño de punta de flecha en Propiedades, del 25% al 500%, para que una línea fina pueda tener puntas de flecha grandes.
+- Colores: la ventana de color muestra sus colores recientes y los colores que ya usa el documento abierto. Un clic elige uno.
+- Agrupar los objetos del propio dibujo en planos CAD grandes (Editar objetos > Agrupar): objetos de capas distintas pueden ser un grupo, cada uno con su capa (al ocultar una capa se ocultan solo sus objetos); un grupo seleccionado se muestra como un solo cuadro, y Propiedades indica Grupo (n objetos). Es mucho más rápido: una carretilla elevadora de 216 formas en un plano de 174.000 objetos se agrupa en menos de medio segundo (tardaba 4,6 s), y arrastrar un grupo ya no va a saltos.
+
+**Correcciones**
+- El texto de la página movido con las flechas justo detrás de otro texto del mismo estilo sigue seleccionado (se deseleccionaba tras la primera pulsación).
+- Una pestaña pasada a una ventana propia (Ver > Mover pestaña a una nueva ventana) no deja nada atrás al cerrar esa ventana con la disposición clásica.
+
+## 1.16.4 (it)
+
+**Novità**
+- Opacità del riempimento: caselle di testo, richiami, rettangoli, ellissi, poligoni, nuvole e le misure di Area, Perimetro e Volume hanno un'Opacità del riempimento in Proprietà. Il riempimento può essere trasparente mentre il contorno e il testo restano pieni, e anche gli altri visualizzatori PDF lo mostrano.
+- Dimensione punta di freccia: linee, frecce, polilinee, archi, curve, richiami e quote hanno una Dimensione punta di freccia in Proprietà, dal 25% al 500%, così una linea sottile può avere punte di freccia grandi.
+- Colori: la finestra dei colori mostra i colori recenti e quelli già usati nel documento aperto. Un clic ne sceglie uno.
+- Raggruppare gli oggetti del disegno stesso su tavole CAD grandi (Modifica oggetti > Raggruppa): oggetti su livelli diversi possono essere un gruppo, ciascuno con il proprio livello (spegnendo un livello si nascondono solo i suoi oggetti); un gruppo selezionato si mostra come un solo riquadro, e Proprietà indica Gruppo (n oggetti). È molto più veloce: un carrello elevatore di 216 forme su una tavola di 174.000 oggetti si raggruppa in meno di mezzo secondo (ci voleva 4,6 s), e trascinare un gruppo non va più a scatti.
+
+**Correzioni**
+- Il testo della pagina spostato con i tasti freccia subito dopo altro testo dello stesso stile resta selezionato (veniva deselezionato dopo la prima pressione).
+- Una scheda spostata in una finestra propria (Visualizza > Sposta scheda in una nuova finestra) non lascia nulla quando quella finestra viene chiusa con il layout classico.
+
 ## 1.16.3
 
 **New**

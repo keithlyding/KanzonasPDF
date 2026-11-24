@@ -11407,9 +11407,6 @@ msgstr "Seleziona due o più oggetti per raggrupparli."
 msgid "Some of the selected objects can't be grouped."
 msgstr "Alcuni degli oggetti selezionati non si possono raggruppare."
 
-msgid "The selected objects are drawn under different clipping or on different layers: they can't be one group."
-msgstr "Gli oggetti selezionati sono disegnati con ritagli diversi o su livelli diversi: non possono formare un unico gruppo."
-
 msgid "Markups and the page's own objects can't be one group: group the markups, or the page's objects, on their own."
 msgstr "Le annotazioni e gli oggetti propri della pagina non possono formare un unico gruppo: raggruppa le annotazioni, oppure gli oggetti della pagina, separatamente."
 
@@ -11971,3 +11968,33 @@ msgstr "La pendenza di una copertura, alzata su base (6:12) o in gradi (30°): l
 
 msgid "Slope"
 msgstr "Pendenza"
+
+msgid "Fill opacity"
+msgstr "Opacità del riempimento"
+
+msgid "How solid the fill is (100: solid, 0: none). The outline and text keep the Opacity below."
+msgstr "Quanto è pieno il riempimento (100: pieno, 0: nessuno). Il contorno e il testo mantengono l'Opacità qui sotto."
+
+msgid "Arrowhead size"
+msgstr "Dimensione punta di freccia"
+
+msgid "The arrowheads' size: 100% is the size the line width gives; bigger heads keep the line as thin."
+msgstr "La dimensione delle punte di freccia: 100% è la dimensione data dallo spessore della linea; punte più grandi lasciano la linea sottile come prima."
+
+msgid "Recent"
+msgstr "Recenti"
+
+msgid "In this document"
+msgstr "In questo documento"
+
+msgid "The selected objects are drawn under different clipping: they can't be one group."
+msgstr "Gli oggetti selezionati sono disegnati con ritagli diversi: non possono formare un unico gruppo."
+
+msgid "The selected objects are tagged as different parts of the page (for screen readers): they can't be one group."
+msgstr "Gli oggetti selezionati sono contrassegnati come parti diverse della pagina (per i lettori di schermo): non possono formare un unico gruppo."
+
+msgid "Group (1 object)"
+msgstr "Gruppo (1 oggetto)"
+
+msgid "Group ({n} objects)"
+msgstr "Gruppo ({n} oggetti)"

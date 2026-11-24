@@ -165,13 +165,13 @@ class ObjectColors(Window):
 
     def test_the_menu_and_the_color_dialog(self):
         from PySide6.QtGui import QColor
-        from PySide6.QtWidgets import QColorDialog
+        from kanzonas import color_picker
         v = self.v
         v.select_objects(0, [self.filled()[1]])
-        with mock.patch.object(QColorDialog, "getColor", return_value=QColor(255, 0, 0)) as got:
+        with mock.patch.object(color_picker, "get_color", return_value=QColor(255, 0, 0)) as got:
             v.pick_object_color("fill")
         self.assertTrue(near(pixel(v, P(500, 340)), RED))
-        with mock.patch.object(QColorDialog, "getColor", return_value=QColor()) as got:
+        with mock.patch.object(color_picker, "get_color", return_value=QColor()) as got:
             v.pick_object_color("fill")             # (Cancel: nothing changes)
         self.assertEqual(got.call_args[0][0].name(), "#ff0000")      # (the last color offered)
         self.assertTrue(near(pixel(v, P(500, 340)), RED))

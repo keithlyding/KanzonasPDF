@@ -218,6 +218,45 @@ class TextOverText(Window):
         self.assertEqual([text_edit.line_text(ln) for _r, ln in v.obj_sel[1][0]["lines"]],
                          ["Page 2 Contractor agreed"])
 
+    def test_text_moved_to_just_after_other_text_of_its_style_stays_selected(self):
+        # (MuPDF went on with the other text's span for letters of the same font, size and
+        # color starting where it ends: the moved leader dots read as one span with a ". 2"
+        # before them, weren't found again, and were unselected after the first press.
+        # Random battery, seed 41. Read span by span now, TEXT_PRESERVE_SPANS)
+        gray = (0.35, 0.35, 0.35)
+
+        def build(pg):
+            pg.insert_text((139.5, 132), ". 2", fontsize=11, color=gray)
+            pg.insert_text((133.3, 132), " . . . . . . . . . . . . . . . . . . . . . .",
+                           fontsize=11, color=gray)
+        w, v = self.open(build)
+        w.set_tool("editobjects")
+        pump()
+        dots = next(it for it in v.text_objects(0)
+                    if text_edit.line_text(it["lines"][0][1]).count(".") > 10)
+        v.select_objects(0, [dots])
+        for step in (10, 1, 10):
+            self.assertTrue(v.nudge(1, 0, step))
+            self.assertIsNotNone(v.obj_sel)             # (never unselected mid-move)
+        (_r, ln), = v.obj_sel[1][0]["lines"]
+        self.assertNotIn("2", text_edit.line_text(ln))  # (just the dots: the 2 stays)
+        self.assertAlmostEqual(v.obj_sel[1][0]["rect"].x0, dots["rect"].x0 + 21, delta=0.5)
+        # (the ". 2" is where it was, once)
+        words = [w_[4] for w_ in v.doc[0].get_text("words")]
+        self.assertEqual(words.count("2"), 1)
+
+    def test_right_to_left_and_word_by_word_lines_read_as_before(self):
+        d = pymupdf.open()
+        p = d.new_page()
+        hebrew = "\u05e9\u05dc\u05d5\u05dd \u05e2\u05d5\u05dc\u05dd \u05d8\u05d5\u05d1"
+        p.insert_htmlbox(R(72, 80, 500, 120), "<p dir='rtl' style='font-size:14px'>%s</p>" % hebrew)
+        x = 72
+        for word in ("Words", "placed", "one", "by", "one"):
+            p.insert_text((x, 200), word, fontsize=12)
+            x += pymupdf.get_text_length(word + " ", fontsize=12)
+        self.assertEqual([text_edit.line_text(ln) for _r, ln in text_edit.text_lines(p)],
+                         [hebrew, "Words placed one by one"])
+
 
 class AngledAndRefused(Window):
     """Found by the random battery's new arrow-key step (seeds 5 and 1112): a move refused

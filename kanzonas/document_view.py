@@ -4904,6 +4904,27 @@ class DocumentView(QScrollArea):
                 cache[key] = None
         return cache[key]
 
+    def _sheet_note_kept(self, index, items):
+        """Before an edit of the page's own objects items: the sheet's scale note as read
+        for the page now, in a tuple, when the edit leaves the page's text as it was (no
+        text among items, nor a group that may hold text) and the note was read; else None.
+        _keep_sheet_note keeps it for the page after the edit (reading a big sheet's text
+        again took a tenth of a second after every move)."""
+        from . import page_objects
+        cache = self.__dict__.get("_sheet_scale_cache")
+        if not cache or any(it["kind"] == "text" or it["kind"] == "group" and
+                            page_objects.holds_text(self.doc, it["xref"]) for it in items):
+            return None
+        page = self.doc[index]
+        key = (page.xref, self._content_key(page))
+        return (cache[key],) if key in cache else None
+
+    def _keep_sheet_note(self, index, kept):
+        """The note _sheet_note_kept gave, for the page's drawing as it is now."""
+        if kept is not None:
+            page = self.doc[index]
+            self._sheet_scale_cache[(page.xref, self._content_key(page))] = kept[0]
+
     def set_page_scale(self, pages, m_per_pt, unit, label):
         """Apply one scale to pages and re-measure existing measurements on them."""
         self.set_page_scales({i: (m_per_pt, unit, label) for i in pages})
@@ -6247,16 +6268,27 @@ class DocumentView(QScrollArea):
         ns = [it["n"] for it in items if it["kind"] != "text"]
         lines = [ln for it in items if it["kind"] == "text" for _r, ln in it["lines"]]
         made = {}
+        before = self._obj_cache.get(index)
+        # (grouping draws everything where it was: the text too, unless text is put in it)
+        note = None if lines else self._sheet_note_kept(
+            index, [it for it in items if it["kind"] != "group"])
 
         def do():
-            made["xref"], used = page_objects.group(self.doc[index], ns, lines)
+            made["xref"], used, made["objs"] = page_objects.group(
+                self.doc[index], ns, lines, before)
             if any(u.startswith("KZ") for u in used):
                 self._fonts_added = True
+            self._keep_sheet_note(index, note)
         self.obj_sel = None
         if not self.modify(do, [index]) or "xref" not in made:
             self._reselect_objects(index, items)
             return False
         self._obj_cache.pop(index, None)
+        if isinstance(made["objs"], page_objects.Objects):
+            # worked out from the page's objects as read before (reading a big sheet
+            # again took seconds)
+            self._obj_cache[index] = made["objs"]
+            _set_aside(made["objs"])
         objs = self.content_objects(index)
         mine = [it for it in (objs.items if objs else [])
                 if it["kind"] == "group" and it.get("xref") == made["xref"]]
@@ -8271,6 +8303,12 @@ class DocumentView(QScrollArea):
         if not self.cad_select or getattr(self, "doc", None) is None or self.doc.is_closed or \
                 not getattr(self, "pages", None):
             return
+        if QApplication.mouseButtons() != Qt.NoButton:
+            # a mouse button held (a drag, a box): not now. A slice run between two mouse
+            # moves made each move of a drag on a big sheet wait for it (41 ms a move on the
+            # owner's 174,000-object sheet, 23 Nov); it goes on once the button is let go
+            self._prep_timer.start(self.PREP_WAIT)
+            return
         index = self.current_page()
         job = getattr(self, "_prep_job", None)
         objs = self._obj_cache.get(index)
@@ -9154,9 +9192,22 @@ class DocumentView(QScrollArea):
         except RuntimeError:
             pass                        # (the view is being taken down: nobody to tell)
 
-    @staticmethod
-    def describe_objects(items):
-        """"1 picture", "2 shapes, 1 group"...: what of the page's own is selected."""
+    def describe_objects(self, items):
+        """"1 picture", "2 shapes, 1 group"...: what of the page's own is selected; one group
+        alone, "Group (31 objects)": what it holds, counting the groups inside it."""
+        if len(items) == 1 and items[0]["kind"] == "group" and items[0].get("xref"):
+            from .page_objects import group_size
+            key = (getattr(self, "_gen", 0), id(self.doc), items[0]["xref"])
+            got = getattr(self, "_group_count", None)
+            if got is None or got[0] != key:
+                try:
+                    n = group_size(self.doc, items[0]["xref"])
+                except Exception:
+                    n = None            # (unreadable: said as any group is)
+                got = self._group_count = (key, n)
+            if got[1] is not None:
+                return (tr("Group (1 object)") if got[1] == 1 else
+                        tr("Group ({n} objects)").format(n=got[1]))
         pics = sum(1 for it in items if it["kind"] == "picture")
         groups = sum(1 for it in items if it["kind"] == "group")
         texts = sum(1 for it in items if it["kind"] == "text")
@@ -9236,6 +9287,7 @@ class DocumentView(QScrollArea):
         texts = [it for it in items if it["kind"] == "text"]
 
         fresh = {}
+        note = self._sheet_note_kept(index, items)
 
         def do():
             page = self.doc[index]
@@ -9256,6 +9308,7 @@ class DocumentView(QScrollArea):
                 fresh["objs"] = None
             if links_fn is not None and not links_first and links_fn(page):
                 fresh["objs"] = None
+            self._keep_sheet_note(index, note)
         before = self._obj_cache.get(index)
         if not self.modify(do, [index]):
             # refused or failed (redaction marks on the page, a font that can't write the
@@ -9796,12 +9849,12 @@ class DocumentView(QScrollArea):
         """Ask for the color (what: "stroke", "fill" or "text") and give it to the selected
         objects. The color picked last for each is offered first."""
         from PySide6.QtGui import QColor
-        from PySide6.QtWidgets import QColorDialog
+        from . import color_picker
         titles = {"stroke": tr("Line color"), "fill": tr("Fill color"),
                   "text": tr("Text color")}
         last = getattr(self, "_object_colors", {})
         start = QColor(last.get(what, "#000000" if what != "fill" else "#ffffff"))
-        got = QColorDialog.getColor(start, self, titles[what])
+        got = color_picker.get_color(start, self, titles[what], doc=self.doc)
         if not got.isValid():
             return
         last[what] = got.name()

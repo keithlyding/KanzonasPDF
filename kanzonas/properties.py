@@ -4,8 +4,7 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QColor, QPixmap, QIcon
 from PySide6.QtWidgets import (QWidget, QFormLayout, QVBoxLayout, QLabel, QToolButton,
                                QCheckBox, QDoubleSpinBox, QSlider, QComboBox, QHBoxLayout,
-                               QSpinBox,
-                               QColorDialog, QPushButton, QLineEdit)
+                               QSpinBox, QPushButton, QLineEdit)
 
 from . import annotations as A
 from . import stamps as ST
@@ -61,7 +60,8 @@ class ColorButton(QToolButton):
 
     def _pick(self):
         start = QColor(self._color) if self._color else QColor("#ffffff")
-        c = QColorDialog.getColor(start, self, tr("Choose color"))
+        from . import color_picker
+        c = color_picker.get_color(start, self, tr("Choose color"))
         if c.isValid():
             self.set_color(c.name())
             self.changed.emit()
@@ -163,6 +163,12 @@ class PropertiesPanel(QWidget):
                                   "(feet when the scale is in feet and inches); 0 for none."))
         self.opacity = QSlider(Qt.Horizontal)
         self.opacity.setRange(10, 100)
+        # the fill's own opacity, on top of the markup's (annotations._fill_opacity): the box or
+        # shape see-through while its outline and text stay as they are
+        self.fill_opacity = QSlider(Qt.Horizontal)
+        self.fill_opacity.setRange(0, 100)
+        self.fill_opacity.setToolTip(tr("How solid the fill is (100: solid, 0: none). The "
+                                        "outline and text keep the Opacity below."))
         self.head = QComboBox()
         self._heads = None
         self._fill_heads(None)
@@ -171,6 +177,15 @@ class PropertiesPanel(QWidget):
         self.head_start = QComboBox()
         for key in A.HEADS:
             self.head_start.addItem(HEAD_NAMES.get(key, key), key)
+        # the size of a line's or callout's heads against the size its width gives
+        # (annotations.head_scale): 100% as before
+        self.head_size = QSpinBox()
+        self.head_size.setRange(int(A.HEAD_SCALES[0] * 100), int(A.HEAD_SCALES[1] * 100))
+        self.head_size.setSingleStep(25)
+        self.head_size.setSuffix(" %")
+        self.head_size.setKeyboardTracking(False)
+        self.head_size.setToolTip(tr("The arrowheads' size: 100% is the size the line width "
+                                     "gives; bigger heads keep the line as thin."))
         self.mid = QComboBox()
         for key in A.MIDS:
             self.mid.addItem(HEAD_NAMES.get(key, key), key)
@@ -380,10 +395,12 @@ class PropertiesPanel(QWidget):
                               ("text_back", tr("Text background"), back_row),
                               ("stroke", tr("Line color"), stroke_row),
                               ("fill", tr("Fill"), fill_row),
+                              ("fill_opacity", tr("Fill opacity"), self.fill_opacity),
                               ("width", tr("Line width"), self.width),
                               ("fontsize", tr("Font size"), self.fontsize),
                               ("head_start", tr("Start arrowhead"), self.head_start),
                               ("head", tr("Arrowhead"), self.head),
+                              ("head_size", tr("Arrowhead size"), self.head_size),
                               ("mid", tr("Middle arrow"), self.mid),
                               ("dash", tr("Line style"), self.dash),
                               ("depth", tr("Depth"), self.depth),
@@ -411,12 +428,14 @@ class PropertiesPanel(QWidget):
         self.height.valueChanged.connect(self._emit)
         self.waste.valueChanged.connect(self._emit)
         self.slope.editingFinished.connect(self._emit)
-        self.opacity.sliderReleased.connect(self._emit)
         # (a click on the slider's track or the arrow keys move it without a release: they
         # apply too; a drag applies once, when it's let go)
-        self.opacity.valueChanged.connect(
-            lambda _v: None if self.opacity.isSliderDown() else self._emit())
+        for slider in (self.opacity, self.fill_opacity):
+            slider.sliderReleased.connect(self._emit)
+            slider.valueChanged.connect(
+                lambda _v, sl=slider: None if sl.isSliderDown() else self._emit())
         self.head.currentIndexChanged.connect(self._emit)
+        self.head_size.valueChanged.connect(self._emit)
         for c in (self.head_start, self.mid, self.dash):
             c.currentIndexChanged.connect(self._emit)
         self.markup.currentIndexChanged.connect(self._emit)
@@ -592,6 +611,10 @@ class PropertiesPanel(QWidget):
                                         if props["markup"] in A.COMMENT_STYLES else 0)
         if "opacity" in props:
             self.opacity.setValue(int(round(float(props["opacity"]) * 100)))
+        if "fill_opacity" in props:
+            self.fill_opacity.setValue(int(round(float(props["fill_opacity"]) * 100)))
+        if "head_size" in props:
+            self.head_size.setValue(int(round(A.head_scale(props) * 100)))
         if "for" in props:
             self.for_who.setCurrentIndex(max(0, self.for_who.findData(props["for"])))
         if "title" in props:
@@ -1019,6 +1042,10 @@ class PropertiesPanel(QWidget):
             p["cloud"] = self.cloud.isChecked()
         if "opacity" in p:
             p["opacity"] = self.opacity.value() / 100
+        if "fill_opacity" in p:
+            p["fill_opacity"] = self.fill_opacity.value() / 100
+        if "head_size" in p:
+            p["head_size"] = self.head_size.value() / 100
         if "for" in p:
             p["for"] = self.for_who.currentData()
         if "font" in p:

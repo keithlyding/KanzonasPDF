@@ -238,13 +238,18 @@ def paint_drag(w, p):
         return
     from PySide6.QtGui import QPainterPath
     t = w._screen_transform(w.view.doc[w.index])
-    path = QPainterPath()
-    for line in d.get("outlines") or []:
-        if len(line) >= 2:
-            path.moveTo(line[0][0], line[0][1])
-            for q in line[1:]:
-                path.lineTo(q[0], q[1])
-    path = t.map(path).translated(d["now"] - d["start"])
+    key = (t.m11(), t.m12(), t.m21(), t.m22(), t.dx(), t.dy())
+    if d.get("path_key") != key:
+        # (made once per drag and zoom, then only slid: made again on each mouse move, a
+        # big selection's outlines took most of the move)
+        path = QPainterPath()
+        for line in d.get("outlines") or []:
+            if len(line) >= 2:
+                path.moveTo(line[0][0], line[0][1])
+                for q in line[1:]:
+                    path.lineTo(q[0], q[1])
+        d["path"], d["path_key"] = t.map(path), key
+    path = d["path"].translated(d["now"] - d["start"])
     p.setBrush(Qt.NoBrush)
     p.setPen(QPen(QColor(255, 255, 255, 200), 3))
     p.drawPath(path)

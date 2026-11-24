@@ -1097,8 +1097,26 @@ strumento. (In modalità CAD, come in AutoCAD, ciò che disegni non resta selezi
 suo strumento, per le prossime che crei con esso (come Set as Default di Bluebeam).</li>
 <li>Il cursore <b>Opacità</b> si applica quando lo rilasci, quando fai clic sulla sua guida o quando premi le frecce
 della tastiera su di esso. Anche le immagini, comprese le catture incollate da Cattura area, hanno un'opacità.</li>
+<li><b>Opacità del riempimento</b> (caselle di testo, richiami, rettangoli, ellissi, poligoni, nuvole, Area,
+Perimetro e Volume): quanto è pieno il riempimento, da 100 (pieno) a 0 (nessuno), mentre il contorno e il
+testo mantengono l'<b>Opacità</b>; il riempimento è disegnato con entrambe insieme (un'opacità del
+riempimento di 50 su un'annotazione con opacità 50 è piena per un quarto). È disegnata nell'annotazione
+stessa, quindi anche gli altri visualizzatori PDF la mostrano.</li>
 <li>Colore della linea, riempimento (o <b>Nessun riempimento</b>), <b>Nessun bordo</b> per riquadri e forme, colore del testo,
 spessore della linea, dimensione del carattere, punte di freccia, bordo a nuvola, opacità.</li>
+<li><b>Dimensione punta di freccia</b> (linee, frecce, polilinee, archi, curve, richiami e quote): le sue punte di
+freccia e le altre estremità di linea, e la sua freccia centrale, dal 25% al 500% della dimensione data dal suo spessore
+di linea (100%), così una linea sottile può avere punte grandi. Gli altri programmi PDF conoscono le sue estremità; uno
+che ridisegna l'annotazione dalle sue impostazioni le disegna alla dimensione solita.</li>
+<li><b>Scegliere un colore</b>: ogni pulsante e comando di colore (Proprietà, <b>Colore linea...</b>,
+<b>Colore riempimento...</b> e <b>Colore testo...</b> di Modifica oggetti, il riquadro di modifica del testo,
+<b>Colore segnalibro...</b>, Filigrana, Sfondo, Elaborazione batch) apre la stessa finestra dei colori. Sopra il consueto
+selettore di colore ha due file di campioni: <b>Recenti</b>, gli ultimi 12 colori scelti ovunque in KanzonasPDF,
+il più recente per primo (restano dopo un riavvio), e <b>In questo documento</b>, i colori usati dalle annotazioni
+del documento aperto (i loro colori di linea, riempimento e testo), il più usato per primo. Fai clic su un campione
+per sceglierne il colore; puntaci sopra per vederne il valore (#rrggbb). Qualsiasi colore scelto, da un campione o
+dal selettore, passa in testa a Recenti. Una fila compare solo quando ha dei colori (nessun documento aperto:
+nessuna fila In questo documento).</li>
 <li>Linee (Linea, Freccia, Polilinea, Arco, Curva): <b>Punta di freccia iniziale</b> e <b>Punta di freccia finale</b>,
 ciascuna del proprio tipo (aperta, chiusa, invertita, cerchio, quadrato, rombo, barra o nessuna), così una linea può
 puntare in entrambi i sensi; <b>Freccia centrale</b> (aperta o chiusa), a metà della linea, nel senso in cui è stata
@@ -1158,9 +1176,16 @@ elimina come un unico oggetto; Separa lo scompone di nuovo e lascia selezionati 
 dove si trovava l'ultimo di essi, quindi ciò che era disegnato tra di loro finisce sotto. Il suo testo viene
 riscritto al suo interno con il suo carattere, la sua dimensione e il suo colore, come quando si sposta il
 testo; si può ancora cercare e copiare. Modifica testo lo cambia ancora, ma una riga cambiata così esce dal
-gruppo (raggruppala di nuovo, oppure prima Separa e poi Raggruppa). Le annotazioni e gli oggetti propri della
+gruppo (raggruppala di nuovo, oppure prima Separa e poi Raggruppa). Gli oggetti su livelli diversi possono
+formare un unico gruppo: ognuno mantiene il proprio livello al suo interno, quindi disattivando un livello nel
+pannello Livelli si nascondono ancora solo gli oggetti di quel livello. Non possono farlo gli oggetti disegnati
+con ritagli diversi (ritagliati su aree diverse), né le parti di una pagina con tag che appartengono a tag
+diversi. Le annotazioni e gli oggetti propri della
 pagina non possono formare un unico gruppo (un PDF li tiene separati): se selezioni entrambi, Raggruppa è
-disattivato e il suo suggerimento spiega perché.</li>
+disattivato e il suo suggerimento spiega perché. Un gruppo selezionato appare come un unico riquadro, e
+Proprietà lo indica con ciò che contiene, per esempio <b>Selezionato: Gruppo (31 oggetti)</b> (contando anche
+gli oggetti dei gruppi al suo interno). Su un disegno grande raggruppare e spostare un gruppo è rapido: si
+parte dagli oggetti già letti.</li>
 <li><b>Rifletti orizzontalmente</b> / <b>Rifletti verticalmente</b> (menu Disponi, il gruppo Gruppo o il
 menu del clic destro) specchiano la selezione da sinistra a destra o dall'alto in basso attorno al suo centro,
 come viene mostrata la pagina; un gruppo si riflette come un tutt'uno (ogni parte al suo posto speculare), e

@@ -1096,8 +1096,26 @@ herramienta. (En el modo CAD, como en AutoCAD, lo que dibuja no queda selecciona
 predeterminado de su herramienta, para las próximas que haga con ella (como Set as Default de Bluebeam).</li>
 <li>El control <b>Opacidad</b> se aplica al soltarlo, al hacer clic en su guía o al pulsar las flechas del teclado
 sobre él. Las imágenes, también las capturas pegadas de Capturar área, admiten una opacidad.</li>
+<li><b>Opacidad del relleno</b> (cuadros de texto, llamadas, rectángulos, elipses, polígonos, nubes, Área,
+Perímetro y Volumen): cuán sólido es el relleno, de 100 (sólido) a 0 (ninguno), mientras el contorno y el
+texto conservan la <b>Opacidad</b>; el relleno se dibuja con ambas a la vez (una opacidad del relleno de 50 en
+una marca con opacidad 50 queda sólida en una cuarta parte). Se dibuja en la propia marca, así que otros
+visores de PDF también la muestran.</li>
 <li>Color de línea, relleno (o <b>Sin relleno</b>), <b>Sin borde</b> para cuadros y formas, color del texto,
 grosor de línea, tamaño de fuente, puntas de flecha, borde de nube, opacidad.</li>
+<li><b>Tamaño de punta de flecha</b> (líneas, flechas, polilíneas, arcos, curvas, llamadas y cotas): sus puntas de
+flecha y otros extremos de línea, y su flecha central, del 25% al 500% del tamaño que da su grosor de línea (100%), para
+que una línea fina pueda tener puntas grandes. Otros programas PDF conocen sus extremos; uno que vuelva a dibujar la marca
+a partir de sus ajustes los dibuja al tamaño habitual.</li>
+<li><b>Elegir un color</b>: cada botón y orden de color (Propiedades, <b>Color de línea...</b>,
+<b>Color de relleno...</b> y <b>Color del texto...</b> de Editar objetos, el cuadro de edición de texto,
+<b>Color del marcador...</b>, Marca de agua, Fondo, Procesamiento por lotes) abre la misma ventana de color. Encima del selector
+de color habitual tiene dos filas de muestras: <b>Recientes</b>, los últimos 12 colores que eligió en cualquier
+parte de KanzonasPDF, el más reciente primero (se conservan al reiniciar), y <b>En este documento</b>, los colores
+que usan las marcas del documento abierto (sus colores de línea, relleno y texto), el más usado primero. Haga clic
+en una muestra para elegir su color; apunte a ella para ver su valor (#rrggbb). Cualquier color que elija, desde
+una muestra o desde el selector, pasa al principio de Recientes. Una fila aparece solo cuando tiene colores (sin
+documento abierto: sin la fila En este documento).</li>
 <li>Líneas (Línea, Flecha, Polilínea, Arco, Curva): <b>Punta de flecha inicial</b> y <b>Punta de flecha final</b>,
 cada una de su propio tipo (abierta, cerrada, invertida, círculo, cuadrado, rombo, barra o ninguna), para que una línea
 pueda apuntar en ambos sentidos; <b>Flecha central</b> (abierta o cerrada), a mitad de la línea, en el sentido en que se dibujó;
@@ -1155,8 +1173,15 @@ bloques: un clic en cualquier parte, también en su texto, lo selecciona entero,
 como un solo objeto; Desagrupar lo vuelve a separar y deja sus piezas seleccionadas. Se dibuja donde estaba la última
 de ellas, así que lo que se dibujaba entre ellas queda debajo. Su texto se escribe de nuevo dentro de él con su propia
 fuente, tamaño y color, como al mover texto; se puede seguir buscando y copiando. Editar texto lo sigue cambiando, pero
-una línea cambiada así sale del grupo (vuelva a agruparla, o desagrupe primero y agrupe después). Las marcas y los objetos propios de la página no pueden ser un mismo grupo (un PDF los mantiene separados): con ambos
-seleccionados, Agrupar queda en gris y su información sobre herramientas dice por qué.</li>
+una línea cambiada así sale del grupo (vuelva a agruparla, o desagrupe primero y agrupe después). Los objetos
+de capas distintas pueden ser un mismo grupo: cada uno conserva su capa dentro de él, así que al desactivar una capa en
+el panel Capas se siguen ocultando solo los objetos de esa capa. No pueden serlo los objetos dibujados con recortes
+distintos (recortados a áreas distintas), ni las partes de una página etiquetada que pertenecen a etiquetas
+distintas. Las marcas y los objetos propios de la página no pueden ser un mismo grupo (un PDF los mantiene separados): con ambos
+seleccionados, Agrupar queda en gris y su información sobre herramientas dice por qué. Un grupo seleccionado se
+muestra como un solo recuadro, y Propiedades lo nombra con lo que contiene, por ejemplo
+<b>Seleccionado: Grupo (31 objetos)</b> (contando también los objetos de los grupos que hay dentro). En un dibujo
+grande, agrupar y mover un grupo es rápido: se hace a partir de los objetos ya leídos.</li>
 <li><b>Voltear horizontalmente</b> / <b>Voltear verticalmente</b> (menú Organizar, el grupo Grupo, o el menú del botón
 derecho) reflejan la selección de izquierda a derecha o de arriba abajo por su centro, tal como se ve la página; un
 grupo se voltea como uno solo (cada parte a su lugar reflejado), y los objetos propios de la página seleccionados con

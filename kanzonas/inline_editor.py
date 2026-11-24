@@ -509,10 +509,10 @@ class InlineEditor(QFrame):
             self._restyle(lambda st: st._replace(color=_color_int(color)))
 
     def pick_color(self):
-        from PySide6.QtWidgets import QColorDialog
+        from . import color_picker
         st = self.style_of(self.text.currentCharFormat())
-        c = QColorDialog.getColor(QColor((st.color >> 16) & 255, (st.color >> 8) & 255,
-                                         st.color & 255), self, tr("Text color"))
+        c = color_picker.get_color(QColor((st.color >> 16) & 255, (st.color >> 8) & 255,
+                                          st.color & 255), self, tr("Text color"))
         self.set_color(c)
         self.text.setFocus()
 

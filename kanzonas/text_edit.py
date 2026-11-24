@@ -119,15 +119,25 @@ def text_lines(page):
     # them (MuPDF's page-box clip drops each letter whose shape is outside: a sideways
     # "SHEET NO: R-3" read as "SHEET NO R 3"; random battery, seed 41). Lines wholly
     # outside the page are left out, as the clip did.
-    d = page_text_dict(page, pymupdf.TEXTFLAGS_DICT & ~pymupdf.TEXT_PRESERVE_IMAGES &
-                       ~pymupdf.TEXT_MEDIABOX_CLIP)
+    # (each piece of text as it was written, TEXT_PRESERVE_SPANS: MuPDF otherwise continues a
+    # span with the next letters of the same style that start close to where it ends, and
+    # text moved with the arrow keys to just after other text read as one span with it,
+    # its own letters not to be found again: unselected after the first press, random
+    # battery, seed 41)
+    d = page_text_dict(page, (pymupdf.TEXTFLAGS_DICT | pymupdf.TEXT_PRESERVE_SPANS) &
+                       ~pymupdf.TEXT_PRESERVE_IMAGES & ~pymupdf.TEXT_MEDIABOX_CLIP)
     shown = (page.rect * page.derotation_matrix).normalize()
+    seq = {}                    # id(span) -> its place in MuPDF's reading order
     for b in d["blocks"]:
         if b.get("type") != 0:
             continue
         for line in b["lines"]:
             spans = [s for s in line["spans"] if s["text"]]
-            if spans and any(s["text"].strip() for s in spans):
+            for s in spans:
+                seq[id(s)] = len(seq)
+            if spans:
+                # (a space alone is a piece too: read span by span, the spaces between
+                # words placed one by one are pieces of their own, and join their line)
                 pieces.append({"bbox": pymupdf.Rect(line["bbox"]), "dir": line["dir"],
                                "spans": spans})
     # sort along each direction so neighbours are adjacent
@@ -149,8 +159,19 @@ def text_lines(page):
                 continue
         merged.append({"bbox": pymupdf.Rect(piece["bbox"]), "dir": piece["dir"],
                        "spans": list(piece["spans"])})
+    for m in merged:
+        # a line with right-to-left letters (Hebrew, Arabic) in MuPDF's reading order, which
+        # puts its words as they're read (joined left to right, they read backwards)
+        if any(_rtl(s["text"]) for s in m["spans"]):
+            m["spans"].sort(key=lambda s: seq.get(id(s), 0))
     # (a line's pieces joined first: its letters past the edge can be a piece of their own)
-    return [(m["bbox"], m) for m in merged if _shows(m, shown)]
+    return [(m["bbox"], m) for m in merged
+            if any(s["text"].strip() for s in m["spans"]) and _shows(m, shown)]
+
+
+def _rtl(text):
+    """True when text has a right-to-left letter (Hebrew, Arabic...)."""
+    return any(unicodedata.bidirectional(c) in ("R", "AL") for c in text)
 
 
 def _shows(line, shown):

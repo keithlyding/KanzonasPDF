@@ -12,7 +12,7 @@ import pymupdf
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QBrush, QColor
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QTreeWidget, QTreeWidgetItem,
-                               QToolButton, QInputDialog, QLabel, QMenu, QColorDialog)
+                               QToolButton, QInputDialog, QLabel, QMenu)
 
 from .i18n import tr
 
@@ -366,6 +366,7 @@ class BookmarksPanel(QWidget):
             return
         old = dest_of(self.toc[i]).get("color")
         start = QColor.fromRgbF(*old) if old and len(old) == 3 else QColor(Qt.black)
-        c = QColorDialog.getColor(start, self, tr("Bookmark color"))
+        from . import color_picker
+        c = color_picker.get_color(start, self, tr("Bookmark color"))
         if c.isValid():
             self.set_color((c.redF(), c.greenF(), c.blueF()))

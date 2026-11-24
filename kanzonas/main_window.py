@@ -1743,6 +1743,10 @@ class MainWindow(QMainWindow):
             lambda val: self.view() and self.view().set_zoom(_slider_to_zoom(val)))
         self.view_group = self._group_widget([self.a_fit_page, self.a_fit_width, self.a_actual,
                                               self.zoom_slider])
+        # (only the ribbon layout places it, in the status bar: the window holds it until
+        # then, so it goes with the window; with no parent it stayed after a window closed)
+        self.view_group.setParent(self)
+        self.view_group.hide()
         self._nav_group_act = tb.addWidget(self.nav_group)
         spacer = QWidget()
         spacer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
