@@ -1082,7 +1082,8 @@ def write(page, model):
         from . import clouds
         clouds.appearance(page, a, model)       # (last: a setter after it would undo it)
     if p.get("fill") and _fraction(p.get("fill_opacity", 1)) < 1:
-        _fill_opacity(doc, a, _fraction(p.get("opacity", 1)), _fraction(p["fill_opacity"]))
+        _fill_opacity(doc, a, _fraction(p.get("opacity", 1)), _fraction(p["fill_opacity"]),
+                      box_only=kind in ("textbox", "callout"))
     if kind == "legend":
         from . import legend
         doc.xref_set_key(a.xref, "NM", pymupdf.get_pdf_str(legend.new_name()))
@@ -1099,7 +1100,7 @@ _PATH_PART = re.compile(rb"^(?:[-+.\d]+\s+)*(?:m|l|c|v|y|re|h)$")
 _COLOR_SET = re.compile(rb"^(?:[-+.\d]+\s+)*(?:rg|RG|g|G|k|K)$")
 
 
-def _fill_opacity(doc, annot, opacity, fill_opacity):
+def _fill_opacity(doc, annot, opacity, fill_opacity, box_only=False):
     """The markup's fill (its box or shape: the first thing its appearance fills) drawn at
     opacity x fill opacity, its outline and text at its opacity (the owner, 23 Nov: "usually
     only the fill changes"). The fill's path and painting are put in a graphics state of
@@ -1112,7 +1113,10 @@ def _fill_opacity(doc, annot, opacity, fill_opacity):
         return
     ap = int(val.split()[0])
     lines = doc.xref_stream(ap).split(b"\n")
-    paint = next((i for i, ln in enumerate(lines) if _FILL_PAINT.match(ln.strip())), None)
+    # (box_only, a text box's or callout's: its box, a rectangle; a callout's closed arrowhead,
+    # filled before it, is part of its line)
+    paint = next((i for i, ln in enumerate(lines) if _FILL_PAINT.match(ln.strip()) and
+                  (not box_only or (i and lines[i - 1].strip().endswith(b" re")))), None)
     if paint is None:
         return
     j = paint - 1
