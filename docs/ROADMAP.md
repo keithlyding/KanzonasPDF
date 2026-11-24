@@ -160,6 +160,18 @@ a decision changes or a piece of work lands. Details of each version are in
   small dialog around Qt's rather than Qt's dialog with a strip added: the system's dialog
   (macOS's color panel, GTK's) can't hold the rows, and Qt's own custom color slots are the
   user's to keep.
+- 1.17 (the owner, 23 Nov: the markup shapes stay markups; drawing that isn't a markup gets a
+  tab of its own): the **Drawing tab** (`kanzonas/drawing.py`): line, arrow, polyline,
+  polygon, rectangle, ellipse, circle, arc, cloud and pen drawn into the page's content stream
+  (with the markup tools' clicks, previews, snapping and CAD click-click; each tool's own
+  style in Properties), on one layer, the optional content group "KanzonasPDF drawing", so the
+  Layers panel hides it and Edit objects selects, restyles, groups and reorders it as the
+  drawing's own lines (the stacking order commands now keep an object's layer; a frame clip
+  holding all of them no longer stops grouping them). Told apart from markups by its tab, its
+  layer, an orange selection and Properties' Page content tag. **Convert to drawing** (the
+  Drawing tab, a markup's right-click menu) draws shape and line markups into the page as
+  their appearance draws them, one undo step; measurements, notes, stamps, text and
+  highlights stay markups.
 
 ## Next
 The owner sets this list; nothing below is promised until it's here.

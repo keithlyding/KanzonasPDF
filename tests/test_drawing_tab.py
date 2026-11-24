@@ -523,6 +523,33 @@ class ConvertToDrawing(Base):
         self.assertLess(differing(before, pixels(v.doc[0]), level=12), 40)
 
 
+class Tagged(Base):
+    def test_a_tagged_pages_drawing_is_an_artifact(self):
+        # (PDF/UA: lines and shapes added to a tagged page are marked as artifacts, as
+        # tag_upkeep does for the page's other new drawing; the tags stay consistent)
+        from kanzonas import autotag, tag_upkeep
+        path = sheet()
+        d = pymupdf.open(path)
+        autotag.apply(d, autotag.make_plans(d), lang="en-US")
+        d.saveIncr()
+        d.close()
+        v = self.view(path)
+        self.assertEqual(tag_upkeep.problems(v.doc), [])
+        self.draw(v, "d_arrow", (100, 300), (300, 400))
+        v.set_tool("rect")
+        v.apply_drag_tool(0, "rect", P(320, 300), P(500, 400), False)
+        v._set_selection(0, [an.xref for an in v.doc[0].annots()])
+        self.assertEqual(v.convert_to_drawing(), 1)
+        self.assertEqual(tag_upkeep.problems(v.doc), [])
+        got = self.drawn(v)
+        self.assertEqual(len(got), 2)
+        for it in got:
+            self.assertIn(b"/Artifact BMC", it["obj"]["ctx"][0])
+        # (marked around its own q ... Q: its arrowhead still read as one, Properties keeps it)
+        heads = po.heads_of(v.content_objects(0).data, got[0]["obj"])
+        self.assertEqual(heads[:3], ("none", "open", "none"))
+
+
 class SaveAndOpen(Base):
     def test_saved_and_opened_again(self):
         v = self.view()

@@ -213,6 +213,11 @@ def _append(page, pieces):
     ocg = layer_xref(doc, create=True)
     name = _prop_name(page, ocg)
     head = b"/OC /" + name + b" BDC\n"
+    from . import tag_upkeep
+    if tag_upkeep.is_tagged(doc):
+        # (a tagged page: each shape an artifact, as tag_upkeep marks the page's other new
+        # lines, but around its own q ... Q, which stays as Properties rewrites it)
+        pieces = [b"/Artifact BMC\n" + p + b"EMC\n" for p in pieces]
     body = b"".join(pieces)
     x = _own_last_stream(page)
     if x is not None:
