@@ -415,6 +415,8 @@ class PageWidget(QWidget):
         self._text_sel = None       # (mode, words) while selecting text
         self._text_mode = None      # "text" or "box" for the drag in progress
         self._ink = []
+        self._hot_ink = False       # CAD mode: the Pen's stroke started by a click (cad_grips.py)
+        self._hot_text = False      # ... and text marked up from a click to the next one
         self._hover = None          # edit-text hover rect
         self._edit = None           # dragging a selected annotation
         self._cards = []            # [(QRectF, xref)] comment boxes drawn last paint
@@ -2625,6 +2627,9 @@ class PageWidget(QWidget):
             if self._triple_click(e):
                 return
             self._begin_text_drag(pos, pdf, marquee=tool == "select" and ctrl_held(e))
+            if cad_grips.on(self.view):
+                self._hot_text = True       # (CAD mode: a click starts it, the next ends it)
+                cad_grips.hold(self)
         elif tool in SHAPE_TOOLS:
             self._drag_start = self._drag_now = pos
             self._shape_press = (e.position(), e.timestamp())   # (a click or a drag: cad_draw)
@@ -3014,14 +3019,7 @@ class PageWidget(QWidget):
         elif self._obj_edit is not None or self._edit is not None:
             self._edit_move(e, pos)
         elif self._text_sel is not None:
-            self._drag_now = pos
-            end_i, end_pt = self.view.page_point_from(self, pos)
-            spans = self.view.text_selection_span(
-                self.index, self.to_pdf(self._drag_start), end_i, end_pt, box=self._marquee)
-            self._text_mode = "box" if self._marquee else (spans[0][1] if spans else "text")
-            self._text_sel = (self._text_mode, [])
-            self.view._set_text_drag(spans)
-            self.view.autoscroll_toward(self.mapToGlobal(pos))
+            self._text_drag_move(pos)
         elif self._drag_start is not None:
             self._drag_now = self._shape_point(pos, e, self._drag_start)
             self.update()
@@ -3059,6 +3057,18 @@ class PageWidget(QWidget):
                 if self._edit["mode"] in ("move", "group"):
                     self._show_drop(e, self._edit["start"], self._markups_box())
                 self.update()
+
+    def _text_drag_move(self, pos):
+        """Selecting (or marking up) text from the press reached pos: what it takes so far
+        is shown."""
+        self._drag_now = pos
+        end_i, end_pt = self.view.page_point_from(self, pos)
+        spans = self.view.text_selection_span(
+            self.index, self.to_pdf(self._drag_start), end_i, end_pt, box=self._marquee)
+        self._text_mode = "box" if self._marquee else (spans[0][1] if spans else "text")
+        self._text_sel = (self._text_mode, [])
+        self.view._set_text_drag(spans)
+        self.view.autoscroll_toward(self.mapToGlobal(pos))
 
     def _shape_point(self, pos, e, start):
         """Where a shape drawn from widget point start ends with the pointer at pos: snapped,
@@ -3180,24 +3190,7 @@ class PageWidget(QWidget):
         elif self._edit is not None:
             self._edit_release(e, pos)
         elif self._text_sel is not None:
-            a, b = self._drag_start, pos
-            mode = self._text_mode
-            end_i, end_pt = self.view.page_point_from(self, pos)
-            start_pt = self.to_pdf(a)
-            marquee = self._marquee
-            self._text_sel = None
-            self._text_mode = None
-            self._marquee = False
-            self._drag_start = self._drag_now = None
-            self.view._set_text_drag(None)
-            if (b - a).manhattanLength() >= 3:
-                if tool == "select" and mode == "box" and end_i == self.index:
-                    # a box drawn from empty space selects the markups inside it
-                    box = pymupdf.Rect(start_pt, self.to_pdf(b)).normalize()
-                    if self.view.select_in_box(self.index, box, add=ctrl_held(e)) or ctrl_held(e):
-                        return
-                self.view.apply_text_span("select" if tool == "hand" else tool,
-                                          (self.index, start_pt), (end_i, end_pt), box=marquee)
+            self._text_release(e, pos)
         elif self._drag_start is not None and tool in FORM_TOOLS:
             a, b = self._drag_start, self._drag_now
             self._drag_start = self._drag_now = None
@@ -3247,6 +3240,29 @@ class PageWidget(QWidget):
                 else:
                     preview = A.fitted(self.view.doc[self.index], preview)
             self.view.commit_model(self.index, self.view.selection[1], preview)
+
+    def _text_release(self, e, pos):
+        """The end of selecting (or marking up) text from the press (in CAD mode, the click
+        that ends it: cad_grips.py): the text from there to pos is selected or marked up."""
+        tool = self.view.tool
+        a, b = self._drag_start, pos
+        mode = self._text_mode
+        end_i, end_pt = self.view.page_point_from(self, pos)
+        start_pt = self.to_pdf(a)
+        marquee = self._marquee
+        self._text_sel = None
+        self._text_mode = None
+        self._marquee = False
+        self._drag_start = self._drag_now = None
+        self.view._set_text_drag(None)
+        if (b - a).manhattanLength() >= 3:
+            if tool == "select" and mode == "box" and end_i == self.index:
+                # a box drawn from empty space selects the markups inside it
+                box = pymupdf.Rect(start_pt, self.to_pdf(b)).normalize()
+                if self.view.select_in_box(self.index, box, add=ctrl_held(e)) or ctrl_held(e):
+                    return
+            self.view.apply_text_span("select" if tool == "hand" else tool,
+                                      (self.index, start_pt), (end_i, end_pt), box=marquee)
 
     def finish_poly(self, cancel=False):
         pts, self._poly, self._poly_hover = self._poly, [], None

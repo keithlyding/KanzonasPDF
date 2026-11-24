@@ -49,6 +49,7 @@ def sheet():
         A.write(p, {"kind": "rect", "props": dict(A.DEFAULTS["rect"]), "rect": r})
     A.write(p, {"kind": "line", "props": dict(A.DEFAULTS["line"]),
                 "points": [P(100, 650), P(250, 650)]})
+    p.insert_text((100, 480), "GENERAL NOTES FOR THE SHEET", fontsize=14)
     d.new_page(width=612, height=792)
     path = os.path.join(tempfile.mkdtemp(), "sheet.pdf")
     d.save(path)
@@ -468,6 +469,25 @@ class Clicks(Base):
         self.click((200, 200))                          # (a new stroke starts here)
         self.escape()
         self.assertIsNone(self.markup("ink")[0])
+
+    def test_highlight_from_one_click_to_the_next(self):
+        v = self.v
+        v.set_tool("highlight")
+        self.click((102, 476))
+        self.assertIs(cad_grips.owner(v), self.w)
+        self.hover((200, 476))
+        self.hover((330, 476))
+        self.assertIsNone(self.markup("highlight")[0])  # (not made yet)
+        self.click((330, 476))
+        self.assertIsNone(cad_grips.owner(v))
+        xref, _m = self.markup("highlight")
+        self.assertIsNotNone(xref)
+        page = v.doc[0]
+        words = page.get_textbox(page.load_annot(xref).rect)
+        del page
+        self.assertIn("GENERAL NOTES", words)
+        v.undo()
+        self.assertIsNone(self.markup("highlight")[0])
 
     def test_the_status_bar_says_what_to_do(self):
         v = self.v

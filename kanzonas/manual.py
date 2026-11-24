@@ -1015,7 +1015,9 @@ point. A click on a markup with the Eraser still deletes it at once, a click on 
 Links tool still opens it, and two clicks on the same spot with Text box make one of the default
 size. Note, Stamp, Count, Numbered dot and Image still place with one click. The <b>Pen</b> draws
 from one click to the next: click to start, move to draw (no button held), click to end; Escape
-drops the stroke. A <b>Dimension</b>'s points are clicks too (in the other modes a drag gives
+drops the stroke. <b>Highlight</b> and the other text tools (Underline, Strikeout, Redact...)
+mark from a click on the first letter to a click on the last. A <b>Dimension</b>'s points are
+clicks too (in the other modes a drag gives
 its first two).</li>
 <li><b>Polygon / polyline:</b> click each point; double-click or Enter to finish, Backspace to take back the last point,
 Escape to cancel.</li>

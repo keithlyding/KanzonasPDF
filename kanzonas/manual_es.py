@@ -1001,7 +1001,8 @@ punto. Un clic sobre una marca con el Borrador la sigue eliminando de inmediato,
 vínculo con la herramienta Vínculos lo sigue abriendo, y dos clics en el mismo lugar con Cuadro
 de texto crean uno del tamaño predeterminado. Nota, Sello, Conteo, Punto numerado e Imagen se siguen colocando
 con un clic. El <b>Lápiz</b> dibuja de un clic al siguiente: haga clic para empezar, mueva para dibujar (sin presionar
-ningún botón) y haga clic para terminar; Escape descarta el trazo. Los puntos de una <b>Cota</b> también son clics (en
+ningún botón) y haga clic para terminar; Escape descarta el trazo. <b>Resaltado</b> y las demás herramientas de texto (Subrayado, Tachado,
+Censurar...) marcan desde un clic en la primera letra hasta un clic en la última. Los puntos de una <b>Cota</b> también son clics (en
 los otros modos un arrastre da los dos primeros).</li>
 <li><b>Polígono / polilínea:</b> haga clic en cada punto; doble clic o Enter para terminar, Retroceso para quitar el último
 punto, Esc para cancelar.</li>

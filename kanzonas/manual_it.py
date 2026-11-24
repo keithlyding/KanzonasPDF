@@ -1001,7 +1001,8 @@ punto. Un clic su un'annotazione con la Gomma la elimina comunque subito, un cli
 Collegamenti lo apre comunque, e due clic nello stesso punto con Casella di testo ne creano una delle dimensioni
 predefinite. Nota, Timbro, Conteggio, Punto numerato e Immagine si posizionano ancora con un solo clic. La <b>Penna</b>
 disegna da un clic al successivo: fai clic per iniziare, sposta il mouse per disegnare (senza tenere premuto alcun
-pulsante) e fai clic per finire; Esc elimina il tratto. Anche i punti di una <b>Quota</b> sono clic (nelle altre
+pulsante) e fai clic per finire; Esc elimina il tratto. <b>Evidenzia</b> e gli altri strumenti per il testo (Sottolinea, Barrato,
+Oscura...) segnano da un clic sulla prima lettera a un clic sull'ultima. Anche i punti di una <b>Quota</b> sono clic (nelle altre
 modalità un trascinamento dà i primi due).</li>
 <li><b>Poligono / polilinea:</b> fai clic su ogni punto; doppio clic o Invio per terminare, Backspace per togliere l'ultimo punto,
 Esc per annullare.</li>

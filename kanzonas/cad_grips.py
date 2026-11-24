@@ -9,6 +9,7 @@ anything"):
   click puts it down, or a distance typed on the command line moves it that far toward the
   pointer (typed below);
 - with the Pen, a click starts the stroke, the pointer draws it and the next click ends it;
+  with Highlight and the other text tools, a click starts at a letter and the next ends;
 - Escape or a right-click puts everything back as it was. A press, drag and release is a
   click and a move: the next click still places.
 
@@ -40,7 +41,8 @@ def on(v):
 def _busy(w):
     """What page widget w holds that a click places: "resize" (a box around several items),
     "move" (the selection picked up), "objects" (the drawing's objects' handle), "markup"
-    (a markup's grip), "ink" (a stroke being drawn), or None."""
+    (a markup's grip), "ink" (a stroke being drawn), "text" (text being highlighted, struck
+    out...), or None."""
     if getattr(w, "_cad_resize", None) is not None:
         return "resize"
     d = w._cad_down
@@ -52,6 +54,8 @@ def _busy(w):
         return "markup"
     if w._ink and getattr(w, "_hot_ink", False):
         return "ink"
+    if w._text_sel is not None and getattr(w, "_hot_text", False):
+        return "text"
     return None
 
 
@@ -81,6 +85,8 @@ def hold(w):
     ed = w._obj_edit if what == "objects" else w._edit if what == "markup" else None
     if what == "ink":
         say = tr("Move to draw, click to end the stroke (Escape or a right-click cancels)")
+    elif what == "text":
+        say = tr("Move to where the text ends, click there (Escape or a right-click cancels)")
     elif ed is not None and ed.get("mode") == "rot":
         say = tr("Move to turn it, click to set the angle; Shift: 15° steps (Escape or a "
                  "right-click puts it back)")
@@ -116,6 +122,8 @@ def move(w, e):
         if (pos - w._ink[-1]).manhattanLength() >= 1:
             w._ink.append(pos)
             w.update()
+    elif what == "text":
+        w._text_drag_move(pos)
 
 
 def place(w, e):
@@ -141,6 +149,9 @@ def place(w, e):
         w.update()
         if len(pts) > 1:
             w.view.apply_ink(w.index, pts)
+    elif what == "text":
+        w._hot_text = False
+        w._text_release(e, pos)
 
 
 def cancel(v, quiet=False):
@@ -157,6 +168,12 @@ def cancel(v, quiet=False):
     w._edit = None
     w._ink = []
     w._hot_ink = False
+    if getattr(w, "_hot_text", False):
+        w._hot_text = False
+        w._text_sel = w._text_mode = None
+        w._marquee = False
+        w._drag_start = w._drag_now = None
+        v._set_text_drag(None)
     w._snap_mark = None
     w._snap_guides = []
     w._end_drop()
@@ -232,17 +249,19 @@ def typed(v, text):
 
 def double_click(w, e):
     """A double-click on page widget w while something is hot (Qt sends it in place of the
-    second press). On what was just picked up, still where it was, it's a double-click on
-    it: the pick-up is dropped and the double-click edits (False: the caller goes on). Else
-    it's the click that places (True)."""
+    second press). On what was just picked up, or where text marking started, still where it
+    was, it's a double-click there: what the first click started is dropped and the
+    double-click edits or selects a word (False: the caller goes on). Else it's the click
+    that places (True)."""
     hot = owner(w.view)
     if hot is None:
         return False
-    if e.button() == Qt.LeftButton and _busy(hot) == "move":
+    what = _busy(hot)
+    if e.button() == Qt.LeftButton and what in ("move", "text"):
         from . import cad_select
-        d = hot._cad_down
+        start = hot._cad_down["start"] if what == "move" else hot._drag_start
         at = mapped(hot, e).position()
-        if (at - d["start"]).manhattanLength() < cad_select.STILL_PX:
+        if (at - start).manhattanLength() < cad_select.STILL_PX:
             cancel(w.view, quiet=True)
             return False
     return press(w, e)

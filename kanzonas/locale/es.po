@@ -11952,3 +11952,6 @@ msgstr "Se dejó como estaba"
 
 msgid "Point the way it goes, then type the distance as a number (or 12'-6\") and press Enter; or click where it goes"
 msgstr "Apunte hacia donde va, luego escriba la distancia como un número (o 12'-6\") y presione Enter; o haga clic donde va"
+
+msgid "Move to where the text ends, click there (Escape or a right-click cancels)"
+msgstr "Mueva hasta donde termina el texto y haga clic ahí (Escape o un clic derecho cancela)"
