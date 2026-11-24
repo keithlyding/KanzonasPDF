@@ -151,7 +151,8 @@ feature, and update it when a decision changes or a piece of work lands.
   with its lines < 4 s; the live CAD highlight's longest step < 0.25 s; a repaint not reading
   the selection again. Typical today: 0.4 / 0.5 / 0.3 / 1.0 s, 0.03 s.
 - Everyday budget (self-test "everyday speed budget"): a text-selection drag < 10 ms per move,
-  hover over 2,000 markups < 10 ms, Edit objects hover < 5 ms, night mode on 8 megapixels
+  hover over 2,000 markups < 10 ms, 2,000 markups picked up in CAD mode following the pointer
+  < 50 ms per move (drawn again each move), Edit objects hover < 5 ms, night mode on 8 megapixels
   < 0.5 s, a 15,000-piece command preview < 80 ms, Tab on a form < 20 ms, inserting 100 pages
   into a shown 300-page document < 2.5 s, deleting 10 pages < 2.5 s. Per-move work goes
   through cached per-page indexes (`hit_index.py`, `_hit_cache`), never a Python loop over

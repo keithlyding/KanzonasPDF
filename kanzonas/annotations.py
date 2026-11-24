@@ -190,6 +190,37 @@ PAGE_TEXT_TOOLS = {
     "edittext": {"font": "", "bold": False, "italic": False, "fontsize": 0},   # 0: keep the line's
 }
 
+# the Drawing tab's tools (drawing.py): shapes written into the page itself, on the layer
+# "KanzonasPDF drawing"; black by default, as a drawing's own lines usually are
+_DRAW_LINE = {"stroke": "#000000", "width": 1.0, "dash": "solid", "head_start": "none",
+              "head": "none", "mid": "none", "head_size": 1.0, "opacity": 1.0}
+_DRAW_SHAPE = {"stroke": "#000000", "fill": None, "width": 1.0, "dash": "solid",
+               "opacity": 1.0, "fill_opacity": 1.0}
+DRAW_TOOLS = {
+    "d_line": dict(_DRAW_LINE), "d_arrow": dict(_DRAW_LINE, head="open"),
+    "d_polyline": dict(_DRAW_LINE), "d_arc": dict(_DRAW_LINE),
+    "d_polygon": dict(_DRAW_SHAPE), "d_rect": dict(_DRAW_SHAPE),
+    "d_ellipse": dict(_DRAW_SHAPE), "d_circle": dict(_DRAW_SHAPE),
+    # (a cloud's scallops are drawn as the Cloud markup's: no Line style)
+    "d_cloud": {"stroke": "#000000", "fill": None, "width": 1.0, "opacity": 1.0,
+                "fill_opacity": 1.0},
+    "d_ink": {"stroke": "#000000", "width": 1.0, "opacity": 1.0},
+}
+LABELS.update({"d_line": tr("Line"), "d_arrow": tr("Arrow"), "d_polyline": tr("Polyline"),
+               "d_arc": tr("Arc"), "d_polygon": tr("Polygon"), "d_rect": tr("Rectangle"),
+               "d_ellipse": tr("Ellipse"), "d_circle": tr("Circle"), "d_cloud": tr("Cloud"),
+               "d_ink": tr("Pen")})
+
+
+def has_tool_props(kind):
+    """Whether tool kind has settings of its own (Properties shows them while it's picked)."""
+    return kind in DEFAULTS or kind in PAGE_TEXT_TOOLS or kind in DRAW_TOOLS
+
+
+def _tool_defaults(kind):
+    return DEFAULTS.get(kind) or PAGE_TEXT_TOOLS.get(kind) or DRAW_TOOLS.get(kind) or {}
+
+
 # printed in the sign-here box (made from the placeholder's kind, never read back)
 PLACEHOLDER_TEXT = {"signature": tr("SIGN HERE"), "initials": tr("INITIAL HERE")}
 HEADS = {"none": pymupdf.PDF_ANNOT_LE_NONE,
@@ -302,7 +333,7 @@ _TRANSIENT = {}
 
 
 def tool_props(kind):
-    props = dict(DEFAULTS.get(kind) or PAGE_TEXT_TOOLS.get(kind, {}))
+    props = dict(_tool_defaults(kind))
     if kind in TRANSIENT_TOOLS:
         props.update({k: v for k, v in _TRANSIENT.get(kind, {}).items() if k in props})
         return props
@@ -332,7 +363,7 @@ def set_tool_props(kind, props):
 
 
 def reset_tool_props(kind):
-    set_tool_props(kind, dict(DEFAULTS.get(kind) or PAGE_TEXT_TOOLS[kind]))
+    set_tool_props(kind, dict(_tool_defaults(kind)))
 
 
 def forget_saved_transient():
@@ -536,6 +567,8 @@ def read(annot):
     elif kind == "callout":
         model["rect"] = pymupdf.Rect(geom.get("box", annot.rect))
         model["points"] = [pymupdf.Point(geom.get("target", annot.rect.bl))]
+        more = geom.get("leaders") or []
+        model["points"] += [pymupdf.Point(more[k], more[k + 1]) for k in range(0, len(more) - 1, 2)]
     elif kind == "stamp":
         model["detail"] = geom.get("detail")
         if geom.get("box"):
@@ -674,14 +707,7 @@ def _scale_heads(doc, annot, scale, width):
         return
     ap = int(val.split()[0])
     lines = doc.xref_stream(ap).split(b"\n")
-    blocks, start = [], None
-    for i, ln in enumerate(lines):
-        t = ln.strip()
-        if start is None and _M_LINE.match(t):
-            start = i
-        elif start is not None and _ANY_PAINT.match(t):
-            blocks.append((start, i))
-            start = None
+    blocks = _path_blocks(lines)
     if len(blocks) < 2:
         return
 
@@ -725,13 +751,104 @@ _NUMBER_B = re.compile(rb"[-+]?(?:\d+\.?\d*|\.\d+)")
 def _scaled_pairs(line, about, scale):
     """A content line's numbers, taken as x y pairs, scaled by scale about the point about
     (each path operator's line holds whole pairs)."""
-    k = [0]
+    return _mapped_pairs(line, lambda q: about + (q - about) * scale)
 
-    def one(m):
-        c = about.x if k[0] % 2 == 0 else about.y
-        k[0] += 1
-        return ("%.3f" % (c + (float(m.group(0)) - c) * scale)).encode()
-    return _NUMBER_B.sub(one, line)
+
+def _mapped_pairs(line, f):
+    """A content line's numbers, taken as x y pairs, each pair put through f (a Point to a
+    Point; each path operator's line holds whole pairs)."""
+    nums = [float(m.group(0)) for m in _NUMBER_B.finditer(line)]
+    out = []
+    for k in range(0, len(nums) - 1, 2):
+        q = f(pymupdf.Point(nums[k], nums[k + 1]))
+        out += [q.x, q.y]
+    it = iter(out)
+    return _NUMBER_B.sub(lambda _m: ("%.3f" % next(it)).encode(), line)
+
+
+def callout_knee(box, target):
+    """Where a callout's leader meets its box: the middle of the box's side nearest target."""
+    knees = [pymupdf.Point(box.x0, (box.y0 + box.y1) / 2),
+             pymupdf.Point(box.x1, (box.y0 + box.y1) / 2),
+             pymupdf.Point((box.x0 + box.x1) / 2, box.y0),
+             pymupdf.Point((box.x0 + box.x1) / 2, box.y1)]
+    return min(knees, key=lambda k: abs(k - target))
+
+
+def _path_blocks(lines):
+    """The paths of a content stream's lines: (first line, paint line) of each one that
+    starts with  x y m  on a line of its own."""
+    blocks, start = [], None
+    for i, ln in enumerate(lines):
+        t = ln.strip()
+        if start is None and _M_LINE.match(t):
+            start = i
+        elif start is not None and _ANY_PAINT.match(t):
+            blocks.append((start, i))
+            start = None
+    return blocks
+
+
+def _draw_leaders(page, annot, model, width):
+    """A callout's leaders after its first (the owner, 23 Nov: "add leaders to callouts", as
+    Bluebeam's Add Leader), drawn in its appearance: a PDF callout has one leader (/CL),
+    which MuPDF draws with its arrowhead. Each other one runs from its point to the middle of
+    the box's side nearest it, with a copy of that arrowhead turned its way, so every head
+    style and the Arrowhead size match; the markup's box grows to hold them. KanzonasPDF
+    keeps them (KZProps "leaders"); another program that draws the callout anew from its
+    settings shows the first leader only."""
+    doc = page.parent
+    typ, val = doc.xref_get_key(annot.xref, "AP/N")
+    if typ != "xref":
+        return
+    ap = int(val.split()[0])
+    lines = doc.xref_stream(ap).split(b"\n")
+    blocks = _path_blocks(lines)
+    if not blocks:
+        return
+
+    def pts(i0, i1):
+        nums = [float(x) for ln in lines[i0:i1] for x in _NUMBER.findall(ln.decode("latin-1"))]
+        return [pymupdf.Point(nums[k], nums[k + 1]) for k in range(0, len(nums) - 1, 2)]
+    lead = pts(*blocks[0])
+    if len(lead) < 2:
+        return
+    tip0, knee0 = lead[0], lead[-1]
+    head = None
+    if len(blocks) > 1:
+        hp = pts(*blocks[1])
+        if hp and min(abs(q - tip0) for q in hp) < 1:
+            head = blocks[1]
+    to_pdf = pdfcoords.to_pdf(page)
+    box = pymupdf.Rect(model["rect"])
+    a0 = math.atan2(knee0.y - tip0.y, knee0.x - tip0.x)
+    added, grown = [], None
+    for t in model["points"][1:]:
+        tip, knee = pymupdf.Point(t) * to_pdf, callout_knee(box, t) * to_pdf
+        added += [b"%.3f %.3f m" % (tip.x, tip.y), b"%.3f %.3f l" % (knee.x, knee.y), b"S"]
+        new = [tip, knee]
+        if head is not None:
+            turn = math.atan2(knee.y - tip.y, knee.x - tip.x) - a0
+            co, si = math.cos(turn), math.sin(turn)
+
+            def f(q, tip=tip, co=co, si=si):
+                d = q - tip0
+                return pymupdf.Point(tip.x + d.x * co - d.y * si, tip.y + d.x * si + d.y * co)
+            for k in range(head[0], head[1] + 1):
+                added.append(_mapped_pairs(lines[k], f))
+            new += [f(q) for q in pts(*head)]
+        for q in new:
+            grown = pymupdf.Rect(q, q) if grown is None else grown | q
+    at = (head or blocks[0])[1] + 1
+    lines[at:at] = added
+    doc.update_stream(ap, b"\n".join(lines))
+    pad = float(width or 0) / 2 + 1
+    grown = grown + (-pad, -pad, pad, pad)
+    for x, key in ((ap, "BBox"), (annot.xref, "Rect")):
+        k, v = doc.xref_get_key(x, key)
+        if k == "array":
+            r = pymupdf.Rect([float(n) for n in v.strip("[]").split()]) | grown
+            doc.xref_set_key(x, key, "[%g %g %g %g]" % tuple(r))
 
 
 def _solid_ends(doc, annot):
@@ -851,10 +968,7 @@ def write(page, model):
         a = page.add_polyline_annot([(q.x, q.y) for q in model["points"]])
     elif kind == "callout":
         box, target = pymupdf.Rect(model["rect"]), model["points"][0]
-        # leader line runs from the target to the nearest middle of a box edge
-        knees = [pymupdf.Point(box.x0, (box.y0 + box.y1) / 2), pymupdf.Point(box.x1, (box.y0 + box.y1) / 2),
-                 pymupdf.Point((box.x0 + box.x1) / 2, box.y0), pymupdf.Point((box.x0 + box.x1) / 2, box.y1)]
-        knee = min(knees, key=lambda k: abs(k - target))
+        knee = callout_knee(box, target)
         a = page.add_freetext_annot(box, text, fontsize=float(p.get("fontsize", 11)),
                                     fontname="helv",
                                     text_color=to_rgb(p.get("text_color")) or (0, 0, 0),
@@ -1016,6 +1130,9 @@ def write(page, model):
     store = {"kind": kind, "props": p}
     if kind == "callout":
         store["geom"] = {"box": list(model["rect"]), "target": list(model["points"][0])}
+        if len(model["points"]) > 1:
+            store["geom"]["leaders"] = [c for q in model["points"][1:] for c in (q.x, q.y)]
+            _draw_leaders(page, a, model, width)
     elif kind == "stamp":
         store["geom"] = {"detail": model.get("detail") or ""}
         if turned(model):
@@ -1082,7 +1199,8 @@ def write(page, model):
         from . import clouds
         clouds.appearance(page, a, model)       # (last: a setter after it would undo it)
     if p.get("fill") and _fraction(p.get("fill_opacity", 1)) < 1:
-        _fill_opacity(doc, a, _fraction(p.get("opacity", 1)), _fraction(p["fill_opacity"]))
+        _fill_opacity(doc, a, _fraction(p.get("opacity", 1)), _fraction(p["fill_opacity"]),
+                      box_only=kind in ("textbox", "callout"))
     if kind == "legend":
         from . import legend
         doc.xref_set_key(a.xref, "NM", pymupdf.get_pdf_str(legend.new_name()))
@@ -1099,7 +1217,7 @@ _PATH_PART = re.compile(rb"^(?:[-+.\d]+\s+)*(?:m|l|c|v|y|re|h)$")
 _COLOR_SET = re.compile(rb"^(?:[-+.\d]+\s+)*(?:rg|RG|g|G|k|K)$")
 
 
-def _fill_opacity(doc, annot, opacity, fill_opacity):
+def _fill_opacity(doc, annot, opacity, fill_opacity, box_only=False):
     """The markup's fill (its box or shape: the first thing its appearance fills) drawn at
     opacity x fill opacity, its outline and text at its opacity (the owner, 23 Nov: "usually
     only the fill changes"). The fill's path and painting are put in a graphics state of
@@ -1112,7 +1230,10 @@ def _fill_opacity(doc, annot, opacity, fill_opacity):
         return
     ap = int(val.split()[0])
     lines = doc.xref_stream(ap).split(b"\n")
-    paint = next((i for i, ln in enumerate(lines) if _FILL_PAINT.match(ln.strip())), None)
+    # (box_only, a text box's or callout's: its box, a rectangle; a callout's closed arrowhead,
+    # filled before it, is part of its line)
+    paint = next((i for i, ln in enumerate(lines) if _FILL_PAINT.match(ln.strip()) and
+                  (not box_only or (i and lines[i - 1].strip().endswith(b" re")))), None)
     if paint is None:
         return
     j = paint - 1
@@ -1748,7 +1869,7 @@ def rebase_page(page, d):
                 store = None
             geom = store.get("geom") if isinstance(store, dict) else None
             if isinstance(geom, dict):
-                for k in ("box", "target", "at", "pts", "bend"):
+                for k in ("box", "target", "leaders", "at", "pts", "bend"):
                     g = geom.get(k)
                     if isinstance(g, list) and all(isinstance(c, (int, float)) for c in g):
                         geom[k] = [c + (d.x if i % 2 == 0 else d.y) for i, c in enumerate(g)]
@@ -1845,7 +1966,7 @@ def shift_in_place(page, xref, d, to_pdf=None):
             store = None
         geom = store.get("geom") if isinstance(store, dict) else None
         if isinstance(geom, dict):
-            for k in ("box", "target", "at", "pts", "bend"):
+            for k in ("box", "target", "leaders", "at", "pts", "bend"):
                 if isinstance(geom.get(k), list):
                     geom[k] = [c + (d.x if i % 2 == 0 else d.y) for i, c in enumerate(geom[k])]
             if isinstance(geom.get("holes"), list):      # (an area's cut-outs)

@@ -5,17 +5,19 @@ page's own lines, text and pictures):
 - click empty paper, move, click again: a selection box. Left to right it's a blue window
   (takes what lies entirely inside it), right to left a dashed green crossing box (takes
   everything it touches). Escape cancels it;
-- hold the button and drag: a lasso that follows the pointer. Drawn rightward at first it's a
-  window lasso (blue), leftward a crossing lasso (green);
-- dragging from what's selected moves the selection (markups and the page's own objects
-  together, as one undo step; the four-way arrow shows over it: the owner, 12 Nov, as
-  AutoCAD's drag of a selection); dragging anywhere else draws a lasso or box; handles
-  still resize;
+- with the lasso on (Preferences > Mouse; off by default since 1.17, CAD mode holding no
+  button), hold the button and drag: a lasso that follows the pointer. Drawn rightward at
+  first it's a window lasso (blue), leftward a crossing lasso (green); with it off, a press,
+  drag and release is a click and a move: the box's first corner;
+- a click on what's selected picks it up, the next click puts it down (markups and the
+  page's own objects together, as one undo step; the four-way arrow shows over it), and a
+  click on a handle makes it hot until the next click (cad_grips.py; before 1.17 both were
+  drags: the owner, 12 Nov, as AutoCAD's drag of a selection);
 - while a box or lasso is drawn, what it would take is highlighted, worked out in short
   slices between pointer moves so big drawings stay smooth (it fills in as it goes).
 
-Mouse mode options (Preferences > Mouse) can turn click-click boxes or the lasso off: then a
-press-drag-release draws a box instead.
+Mouse mode options (Preferences > Mouse) can turn click, move, click off: then a press, drag
+and release draws a box (or a lasso), and a drag moves the selection or a handle.
 """
 import time
 
@@ -24,6 +26,7 @@ import shiboken6
 from PySide6.QtCore import Qt, QPointF, QRectF, QTimer
 from PySide6.QtGui import QColor, QPen, QPolygonF
 
+from . import cad_grips
 from .i18n import tr
 from .page_objects import Box, Lasso
 
@@ -59,6 +62,7 @@ def press(w, e, pos, pdf, outside=False):
             for hid, r in box_handles(box).items():
                 if r.adjusted(-3, -3, 3, 3).contains(pos):
                     w._cad_resize = {"mode": hid, "start": pos, "box": box, "now": None}
+                    cad_grips.hold(w)
                     return
     if outside:
         target = ("markup", None)
@@ -69,11 +73,13 @@ def press(w, e, pos, pdf, outside=False):
             for hid, r in w._handles(model).items():
                 if r.adjusted(-3, -3, 3, 3).contains(pos):
                     w._edit = {"mode": hid, "start": pos, "model": model, "preview": None}
+                    cad_grips.hold(w)
                     return
     elif w._objects_here() and not remove:
         for hid, r in w._objects_handles().items():
             if r.adjusted(-3, -3, 3, 3).contains(pos):
                 w._obj_edit = {"mode": hid, "start": pos, "preview": None}
+                cad_grips.hold(w)
                 return
     if not outside:
         target = target_at(w, pos, pdf)
@@ -81,6 +87,13 @@ def press(w, e, pos, pdf, outside=False):
                    "target": target, "remove": remove, "t": e.timestamp(),
                    "link": getattr(w, "_link_press", None) is not None,
                    "on_selection": not outside and not remove and is_selected(w, *target)}
+    if w._cad_down["on_selection"] and cad_grips.on(v):
+        # a click on what's selected picks it up: it follows the pointer until the next
+        # click puts it down (cad_grips.py)
+        _start_drag(w, w._cad_down)
+        w._cad_down["now"] = pos
+        cad_grips.hold(w)
+        w.setCursor(Qt.SizeAllCursor)
 
 
 def is_selected(w, kind, target):
@@ -134,8 +147,7 @@ def move(w, e, pos):
     v = w.view
     if d["mode"] is None and (pos - d["start"]).manhattanLength() >= 4:
         if d.get("on_selection"):
-            d["mode"] = "drag"
-            d["outlines"] = _selection_lines(w)
+            _start_drag(w, d)
         else:
             d["mode"] = "lasso" if v.lasso else "box"
     if d["mode"] == "drag":
@@ -154,6 +166,12 @@ def move(w, e, pos):
     _schedule(w)
     w.update()
     _outside_update(w)
+
+
+def _start_drag(w, d):
+    """The press in d, on what's selected, moves the selection."""
+    d["mode"] = "drag"
+    d["outlines"] = _selection_lines(w)
 
 
 def hover(w, e):
@@ -240,21 +258,50 @@ def paint_drag(w, p):
     t = w._screen_transform(w.view.doc[w.index])
     key = (t.m11(), t.m12(), t.m21(), t.m22(), t.dx(), t.dy())
     if d.get("path_key") != key:
-        # (made once per drag and zoom, then only slid: made again on each mouse move, a
-        # big selection's outlines took most of the move)
+        # (drawn once per move and zoom into a picture, then only the picture slid: drawn
+        # again on each mouse move, a big selection's dashed outlines took most of the move,
+        # 2,000 markups' 150 ms a paint)
         path = QPainterPath()
         for line in d.get("outlines") or []:
             if len(line) >= 2:
                 path.moveTo(line[0][0], line[0][1])
                 for q in line[1:]:
                     path.lineTo(q[0], q[1])
-        d["path"], d["path_key"] = t.map(path), key
-    path = d["path"].translated(d["now"] - d["start"])
-    p.setBrush(Qt.NoBrush)
-    p.setPen(QPen(QColor(255, 255, 255, 200), 3))
-    p.drawPath(path)
-    p.setPen(QPen(BLUE, 1, Qt.DashLine))
-    p.drawPath(path)
+        d["ghost"], d["path_key"] = _ghost(t.map(path), w.devicePixelRatioF()), key
+    pm, at = d["ghost"]
+    if pm is not None:
+        p.drawPixmap(at + (d["now"] - d["start"]), pm)
+
+
+GHOST_PX = 4_000_000            # device pixels at most in the picture of a moved selection
+
+
+def _ghost(path, dpr):
+    """(QPixmap, its top left corner) of the outlines path (widget coordinates) as a moved
+    selection shows them: a dashed blue line over a white one. A huge one is drawn smaller
+    and scaled up."""
+    from PySide6.QtGui import QImage, QPainter, QPixmap
+    box = path.boundingRect().adjusted(-3, -3, 3, 3)
+    area = box.width() * box.height()
+    if area <= 0:
+        return None, QPointF()
+    scale = min(dpr, (GHOST_PX / area) ** 0.5)
+    img = QImage(max(1, int(box.width() * scale) + 1), max(1, int(box.height() * scale) + 1),
+                 QImage.Format_ARGB32_Premultiplied)
+    img.fill(Qt.transparent)
+    gp = QPainter(img)
+    gp.setRenderHint(QPainter.Antialiasing)
+    gp.scale(scale, scale)
+    gp.translate(-box.topLeft())
+    gp.setBrush(Qt.NoBrush)
+    gp.setPen(QPen(QColor(255, 255, 255, 200), 3))
+    gp.drawPath(path)
+    gp.setPen(QPen(BLUE, 1, Qt.DashLine))
+    gp.drawPath(path)
+    gp.end()
+    pm = QPixmap.fromImage(img)
+    pm.setDevicePixelRatio(scale)
+    return pm, box.topLeft()
 
 
 def apply_cursor(w):
@@ -381,6 +428,13 @@ def release(w, e, pos):
     if d["mode"] == "lasso" and len(d["pts"]) >= 3:
         region = Lasso([w.to_pdf(p) for p in d["pts"]])
         pick(w, region, d["dir"] < 0, d["remove"])
+    elif d["mode"] == "box" and d["now"] is not None and cad_grips.clicks(v) and \
+            not d.get("link"):
+        # CAD mode: a press, drag and release is a click and a move: the box goes on
+        # following the pointer, and the next click is its other corner
+        _start_pick(w, d)
+        v._cad_pick["now"] = d["now"]
+        _schedule(w)
     elif d["mode"] == "box" and d["now"] is not None:
         a, b = d["start"], d["now"]
         pick(w, Box(pymupdf.Rect(w.to_pdf(a), w.to_pdf(b))), b.x() < a.x(), d["remove"])
@@ -389,13 +443,18 @@ def release(w, e, pos):
         if target is not None:
             toggle(w, kind, target, d["remove"])
         elif v.click_click and not d.get("link"):     # (Ctrl+click on a link opens it)
-            # the first corner is kept as a point of the page: zooming or scrolling before
-            # the second click doesn't move it
-            v._cad_pick = {"w": w, "at": w.to_pdf(d["start"]), "now": d["start"],
-                           "remove": d["remove"]}
-            v.statusMessage.emit(tr("Click the other corner: left to right takes what's "
-                                    "inside, right to left what it touches (Escape cancels)"))
+            _start_pick(w, d)
     w.update()
+
+
+def _start_pick(w, d):
+    """A click, move, click box from the press in d: the first corner is kept as a point of
+    the page (zooming or scrolling before the second click doesn't move it)."""
+    v = w.view
+    v._cad_pick = {"w": w, "at": w.to_pdf(d["start"]), "now": d["start"],
+                   "remove": d["remove"]}
+    v.statusMessage.emit(tr("Click the other corner: left to right takes what's "
+                            "inside, right to left what it touches (Escape cancels)"))
 
 
 def double_click(w, e):
@@ -471,8 +530,10 @@ def cancel(v):
 
 def drop(v):
     """The document changed, or the tab, tool or mode did: a box or lasso being drawn, and
-    its highlight, go (what they'd take was worked out on the drawing as it was)."""
+    its highlight, go (what they'd take was worked out on the drawing as it was), and a grip
+    made hot by a click (cad_grips.py)."""
     cancel(v)
+    cad_grips.cancel(v, quiet=True)
     for w in getattr(v, "pages", []):
         if w._cad_down is not None or getattr(w, "_cad_preview", None) is not None or \
                 getattr(w, "_preview_job", None) is not None:

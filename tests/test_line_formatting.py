@@ -160,6 +160,34 @@ class DrawingLines(unittest.TestCase):
         self.assertEqual([P.heads_of(o.data, f) for f in o.found], [None] * 4)
         self.assertIn(b"20 250 m 280 250 l S", o.data)     # (the line as it was)
 
+    def test_they_stay_when_the_line_is_restacked(self):
+        # (To back, To front, Forward, Backward: the line drawn again at its new place, and
+        # its arrowheads' marker left behind; Properties showed "none" for heads still drawn)
+        for how in ("back", "front", "forward", "backward"):
+            with self.subTest(how=how):
+                self.d, self.p = drawing()
+                # (shapes over the line before and after it: Forward and Backward go past one)
+                for overlay in (True, False):
+                    cover = self.p.new_shape()
+                    cover.draw_rect(pymupdf.Rect(40, 130, 260, 210))
+                    cover.finish(color=(0, 0.5, 0))
+                    cover.commit(overlay=overlay)
+                self.p.clean_contents()
+                o = self.objs()
+                # (the polyline: 20 200 m 120 200 l 160 140 l 280 140 l, its place in the
+                # drawing order after the shape put under it)
+                n = next(it["n"] for it in o.items
+                         if abs(it["rect"].y0 - 100) < 2 and abs(it["rect"].y1 - 160) < 2)
+                P.recolor(self.p, [n], objs=o, heads={"start": "open", "end": "closed"},
+                          stroke=(0, 0, 1))
+                o = self.objs()
+                self.assertTrue(P.reorder(self.p, [n], how))
+                o = self.objs()
+                heads = [P.heads_of(o.data, f) for f in o.found]
+                self.assertEqual([h[:3] for h in heads if h], [("open", "closed", "none")], how)
+                moved = o.found[heads.index(next(h for h in heads if h))]
+                self.assertEqual(P.style_of(moved)["stroke"], "#0000ff")
+
     def test_they_move_with_the_line(self):
         o = self.objs()
         P.recolor(self.p, [0], objs=o, heads={"end": "closed"})

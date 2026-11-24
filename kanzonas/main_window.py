@@ -15,14 +15,14 @@ from PySide6.QtGui import (QAction, QActionGroup, QKeySequence, QIcon, QPixmap,
 from PySide6.QtWidgets import (QMainWindow, QTabWidget, QTabBar, QToolBar, QFileDialog, QMessageBox,
                                QToolTip,
                                QLineEdit, QSpinBox, QLabel, QComboBox, QListWidget,
-                               QListWidgetItem, QDockWidget, QAbstractItemView, QToolButton,
+                               QListWidgetItem, QAbstractItemView, QToolButton,
                                QVBoxLayout, QHBoxLayout, QMenu, QProgressDialog,
                                QInputDialog, QWidget, QSizePolicy, QApplication, QScrollArea,
                                QDialog, QFormLayout, QRadioButton, QDialogButtonBox, QCheckBox,
                                QPushButton, QSlider, QAbstractSpinBox, QPlainTextEdit,
                                QTextEdit, QStatusBar, QSizeGrip, QStyle, QStyleOption)
 
-from . import __version__, annotations, export, paths, reading, signatures, theme
+from . import __version__, annotations, export, paths, reading, side_panels, signatures, theme
 from .document_view import DocumentView, MIN_ZOOM, MAX_ZOOM
 from .i18n import tr
 from .properties import PropertiesPanel
@@ -137,6 +137,10 @@ MEASURE_TOOLS = [
                                        "window, a column) inside an Area or Volume, "
                                        "double-click or Enter: its area is taken out of the "
                                        "measurement")),
+    ("findsimilar", tr("Find similar"), "", tr("Find similar: drag a box around a symbol; the "
+                                               "matching ones on this page or every page are "
+                                               "placed as Count markers of a group, for you to "
+                                               "check")),
     ("m_volume", tr("Volume"), "", tr("Measure volume: click the corners of the area, double-click or Enter; set the depth in Properties")),
     ("m_count", tr("Count"), "Shift+C", tr("Count: click each item; set the group name in Properties (Shift+C)")),
     ("space", tr("Space"), "", tr("Space: a named area (a room, a zone): click each corner, "
@@ -173,15 +177,36 @@ EXTRA_TOOLS = [  # tools reached from menus, not the toolbar
      tr("Placeholder: drag a box where a signature or initials go (choose which in Properties); "
         "then Apply all signature placeholders")),
 ]
+# the Drawing tab's tools (drawing.py, 1.17, the owner, 23 Nov 2026): the same clicks as the
+# markup shapes, drawn into the page itself on the layer "KanzonasPDF drawing"
+DRAW_TOOLS = [  # (id, label, tooltip)
+    ("d_line", tr("Line"), tr("Line drawn into the page: drag, or click both ends (Shift = "
+                              "45\u00b0 steps)")),
+    ("d_arrow", tr("Arrow"), tr("Arrow drawn into the page: from its tail to its head (Shift = "
+                                "45\u00b0 steps)")),
+    ("d_polyline", tr("Polyline"), tr("Polyline drawn into the page: click each point, "
+                                      "double-click or Enter to finish")),
+    ("d_polygon", tr("Polygon"), tr("Polygon drawn into the page: click each corner, "
+                                    "double-click or Enter to finish")),
+    ("d_rect", tr("Rectangle"), tr("Rectangle drawn into the page: drag a box (Shift = square)")),
+    ("d_ellipse", tr("Ellipse"), tr("Ellipse drawn into the page: drag a box (Shift = circle)")),
+    ("d_circle", tr("Circle"), tr("Circle drawn into the page: from the center to a point on "
+                                  "it")),
+    ("d_arc", tr("Arc"), tr("Arc drawn into the page: click the start, a point it passes "
+                            "through, then the end")),
+    ("d_cloud", tr("Cloud"), tr("Revision cloud drawn into the page: drag a box")),
+    ("d_ink", tr("Pen"), tr("Freehand pen, drawn into the page")),
+]
 # what each tool makes, said first in its tooltip: a markup (on top of the page) or a change
 # to the page's own content (the owner, 22 Nov 2026: "there needs to be a way of
 # differentiating whether what's being edited and added is a markup vs a document change")
-PAGE_CONTENT_TOOLS = ("edittext", "image", "erasecontent", "addtext", "editobjects")
+PAGE_CONTENT_TOOLS = ("edittext", "image", "erasecontent", "addtext", "editobjects") + \
+    tuple(t[0] for t in DRAW_TOOLS)
 MARKUP_TOOLS = ("highlight", "underline", "strikeout", "comment", "note", "textbox", "callout",
                 "dot", "rect", "ellipse", "cloud", "circle", "mask", "polygon", "line", "arrow",
                 "polyline", "arc", "curve", "ink", "stamp", "attach", "m_length", "m_dim",
                 "m_poly", "m_area", "m_angle", "m_radius", "m_perimeter", "m_volume", "m_count",
-                "space", "legend", "m_cutout")
+                "space", "legend", "m_cutout", "findsimilar")
 
 
 def kind_tip(tid, tip):
@@ -280,8 +305,10 @@ def _slider_to_zoom(val):
 _WINDOW_REFS = []
 TAB_MIME = "application/x-kanzonaspdf-tab"
 # Panel layout saved with QMainWindow.saveState (which panels are open, their sizes, sides
-# and tab order). Bump when a dock or toolbar is renamed or added, so an old layout is ignored.
-LAYOUT_VERSION = 1
+# and tab order). Bump when a dock or toolbar is renamed or added, so an old layout is ignored
+# (or read as MainWindow._restore_layout says). 2 (1.17): Bookmarks, Layers, Objects and Sets
+# are panels of their own, no longer tabs inside the Pages panel.
+LAYOUT_VERSION = 2
 
 
 def _doc_name(v):
@@ -302,6 +329,26 @@ def _inside(path, folder):
         return os.path.commonpath([os.path.normcase(os.path.abspath(path)), f]) == f
     except ValueError:              # (another drive)
         return False
+
+
+# the ribbon's tabs in order, each by an English key: the tab open last is remembered by its
+# key ("ribbon_tab_name"), so a tab added later (1.17's Drawing, after Markup) doesn't open the
+# one beside it. 1.16 and before kept its place ("ribbon_tab"), read in that order.
+RIBBON_TABS = ("home", "markup", "drawing", "measure", "arrange", "review", "protect", "forms",
+               "pages", "print", "view", "reading", "cad")
+_RIBBON_TABS_1_16 = tuple(k for k in RIBBON_TABS if k != "drawing")
+
+
+def ribbon_tab_to_open(settings, count):
+    """The place of the ribbon tab to open at start-up: the one open last."""
+    name = settings.value("ribbon_tab_name")
+    if isinstance(name, str) and name in RIBBON_TABS:
+        tab = RIBBON_TABS.index(name)
+    else:
+        old = paths.stored_int(settings, "ribbon_tab", 0)
+        tab = RIBBON_TABS.index(_RIBBON_TABS_1_16[old]) if 0 <= old < len(_RIBBON_TABS_1_16) \
+            else 0
+    return max(0, min(tab, count - 1))
 
 
 def windows():
@@ -661,12 +708,18 @@ class MainWindow(QMainWindow):
             for b in (self.shapes_btn, self.measure_btn):    # (their tips, put together)
                 b.setToolTip(_GroupTip.text(b))
 
-    def _restore_layout(self):
-        """Bring back the panels as they were when KanzonasPDF was last closed: which ones
-        were open (Pages, Properties, Tool chest, Markups list), their sizes and sides, and
-        which of Properties / Tool chest was in front."""
-        state = paths.stored_bytes(self.settings, "window_state")
-        if state is None or not self.restoreState(state, LAYOUT_VERSION):
+    def _restore_layout(self, state=None):
+        """Bring back the panels as they were when KanzonasPDF was last closed (or as state
+        has them: a window's saveState): which ones were open, their sizes and sides, and
+        which was in front where panels share a tab bar. A layout saved by 1.16 or older
+        (LAYOUT_VERSION 1) still brings back the panels it knew (Pages, Properties, Tool
+        chest, Markups list); the panels that were tabs of Pages then stay closed below it."""
+        if state is None:
+            state = paths.stored_bytes(self.settings, "window_state")
+        if state is None:
+            return
+        if not self.restoreState(state, LAYOUT_VERSION) and \
+                not self.restoreState(state, LAYOUT_VERSION - 1):
             return
         # the toolbars follow the ribbon / classic choice and the panel strip option, not the
         # saved layout (they normally agree; this keeps them right if a setting was changed)
@@ -676,8 +729,9 @@ class MainWindow(QMainWindow):
 
     # ---- construction -----------------------------------------------------
     def _build_panel_strip(self):
-        """PDF-XChange style icon strip on the left edge: click an icon to open that panel,
-        click it again to fold the panel away (the strip stays)."""
+        """PDF-XChange style icon strip on the left edge: an icon for each panel; click it to
+        open that panel (several can be open at once, side_panels.py), click it again to close
+        the panel (the strip stays)."""
         from . import theme
         ps = self.panel_strip = QToolBar(tr("Panels"))
         ps.setObjectName("panel_strip")
@@ -686,58 +740,89 @@ class MainWindow(QMainWindow):
         ps.setOrientation(Qt.Vertical)
         ps.toggleViewAction().setVisible(False)
         self.addToolBar(Qt.LeftToolBarArea, ps)
-        self.strip_actions = []
+        self.strip_actions = {}         # panel (dock) -> its icon on the strip
         self._strip_icons = []          # (action, icon name), re-tinted when the theme changes
-        for i, (label, icon, tip) in enumerate((
-                (tr("Pages"), "file-multiple-outline",
+        for entry in (
+                (self.dock, tr("Pages"), "file-multiple-outline",
                  tr("Pages panel (click again to fold it away)")),
-                (tr("Bookmarks"), "bookmark-outline",
+                (self.bookmarks_dock, tr("Bookmarks"), "bookmark-outline",
                  tr("Bookmarks panel (click again to fold it away)")),
-                (tr("Layers"), "layers-outline", tr("Layers panel (click again to fold it away)")),
-                (tr("Objects"), "shape-outline",
+                (self.layers_dock, tr("Layers"), "layers-outline",
+                 tr("Layers panel (click again to fold it away)")),
+                (self.objects_dock, tr("Objects"), "shape-outline",
                  tr("Objects panel (click again to fold it away)")),
-                (tr("Sets"), "folder-multiple-outline",
-                 tr("Sets panel (click again to fold it away)")))):
+                (self.sets_dock, tr("Sets"), "folder-multiple-outline",
+                 tr("Sets panel (click again to fold it away)")),
+                None,
+                (self.props_dock, tr("Properties"), "tune-variant",
+                 tr("Properties panel (click again to fold it away)")),
+                (self.chest_dock, tr("Tool chest"), "toolbox-outline",
+                 tr("Tool chest (click again to fold it away)")),
+                (self.markups_dock, tr("Markups list"), "comment-text-multiple-outline",
+                 tr("Markups list (click again to fold it away)"))):
+            if entry is None:
+                ps.addSeparator()
+                continue
+            dock, label, icon, tip = entry
             a = QAction(theme.icon_named(icon), label, self, checkable=True)
             self._strip_icons.append((a, icon))
             a.setToolTip(tip)
-            a.triggered.connect(lambda _=False, k=i: self._strip_clicked(k))
+            a.triggered.connect(lambda _=False, d=dock: self._toggle_panel(d))
             ps.addAction(a)
-            self.strip_actions.append(a)
-        ps.addSeparator()
-        for a, icon in ((self.a_markups, "comment-text-multiple-outline"),
-                        (self.a_attachments, "paperclip")):
-            if a.icon().isNull():
-                a.setIcon(theme.icon_named(icon))
-                self._strip_icons.append((a, icon))
-            ps.addAction(a)
+            self.strip_actions[dock] = a
+        if self.a_attachments.icon().isNull():
+            self.a_attachments.setIcon(theme.icon_named("paperclip"))
+            self._strip_icons.append((self.a_attachments, "paperclip"))
+        ps.addAction(self.a_attachments)
         self.a_panel_strip = QAction(tr("Show panel &strip (left edge)"), self, checkable=True)
-        self.a_panel_strip.setToolTip(tr("Icons on the left edge that open and fold the Pages, "
-                                         "Bookmarks, Layers, Objects and Sets panels"))
+        self.a_panel_strip.setToolTip(tr("Icons on the left edge that open and close the "
+                                         "panels, several at once"))
         self.a_panel_strip.setChecked(self.settings.value("panel_strip", "true") != "false")
         self.a_panel_strip.toggled.connect(self._toggle_panel_strip)
         self.view_menu.addAction(self.a_panel_strip)
-        self.left_tabs.currentChanged.connect(lambda _i: self._sync_strip())
-        self.dock.visibilityChanged.connect(lambda _v: self._sync_strip())
         self._toggle_panel_strip(self.a_panel_strip.isChecked())
 
-    def _strip_clicked(self, k):
-        if self.dock.isVisible() and self.left_tabs.currentIndex() == k:
-            self.dock.hide()                    # second click folds the panel away
-        else:
-            self.left_tabs.setCurrentIndex(k)
-            self.dock.show()
-        self._sync_strip()
+    def _left_panel(self, name, title, panel):
+        """A panel that starts closed on the left, below the ones there (Bookmarks, Layers,
+        Objects, Sets)."""
+        dock = side_panels.PanelDock(name, title, self._narrowable(panel))
+        dock.setMinimumWidth(70)
+        self.addDockWidget(Qt.LeftDockWidgetArea, dock, Qt.Vertical)
+        dock.hide()
+        return dock
 
-    def _sync_strip(self):
-        for i, a in enumerate(getattr(self, "strip_actions", [])):
-            a.setChecked(self.dock.isVisible() and self.left_tabs.currentIndex() == i)
+    def _panels(self):
+        """Every panel of the window (side_panels.PanelDock), in the panel strip's order."""
+        return [self.dock, self.bookmarks_dock, self.layers_dock, self.objects_dock,
+                self.sets_dock, self.props_dock, self.chest_dock, self.markups_dock]
+
+    def _panel_actions(self):
+        """(panel, its command in the menus)"""
+        return [(self.dock, self.a_sidebar), (self.bookmarks_dock, self.a_bookmarks),
+                (self.layers_dock, self.a_layers_panel), (self.objects_dock, self.a_objects_panel),
+                (self.sets_dock, self.a_sets_panel), (self.props_dock, self.a_props),
+                (self.chest_dock, self.a_chest), (self.markups_dock, self.a_markups)]
+
+    def _toggle_panel(self, dock):
+        """A panel's icon, menu command or key: open it, or close it when it's showing."""
+        side_panels.toggle(self, dock)
+        self._sync_panels()
+
+    def _sync_panels(self):
+        """Check marks on the strip and in the menus: the panels on screen."""
+        if not hasattr(self, "a_markups") or QApplication.closingDown():
+            return          # (still being built, or the app is being torn down)
+        strip = getattr(self, "strip_actions", {})
+        for dock, a in self._panel_actions():
+            on = side_panels.showing(dock)
+            a.setChecked(on)
+            if dock in strip:
+                strip[dock].setChecked(on)
 
     def _toggle_panel_strip(self, on):
         self.settings.setValue("panel_strip", "true" if on else "false")
         self.panel_strip.setVisible(on)
-        self.left_tabs.tabBar().setVisible(not on)     # the strip replaces the tabs
-        self._sync_strip()
+        self._sync_panels()
 
     def _group_widget(self, items):
         """A row of actions and widgets that can live in a toolbar or the status bar."""
@@ -1143,7 +1228,22 @@ class MainWindow(QMainWindow):
         self.a_compress = self._act(tr("&Compress (save a smaller copy)..."), self.compress)
         self.a_attachments = self._act(tr("A&ttachments..."), self.show_attachments,
                                        tip=tr("Files embedded in this PDF: open, save or delete them"))
-        self.a_bookmarks = self._act(tr("&Bookmarks"), self._show_bookmarks, "F9")
+        self.a_bookmarks = self._act(tr("&Bookmarks"),
+                                     lambda: self._toggle_panel(self.bookmarks_dock), "F9")
+        self.a_bookmarks.setCheckable(True)
+        self.a_layers_panel = self._act(tr("La&yers panel"),
+                                        lambda: self._toggle_panel(self.layers_dock),
+                                        tip=tr("Show or hide the PDF's layers; pick the layer new "
+                                               "markups go on"))
+        self.a_objects_panel = self._act(tr("Ob&jects panel"),
+                                         lambda: self._toggle_panel(self.objects_dock),
+                                         tip=tr("The page's markups from front to back: select, "
+                                                "lock or hide them"))
+        self.a_sets_panel = self._act(tr("S&ets panel"),
+                                      lambda: self._toggle_panel(self.sets_dock),
+                                      tip=tr("The PDFs of a set and their sheets, as one list"))
+        for a in (self.a_layers_panel, self.a_objects_panel, self.a_sets_panel):
+            a.setCheckable(True)
         # (1.12) Sets (sets_panel.py)
         self.a_new_set = self._act(tr("New s&et..."), self._new_set,
                                    tip=tr("A set: several PDFs (one per sheet, say) browsed as "
@@ -1473,6 +1573,24 @@ class MainWindow(QMainWindow):
             a.triggered.connect(lambda _=False, t=tid: self.set_tool(t))
             self.tool_group.addAction(a)
             self.tool_actions[tid] = a
+        for tid, label, tip in DRAW_TOOLS:
+            a = QAction(label, self, checkable=True)
+            # (its own name for Keyboard shortcuts and the palette's recent commands: the
+            # Markup tab's Line is "Line" too)
+            a.setProperty("kz_id", "Drawing " + english_name(label))
+            tip = kind_tip(tid, tip)
+            a.setToolTip(tip)
+            a.setStatusTip(tip)
+            a.triggered.connect(lambda _=False, t=tid: self.set_tool(t))
+            self.tool_group.addAction(a)
+            self.tool_actions[tid] = a
+        self.a_to_drawing = QAction(tr("Convert to drawing"), self)
+        tip = tr("Page content: the selected shape and line markups drawn into the page as "
+                 "they look, on the layer KanzonasPDF drawing (measurements, notes, stamps, "
+                 "text and highlights stay markups)")
+        self.a_to_drawing.setToolTip(tip)
+        self.a_to_drawing.setStatusTip(tip)
+        self.a_to_drawing.triggered.connect(self.convert_to_drawing)
         # (after every tool exists: CAD mode starts with Edit objects, one of the extra tools)
         self.tool_actions[self.tool].setChecked(True)
 
@@ -1516,7 +1634,8 @@ class MainWindow(QMainWindow):
         m.addSeparator()
         reading.add_to_view_menu(self, m)
         m.addSeparator()
-        m.addActions([self.a_sidebar, self.a_props, self.a_chest, self.a_markups, self.a_cards])
+        m.addActions([self.a_sidebar, self.a_bookmarks, self.a_layers_panel, self.a_objects_panel,
+                      self.a_sets_panel, self.a_props, self.a_chest, self.a_markups, self.a_cards])
         m.addSeparator()
         m.addAction(self.a_split)
         m.addAction(self.a_rulers)
@@ -1568,7 +1687,12 @@ class MainWindow(QMainWindow):
         m.addSeparator()
         m.addActions([self.cad_actions[k] for k in ("align", "array", "trim")])
         m = mb.addMenu(tr("&Tools"))
-        m.addActions(self.tool_group.actions())
+        drawn = [self.tool_actions[t[0]] for t in DRAW_TOOLS]
+        m.addActions([a for a in self.tool_group.actions() if a not in drawn])
+        dm = m.addMenu(tr("&Drawing"))
+        dm.addActions(drawn)
+        dm.addSeparator()
+        dm.addAction(self.a_to_drawing)
         m.addSeparator()
         m.addAction(self.a_props)
         m.addSeparator()
@@ -1876,25 +2000,14 @@ class MainWindow(QMainWindow):
         self.thumbs.currentRowChanged.connect(self._on_thumb_clicked)
         self.thumbs.setSelectionMode(QAbstractItemView.ExtendedSelection)   # Ctrl/Shift+click
         self.thumbs.setContextMenuPolicy(Qt.ActionsContextMenu)
-        self.dock = QDockWidget(tr("Pages"))
-        self.dock.setObjectName("pages")
-        self.dock.setFeatures(QDockWidget.DockWidgetClosable)
-        # Pages and Bookmarks are tabs inside one panel (two tabbed dock groups on both sides
-        # of the window trigger a Qt bug that draws a phantom duplicate tab bar).
-        self.left_tabs = QTabWidget()
-        self.left_tabs.setTabPosition(QTabWidget.South)
-        self.left_tabs.setDocumentMode(True)
-        self.left_tabs.setUsesScrollButtons(True)     # narrow panel: tabs scroll, don't block
-        self.left_tabs.tabBar().setElideMode(Qt.ElideRight)
-        self.left_tabs.addTab(side, tr("Pages"))
-        self.dock.setWidget(self.left_tabs)
+        # each panel is a dock widget of its own (side_panels.py): several open at once,
+        # stacked on either side; Pages is open at the start, the others below it, closed
+        self.dock = side_panels.PanelDock("pages", tr("Pages"), side)
         # locked by default so pages can't be moved by accident; remembered between sessions
         locked = self.settings.value("pages_locked", "true") != "false"
         self.lock_btn.setChecked(locked)
         self._set_pages_locked(locked)
         self.dock.setMinimumWidth(70)
-        self.left_tabs.setMinimumWidth(70)
-        self.dock.visibilityChanged.connect(lambda vis: self.a_sidebar.setChecked(vis))
         self.addDockWidget(Qt.LeftDockWidgetArea, self.dock)
 
         from .bookmarks_panel import BookmarksPanel
@@ -1906,7 +2019,7 @@ class MainWindow(QMainWindow):
         self.bookmarks.jump_to.connect(
             lambda i, to: self.view() and self.view().go_to_destination(i, to))
         self.bookmarks.current_view = lambda: self.view().view_destination() if self.view() else None
-        self.left_tabs.addTab(self._narrowable(self.bookmarks), tr("Bookmarks"))
+        self.bookmarks_dock = self._left_panel("bookmarks", tr("Bookmarks"), self.bookmarks)
         from .layers_panel import LayersPanel
         self.layers = LayersPanel()
         self.layers.toggled.connect(lambda n, on: self.view() and self.view().set_layer(n, on))
@@ -1914,13 +2027,13 @@ class MainWindow(QMainWindow):
         self.layers.markupLayerChosen.connect(
             lambda x: self.view() and self.view().set_markup_layer(x or None))
         self.layers.newLayerRequested.connect(lambda: self.new_markup_layer())
-        self.left_tabs.addTab(self._narrowable(self.layers), tr("Layers"))
+        self.layers_dock = self._left_panel("layers", tr("Layers"), self.layers)
         from .objects_panel import ObjectsPanel
         self.objects = ObjectsPanel()
         self.objects.selectRequested.connect(self._objects_select)
         self.objects.flagsChanged.connect(self._objects_flags)
         self.objects.arrange.connect(lambda how: self.view() and self.view().arrange(how))
-        self.left_tabs.addTab(self._narrowable(self.objects), tr("Objects"))
+        self.objects_dock = self._left_panel("objects", tr("Objects"), self.objects)
         # (1.12) Sets: several PDFs browsed as one (doc_sets.py, sets_panel.py)
         from .sets_panel import SetsPanel
         self.sets = SetsPanel()
@@ -1928,10 +2041,10 @@ class MainWindow(QMainWindow):
         self.sets.stepRequested.connect(self._set_step)
         self.sets.combineRequested.connect(lambda files: self.combine_files(files))
         self.sets.setChanged.connect(self._set_shown)
-        self.left_tabs.addTab(self._narrowable(self.sets), tr("Sets"))
+        self.sets_dock = self._left_panel("sets", tr("Sets"), self.sets)
         self._objects_timer = QTimer(self, singleShot=True, interval=150)
         self._objects_timer.timeout.connect(self._refresh_objects)
-        self.left_tabs.currentChanged.connect(lambda _i: self._objects_timer.start())
+        self.objects_dock.visibilityChanged.connect(lambda vis: vis and self._objects_timer.start())
 
         self.props = PropertiesPanel()
         self.props.propsChanged.connect(self._on_props_changed)
@@ -1952,25 +2065,16 @@ class MainWindow(QMainWindow):
         scroll = QScrollArea()
         scroll.setWidget(self.props)
         scroll.setWidgetResizable(True)
-        self.props_dock = QDockWidget(tr("Properties"))
-        self.props_dock.setObjectName("properties")
-        self.props_dock.setFeatures(QDockWidget.DockWidgetClosable)
-        self.props_dock.setWidget(scroll)
+        self.props_dock = side_panels.PanelDock("properties", tr("Properties"), scroll)
         self.props_dock.setMinimumWidth(220)
-        self.props_dock.visibilityChanged.connect(lambda vis: self.a_props.setChecked(vis))
         self.addDockWidget(Qt.RightDockWidgetArea, self.props_dock)
 
         self.chest = ToolChestPanel()
         self.chest.use.connect(self._use_chest_tool)
         self.chest.addRequested.connect(self._add_to_chest)
-        self.chest_dock = QDockWidget(tr("Tool chest"))
-        self.chest_dock.setObjectName("toolchest")
-        self.chest_dock.setWidget(self.chest)
-        self.chest_dock.setFeatures(QDockWidget.DockWidgetClosable)
+        self.chest_dock = side_panels.PanelDock("toolchest", tr("Tool chest"), self.chest)
         self.addDockWidget(Qt.RightDockWidgetArea, self.chest_dock)
         self.tabifyDockWidget(self.props_dock, self.chest_dock)
-        self.chest_dock.visibilityChanged.connect(
-            lambda _v: self.a_chest.setChecked(self._chest_showing()))
         self.props_dock.raise_()
         self.resizeDocks([self.dock, self.props_dock], [180, 240], Qt.Horizontal)
 
@@ -1984,12 +2088,13 @@ class MainWindow(QMainWindow):
             lambda i, x, k: self.view() and self.view().set_review_status(i, [x], k))
         self.markups.exportRequested.connect(
             lambda only: self.view() and self._export_comments(only))
-        self.markups_dock = QDockWidget(tr("Markups list"))
-        self.markups_dock.setObjectName("markups")
-        self.markups_dock.setWidget(self.markups)
+        self.markups_dock = side_panels.PanelDock("markups", tr("Markups list"), self.markups)
         self.addDockWidget(Qt.BottomDockWidgetArea, self.markups_dock)
         self.markups_dock.hide()
         self.markups_dock.visibilityChanged.connect(self._markups_visible)
+        for d in self._panels():
+            # (every check mark: a panel shown, closed, or a tab brought in front or behind)
+            d.visibilityChanged.connect(lambda _v: self._sync_panels())
         self._markups_timer = QTimer(self, singleShot=True, interval=400)
         self._markups_timer.timeout.connect(self._refresh_markups)
 
@@ -2450,6 +2555,8 @@ class MainWindow(QMainWindow):
             return None
         win = MainWindow(primary=False)
         win._sig_cache = dict(self._sig_cache)
+        if not self.isFullScreen():     # (full screen hides every panel for a while)
+            win._restore_layout(self.saveState(LAYOUT_VERSION))     # the panels open here
         win.resize(self.size())
         win.move(pos - QPoint(120, 24) if pos is not None else self.pos() + QPoint(40, 40))
         win.show()
@@ -2862,6 +2969,18 @@ class MainWindow(QMainWindow):
             v.setFocus()
         self._refresh_props()
 
+    def convert_to_drawing(self):
+        """Drawing > Convert to drawing (and a markup's right-click menu): the selected shape
+        and line markups become page drawing (DocumentView.convert_to_drawing)."""
+        v = self.view()
+        if v is None or v.read_only:
+            return 0
+        n = v.convert_to_drawing()
+        if n:
+            self._refresh_layers()
+            self._refresh_props()
+        return n
+
     def _standard_mode(self):
         from . import mouse_modes
         return mouse_modes.mode(self.settings) == "standard"
@@ -2901,9 +3020,10 @@ class MainWindow(QMainWindow):
                                     text=any(it["kind"] == "text" for it in items),
                                     width=v.object_line_width(), style=v.object_style(),
                                     turned=v.objects_turned(),
-                                    text_style=v.object_text_style())
+                                    text_style=v.object_text_style(),
+                                    drawn=v.objects_drawn())
         elif (self.tool in annotations.DEFAULTS and self.tool != "image") or \
-                self.tool in annotations.PAGE_TEXT_TOOLS:
+                self.tool in annotations.PAGE_TEXT_TOOLS or self.tool in annotations.DRAW_TOOLS:
             # (the Image tool writes into the page: no markup settings apply; Add text and
             # Edit text have their font settings here)
             self.props.show_target(self.tool, annotations.tool_props(self.tool))
@@ -3050,7 +3170,7 @@ class MainWindow(QMainWindow):
             before = annotations.tool_props(self.tool).get("group")
             annotations.OVERRIDE["props"] = dict(props)
             self._count_group_picked(v, before, props)
-        elif self.tool in annotations.DEFAULTS or self.tool in annotations.PAGE_TEXT_TOOLS:
+        elif annotations.has_tool_props(self.tool):
             before = annotations.tool_props(self.tool).get("group")
             annotations.set_tool_props(self.tool, props)
             if v is not None and self.tool in annotations.PAGE_TEXT_TOOLS:
@@ -3079,7 +3199,7 @@ class MainWindow(QMainWindow):
         self._refresh_props()
 
     def _reset_tool_defaults(self):
-        if self.tool in annotations.DEFAULTS or self.tool in annotations.PAGE_TEXT_TOOLS:
+        if annotations.has_tool_props(self.tool):
             annotations.reset_tool_props(self.tool)
             self._refresh_props()
 
@@ -3102,21 +3222,15 @@ class MainWindow(QMainWindow):
 
     def _chest_showing(self):
         """True when the tool chest is on screen (not just a tab behind Properties)."""
-        d = self.chest_dock
-        return d.isVisible() and not d.visibleRegion().isEmpty()
+        return side_panels.showing(self.chest_dock)
 
     def _toggle_chest(self):
         """Tool chest (F8, View tab): open it, or close it if it's already showing. When it
         shares the panel with Properties and is the hidden tab, bring it to the front."""
-        if self._chest_showing():
-            self.chest_dock.hide()
-        else:
-            self.chest_dock.show()
-            self.chest_dock.raise_()
-        self.a_chest.setChecked(self._chest_showing())
+        self._toggle_panel(self.chest_dock)
 
     def _toggle_props(self):
-        self.props_dock.setVisible(not self.props_dock.isVisible())
+        self._toggle_panel(self.props_dock)
 
     def _toggle_cards(self):
         on = self.a_cards.isChecked()
@@ -4086,7 +4200,7 @@ class MainWindow(QMainWindow):
 
     # ---- objects panel / locking ----------------------------------------------------------
     def _refresh_objects(self):
-        if self.left_tabs.currentWidget() is self.objects.parentWidget().parentWidget() and self.dock.isVisible():
+        if side_panels.showing(self.objects_dock):
             self.objects.refresh(self.view())
 
     def _objects_select(self, xrefs):
@@ -4587,8 +4701,7 @@ class MainWindow(QMainWindow):
 
     # ---- Sets (1.12: doc_sets.py, sets_panel.py) -----------------------------------------
     def _show_sets(self):
-        self.dock.show()
-        self.left_tabs.setCurrentWidget(self.sets.parentWidget().parentWidget())
+        side_panels.show(self, self.sets_dock)
 
     def _new_set(self):
         self._show_sets()
@@ -4666,8 +4779,7 @@ class MainWindow(QMainWindow):
             self.sets.show_current(v.path, v.current_page())
 
     def _show_bookmarks(self):
-        self.dock.show()
-        self.left_tabs.setCurrentWidget(self.bookmarks.parentWidget().parentWidget())
+        side_panels.show(self, self.bookmarks_dock)
 
     def _refresh_bookmarks(self):
         v = self.view()
@@ -5590,10 +5702,9 @@ class MainWindow(QMainWindow):
             w._apply_icons()
 
     def _toggle_markups(self):
-        self.markups_dock.setVisible(not self.markups_dock.isVisible())
+        self._toggle_panel(self.markups_dock)
 
     def _markups_visible(self, vis):
-        self.a_markups.setChecked(vis)
         if vis:
             self._refresh_markups()
 
@@ -6107,11 +6218,14 @@ class MainWindow(QMainWindow):
                                      tr("Lines drawn at their true width"), 3000)
 
     def _objects_style(self, changed):
-        """Properties on the page's own shapes: a color, the Line style or an arrowhead."""
+        """Properties on the page's own shapes: a color, the Line style, an arrowhead or the
+        Arrowhead size."""
         v = self.view()
         if v is None:
             return
         heads = {k: changed[k] for k in ("start", "end", "mid") if k in changed}
+        if "head_size" in changed:
+            heads["size"] = changed["head_size"]
         v.style_objects(stroke=changed.get("stroke"), fill=changed.get("fill"),
                         dash=changed.get("dash"), heads=heads or None)
 
@@ -6229,7 +6343,7 @@ class MainWindow(QMainWindow):
         "a_sidebar": "page-layout-sidebar-left", "a_props": "tune-variant",
         "a_chest": "toolbox-outline", "a_split": "view-split-vertical", "a_rulers": "ruler-square", "a_labels": "label-outline",
         "a_shortcuts": "keyboard-outline", "a_manual": "help-circle-outline", "a_palette": "console-line",
-        "a_night": "weather-night",
+        "a_night": "weather-night", "a_to_drawing": "vector-arrange-below",
         "a_ribbon": "view-dashboard-outline", "a_collapse": "chevron-double-up", "a_group_names": "label-outline", "a_menu_bar": "menu",
     }
 
@@ -6288,13 +6402,24 @@ class MainWindow(QMainWindow):
             (tr("Erase"), "large", [t["eraser"]]),
             (tr("Styles"), "small", [self.a_props, self.a_chest]),
         ])
+        # (1.17, the owner, 23 Nov 2026) drawing that isn't a markup: written into the page
+        # itself, on the layer KanzonasPDF drawing; Edit objects selects and changes it
+        r.add_tab(tr("Drawing"), [
+            (tr("Draw"), "small", [t[k] for k, _l, _t in DRAW_TOOLS]),
+            (tr("Convert"), "large", [self.a_to_drawing]),
+            (tr("Edit"), "large", [t["editobjects"]]),
+            (tr("Order"), "small", [A_["z_front"], A_["z_forward"], A_["z_backward"],
+                                    A_["z_back"]]),
+            (tr("Group"), "small", [self.a_group, self.a_ungroup]),
+            (tr("Styles"), "small", [self.a_props]),
+        ])
         # snapping is offered where it's used: Measure, Arrange (lining markups up) and View;
         # Grid settings (a window) under the group's arrow
         r.add_tab(tr("Measure"), [
             (tr("Measure"), "large", [t["m_length"], t["m_poly"], t["m_area"], t["m_count"]]),
             (tr("More"), "small", [t["m_angle"], t["m_radius"], t["m_dim"], t["m_perimeter"],
                                    t["m_volume"], t["m_cutout"], t["space"],
-                                   t["m_calibrate"]]),
+                                   t["findsimilar"], t["m_calibrate"]]),
             # the page's scale in large type opens Set scale (so no separate button for it),
             # with the Show scale bar switch beside it
             (tr("Page scale"), "large", [self.scale_panel]),
@@ -6363,8 +6488,10 @@ class MainWindow(QMainWindow):
             (tr("Crop"), "large", [t["crop"], self.a_uncrop]),
         ])
         r.add_tab(tr("View"), [
+            # (the other panels under the arrow, and on the panel strip)
             (tr("Panels"), "small", [self.a_sidebar, self.a_props, self.a_markups, self.a_chest,
-                                     self.a_split]),
+                                     self.a_split],
+             [self.a_bookmarks, self.a_layers_panel, self.a_objects_panel, self.a_sets_panel]),
             # (Free pan, a setting seldom changed, under the arrow: Rulers took its place)
             # (Show line weights under the arrow: a fifth button starts a column of its own,
             # and the Spanish and Italian View tabs would no longer fit a 1366-pixel screen)
@@ -6457,9 +6584,9 @@ class MainWindow(QMainWindow):
         rt.addWidget(r)
         r.set_group_names(self.a_group_names.isChecked())
         self.addToolBar(rt)
-        tab = paths.stored_int(self.settings, "ribbon_tab", 0)
-        r.setCurrentIndex(max(0, min(tab, r.count() - 1)))
-        r.currentChanged.connect(lambda i: self.settings.setValue("ribbon_tab", i))
+        r.setCurrentIndex(ribbon_tab_to_open(self.settings, r.count()))
+        r.currentChanged.connect(lambda i: self.settings.setValue(
+            "ribbon_tab_name", RIBBON_TABS[i] if 0 <= i < len(RIBBON_TABS) else ""))
         if self.settings.value("ribbon_collapsed", "false") == "true":
             r.set_collapsed(True)
         self._apply_ui_mode()
@@ -6553,7 +6680,7 @@ class MainWindow(QMainWindow):
             self._refresh_props()
 
     def _toggle_sidebar(self):
-        self.dock.setVisible(not self.dock.isVisible())
+        self._toggle_panel(self.dock)
 
     def show_palette(self):
         """Command palette (Ctrl+Shift+P): type to find any command or tool, Enter runs it."""
@@ -7173,7 +7300,7 @@ class MainWindow(QMainWindow):
 
     @staticmethod
     def _narrowable(panel):
-        """Let the Pages panel get narrower than this tab's contents (they scroll sideways)."""
+        """Let a side panel get narrower than its contents (they scroll sideways)."""
         area = QScrollArea()
         area.setWidget(panel)
         area.setWidgetResizable(True)

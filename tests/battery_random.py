@@ -750,10 +750,11 @@ class Battery:
     def table(self):
         return [
             (self.op_shape, 10), (self.op_line, 5), (self.op_poly, 4), (self.op_ink, 3),
-            (self.op_textbox, 3), (self.op_callout, 2), (self.op_note, 2), (self.op_stamp, 2),
+            (self.op_textbox, 3), (self.op_callout, 2), (self.op_callout_leader, 2),
+            (self.op_note, 2), (self.op_stamp, 2),
             (self.op_dot, 2), (self.op_dot_options, 2),
             (self.op_measure, 2), (self.op_dimension, 3), (self.op_cutout, 3),
-            (self.op_drops, 2),
+            (self.op_drops, 2), (self.op_find_similar, 1),
             (self.op_text_markup, 6),
             (self.op_attach, 1), (self.op_legend, 2), (self.op_legend_options, 2),
             (self.op_move, 6), (self.op_nudge, 3), (self.op_resize, 3), (self.op_props, 4),
@@ -781,6 +782,8 @@ class Battery:
             # (1.15) Line color / Fill color / Text color of the page's own drawing and text
             (self.op_recolor_objects, 3),
             (self.op_text_style, 3),
+            # (1.17) the Drawing tab: shapes drawn into the page, Convert to drawing
+            (self.op_drawing, 3), (self.op_to_drawing, 2),
             (self.op_undo, 14), (self.op_redo, 9), (self.op_save, 2),
         ]
 
@@ -876,6 +879,41 @@ class Battery:
         else:
             self.v.apply_poly(i, "m_angle", [a, b, self.point(i, 40)])
 
+    def op_callout_leader(self):
+        """Callout leaders (1.17, the owner: "add leaders to callouts"): a callout already there
+        given another leader (pointing at a spot of the page, or right-clicked on its box) or
+        one of its added leaders taken off. Its leaders must be one more or one fewer, the
+        first kept, and read back from the file."""
+        v = self.v
+        have = [(i, x) for i in range(v.doc.page_count) for x in self.markups(i)
+                if self.kind(i, x) == "callout"]
+        if not have:
+            return self.op_callout()
+        i, x = self.rnd.choice(have)
+        v.select_xref(i, x)
+        m = v.selected_model
+        if m is None or m["kind"] != "callout" or m.get("locked") or v.selected_callout() is None:
+            v.clear_selection()
+            return "none"
+        before = [pymupdf.Point(q) for q in m["points"]]
+        if len(before) > 1 and self.rnd.random() < 0.35:
+            k = self.rnd.randrange(1, len(before))
+            if not v.remove_callout_leader(before[k]):
+                raise Failed("Remove leader refused on a callout with %d leaders" % len(before))
+            want = len(before) - 1
+        else:
+            a, b = self.box(i, 10, 60)
+            at = None if self.rnd.random() < 0.2 else a
+            if not v.add_callout_leader(at):
+                raise Failed("Add leader refused on a selected callout")
+            want = len(before) + 1
+        now = v.selected_model
+        if now is None or len(now["points"]) != want or \
+                abs(now["points"][0] - before[0]) > 0.01:
+            raise Failed("leaders: %d before, %s after (wanted %d, the first kept)" % (
+                len(before), None if now is None else len(now["points"]), want))
+        return None
+
     def op_cutout(self):
         """Cut-outs (1.16.1, measure.cut_area): an Area or Volume drawn, or one already there
         given an opening drawn in it (with the Cut-out tool, into the one selected or the one
@@ -963,6 +1001,43 @@ class Battery:
                 if abs(value - want) > 1e-6:
                     raise Failed("page %d: a Polylength's total %.4f isn't its length and "
                                  "drops %.4f" % (i, value, want))
+        return "edit"
+
+    def op_find_similar(self):
+        """Measure > Find similar (1.17, visual_search.py): a box around something on a page
+        (a symbol, a word, part of a line), its matches on that page placed as Count markers of
+        a group in one step. None may land where the group has one already, and each one placed
+        must be a new number of that group."""
+        from kanzonas import counts
+        v = self.v
+        i = self.page()
+        a, b = self.box(i, 8, 60)
+        group = self.rnd.choice(["Found 1", "Found 2"])
+        before = [(j, m) for j, _x, m in counts.markers(v.doc) if counts.group_of(m) == group]
+        v.ask_find_similar = lambda groups, default: {
+            "scope": "page", "group": group, "sensitivity": self.rnd.choice([0.85, 0.95]),
+            "turned": self.rnd.random() < 0.3}
+        rev = v.revision
+        v.apply_drag_tool(i, "findsimilar", a, b, False)
+        end = time.monotonic() + 60
+        while v._find_job is not None and time.monotonic() < end:
+            APP.processEvents()
+        if v._find_job is not None:
+            raise Failed("page %d: Find similar didn't finish in a minute" % i)
+        if v.revision == rev:
+            return "none"
+        after = [(j, m) for j, _x, m in counts.markers(v.doc) if counts.group_of(m) == group]
+        nums = [m["n"] for _j, m in after]
+        if len(nums) != len(set(nums)):
+            raise Failed("page %d: Find similar gave %s numbers twice" % (i, group))
+        old = {(j, round(m["points"][0].x), round(m["points"][0].y)) for j, m in before}
+        for j, m in after:
+            key = (j, round(m["points"][0].x), round(m["points"][0].y))
+            if key in old:
+                continue
+            if any(jj == j and abs(mm["points"][0] - m["points"][0]) < 1.0
+                   for jj, mm in before):
+                raise Failed("page %d: Find similar counted a symbol of %s twice" % (j, group))
         return "edit"
 
     def op_dimension(self):
@@ -1689,9 +1764,12 @@ class Battery:
             others = self.other_letters(i, [])
             rev = v.revision
             if "start" in style and self.rnd.random() < 0.6:
-                v.style_objects(heads={k: self.rnd.choice(P.HEAD_KINDS)
-                                       for k in self.rnd.sample(["start", "end", "mid"],
-                                                                self.rnd.randint(1, 3))})
+                heads = {k: self.rnd.choice(P.HEAD_KINDS)
+                         for k in self.rnd.sample(["start", "end", "mid"],
+                                                  self.rnd.randint(1, 3))}
+                if self.rnd.random() < 0.3:
+                    heads["size"] = round(self.rnd.uniform(*P.HEAD_SCALES), 2)   # (1.17)
+                v.style_objects(heads=heads)
             elif "dash" in style:
                 v.style_objects(dash=self.rnd.choice(list(P.DASHES)))
             v.clear_object_selection()
@@ -1703,6 +1781,68 @@ class Battery:
         rev = v.revision
         v.recolor_objects(**{what: rgb})
         v.clear_object_selection()
+        self.check_letters(i, others)
+        return "edit" if v.revision != rev else "none"
+
+    def op_drawing(self):
+        """The Drawing tab (drawing.py): a shape drawn into the page itself, on the layer
+        KanzonasPDF drawing, with its tool's style (sometimes a new one)."""
+        from kanzonas import drawing
+        v = self.v
+        i = self.page()
+        tool = self.rnd.choice(sorted(drawing.TOOLS))
+        if self.rnd.random() < 0.3:
+            props = dict(annotations.tool_props(tool), stroke=self.color(),
+                         width=round(self.rnd.uniform(0.25, 4), 2))
+            if "fill" in props:
+                props["fill"] = self.rnd.choice([None, self.color()])
+            if "dash" in props:
+                props["dash"] = self.rnd.choice(["solid", "dash", "dot", "dashdot"])
+            if "head" in props:
+                props["head"] = self.rnd.choice(["none", "open", "closed"])
+            if "head_size" in props and self.rnd.random() < 0.3:
+                props["head_size"] = round(self.rnd.uniform(0.25, 5), 2)
+            if "opacity" in props and self.rnd.random() < 0.3:
+                props["opacity"] = round(self.rnd.uniform(0.2, 1), 2)
+            annotations.set_tool_props(tool, props)
+        before = v.tool
+        v.set_tool(tool)
+        base = drawing.base_tool(tool)
+        others = self.other_letters(i, [])
+        rev = v.revision
+        try:
+            if base in ("polyline", "polygon", "arc"):
+                n = 3 if base == "arc" else self.rnd.randint(3, 6)
+                v.apply_poly(i, base, [self.point(i, 40) for _ in range(n)])
+            elif base == "ink":
+                p = self.point(i, 60)
+                pts = [p]
+                for _ in range(self.rnd.randint(2, 20)):
+                    p = pymupdf.Point(p.x + self.rnd.uniform(-8, 8),
+                                      p.y + self.rnd.uniform(-8, 8))
+                    pts.append(p)
+                v.apply_ink(i, pts)
+            else:
+                a, b = self.box(i)
+                v.apply_drag_tool(i, base, a, b, False)
+        finally:
+            v.set_tool(before)
+        self.check_letters(i, others)
+        return "edit" if v.revision != rev else "none"
+
+    def op_to_drawing(self):
+        """Convert to drawing (drawing.py): some selected markups drawn into the page."""
+        v = self.v
+        i = self.select_some()
+        if i is None:
+            return "none"
+        if not v.convertible_selection():
+            v.clear_selection()
+            return "none"
+        others = self.other_letters(i, [])
+        rev = v.revision
+        v.convert_to_drawing()
+        v.clear_selection()
         self.check_letters(i, others)
         return "edit" if v.revision != rev else "none"
 

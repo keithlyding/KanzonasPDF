@@ -99,10 +99,21 @@ and all 100 steps fit even on very large PDFs; the history still stays within a 
 When Undo turns gray before you're back to where you started, the steps before it are past the
 100 kept (or the memory budget) and can't be undone; the file as it was opened is still on disk
 until you save over it.</li>
-<li><b>Panels:</b> Pages/Bookmarks/Layers on the left (F4), Properties on the right (F6),
-Markups list (F7), Tool chest (F8), Bookmarks (F9), Split view (F10). The panels you had open
-when you closed KanzonasPDF (and their sizes, sides and which of Properties / Tool chest was in
-front) come back the next time it starts; the Split view always starts closed.</li>
+<li><b>Panels:</b> Pages (F4), Bookmarks (F9), Layers, Objects and Sets start on the left,
+Properties (F6) and the Tool chest (F8) on the right, the Markups list (F7) at the bottom; the
+Split view is F10. View &gt; <b>Layers panel</b>, <b>Objects panel</b> and <b>Sets panel</b>
+open and close the other three (View &gt; Keyboard shortcuts can give them keys).
+Each key, menu command and panel strip icon opens its panel, or closes it when it's showing.
+<b>Several panels at once:</b> open panels on the same side are stacked one above the other;
+drag the handle between two of them to give one more height, and the handle between the panels
+and the page to make that side wider. Drag a panel by its title to the other side or to another
+place on its own (above or below the panels there), or onto another panel to make the two tabs
+of one panel. Or
+right-click its title &gt; <b>Move to the left side</b> / <b>Move to the right side</b>; the rest
+of that menu lists the panels and toolbars to show or hide. The panels you had open when you
+closed KanzonasPDF (their sides, sizes, and which is in front where panels are tabs) come back the
+next time it starts; a window a tab is pulled out into starts with the panels of the window it
+came from. The Split view always starts closed.</li>
 <li><b>A document in its own window</b> (for a second monitor): drag its tab up or down out
 of the tab bar and let go, or right-click the tab &gt; <b>Move to new window</b>, or View &gt;
 <b>Move tab to new window</b> (Ctrl+Shift+N). The document isn't reopened: unsaved changes
@@ -153,10 +164,12 @@ of the ribbon tabs has every menu, and all keyboard shortcuts still work. <b>Col
 (Ctrl+F1, or double-click a tab) shows only the tab names; click a tab to open it again. Untick
 View &gt; <b>Ribbon (instead of toolbars)</b> for the classic compact toolbars (zoom, page number
 and Find then go back to the top toolbar). The menus always have every command.</li>
-<li><b>Panel strip:</b> the icons on the left edge open the Pages, Bookmarks, Layers, Objects
-and Sets panels; click the lit icon again to fold the panel away and get more room for the page.
-The Markups list and Attachments icons are there too. View &gt; <b>Show panel strip (left
-edge)</b> hides the strip; the panels then show their names as tabs at the bottom instead.</li>
+<li><b>Panel strip:</b> the icons on the left edge open the Pages, Bookmarks, Layers, Objects,
+Sets, Properties, Tool chest and Markups list panels, as many at once as you like; a lit icon is
+a panel showing. Click a lit icon again to close its panel and get more room for the page (a
+panel that is a tab behind another comes to the front first). The Attachments icon is there
+too. View &gt; <b>Show panel strip (left edge)</b> hides the strip; the View menu and each
+panel's close button still open and close the panels.</li>
 <li><b>Command palette</b> (Ctrl+Shift+P; Help menu, View tab): type a few letters of what you
 want to do and pick the command from the list; Enter runs it. Every menu command and tool is
 there with its menu and shortcut, so nothing has to be hunted for on the ribbon. The letters
@@ -346,7 +359,7 @@ Fit width (Ctrl+2), fit page (Ctrl+0), actual size (Ctrl+1). Documents open at F
 the page you were on last time; change this in File &gt; Preferences &gt; Opening documents.
 Fit width and Fit page keep fitting when the window or a side panel changes size, until you
 choose a zoom yourself.</li>
-<li><b>Page thumbnails</b> (F4) shows or hides the left panel.</li>
+<li><b>Page thumbnails</b> (F4) shows or hides the Pages panel.</li>
 <li><b>Links in the PDF:</b> point at a link to see where it goes. With the <b>Hand</b> tool, click
 it (the pointer becomes a hand). With any other tool, in every mouse mode (Standard, Hand, CAD),
 <b>Ctrl+click</b> it (holding Ctrl over a link shows a hand and where it goes): a plain click
@@ -554,6 +567,15 @@ selection. Move, Copy, Rotate, Scale, Mirror, Align, Array and Delete then work 
 together, and one Ctrl+Z undoes it (the drawing's text only moves: it isn't copied, turned,
 scaled or mirrored). <b>Select</b> (the CAD tab, or V when letters aren't going to the command
 line) selects only your markups, or the characters of the page's text, the same way.</p>
+<p><b>Clicks only, as in AutoCAD:</b> in CAD mode you never hold the mouse button down. What
+other programs do by dragging is <b>click, move, click</b> here: click to start (a selection
+box's first corner, a grip, what's selected, a shape's first point), move the mouse with no
+button held (what you're doing follows the pointer, so you see it before it's made), and click
+again to finish. <b>Escape</b> or a <b>right-click</b> stops it and puts everything back as it
+was. Pressing, dragging and letting go counts as a click and a move: nothing is made when you
+let go, the next click finishes it. Each click, move, click is one Ctrl+Z. Holding the
+<b>wheel</b> down and dragging still pans, also halfway through. (Preferences &gt; Mouse, CAD:
+turn off <b>Click, move, click</b> to drag instead.)</p>
 <ul>
 <li><b>Click</b> something to add it to the selection. <b>Shift+click</b> takes it out.
 <b>Escape</b> clears the whole selection, also right after a letter typed for the command line or
@@ -563,9 +585,10 @@ on top of the drawing, so a click on it takes the markup. A locked markup isn't 
 together. Right-click a markup for its own menu, the drawing's objects for theirs.
 <b>Resizing:</b> one selected markup shows its own handles (a rectangle's corners and sides, a
 line's ends); the drawing's own shapes and pictures show handles around them; several items (or
-markups together with the drawing's objects) show one box with handles around them all. Drag a
-handle to resize; a corner keeps the proportions (hold Shift while dragging to resize freely;
-Shift at the click itself takes an item out of the selection). The whole change is one Ctrl+Z.
+markups together with the drawing's objects) show one box with handles around them all. Click a
+handle and it's <b>hot</b>: it follows the pointer; click again where it goes. A corner keeps
+the proportions (hold Shift while you move it and at the second click to resize freely; Shift
+at the first click takes an item out of the selection). The whole change is one Ctrl+Z.
 The drawing's own text only moves. <b>Double-click</b> on text to edit it: the page's own text
 opens in Edit text, a markup's text (a text box, a note, a shape's comment) in its editor.
 What's selected is drawn <b>dashed</b> (blue dashes over white, so it shows on a blue line too)
@@ -581,25 +604,37 @@ again. Left to right it's a solid <b>blue window</b>: it takes what lies entirel
 Right to left it's a dashed <b>green crossing box</b>: it takes everything it touches, a line
 running through it included. The first corner is marked as soon as you click, and the status
 bar asks for the other corner. A quick click counts as a click even if the mouse moved a little
-while you pressed, and clicking the first corner again keeps the box. Escape drops a box you
-started. Hold Shift on the second click to take things out instead. A box (or a lasso) can also
+while you pressed, and clicking the first corner again keeps the box. Pressing on empty paper,
+dragging and letting go starts a box too: its other corner is the next click. Escape drops a
+box you started. Hold Shift on the second click to take things out instead. A box (or a lasso) can also
 start and end on the <b>gray area around the page</b>, handy when the sheet is covered. A filled
 shape or a picture covering the whole sheet (a background, a scan) counts as empty paper here: a
 click on it starts a box, and only a window around the whole sheet takes it (a filled shape also
 a click right on its edge).</li>
-<li><b>Hold the button and drag</b>: a <b>lasso</b> that follows the pointer. Drawn rightward at
+<li><b>Lasso</b>, the one thing in CAD mode that holds the button, so it's off unless you turn
+on <b>Hold the button and drag to draw a lasso</b> in Preferences &gt; Mouse: then holding the
+button and dragging from empty paper draws a lasso that follows the pointer. Drawn rightward at
 first it's a blue window lasso (what's entirely inside it); leftward, a green crossing lasso
 (what it touches). Shift+lasso takes things out.</li>
 <li>With Select, a box or lasso that takes no markups selects text: the characters inside a
 window, or the ones a crossing box touches (Ctrl+C copies them).</li>
 <li>While you draw a box or a lasso, what it would take <b>glows</b> (blue for a window,
-green for a crossing box), so you see what you'll get before the second click or before you
-let go; once taken, it's drawn dashed with grips. On a very big drawing it fills in over a moment while you move.</li>
-<li>Drag what's selected to move it, as in AutoCAD: over a selected item the pointer is the
-four-way arrow, and dragging from it moves the whole selection (markups and the page's own
-lines, text and pictures together; one undo step; snapping as for drawing). A drag that starts
-anywhere else draws a lasso or box and moves nothing. The square handles of one selected markup
-or object resize it, and the CAD tab's <b>Move</b> moves by a base point.</li>
+green for a crossing box), so you see what you'll get before the second click (or, with a lasso,
+before you let go); once taken, it's drawn dashed with grips. On a very big drawing it fills in over a moment while you move.</li>
+<li><b>Moving:</b> click what's selected to pick it up: over a selected item the pointer is
+the four-way arrow, and after the click the whole selection (markups and the page's own lines,
+text and pictures together) follows the pointer, its outline dashed, with no button held.
+Click where it goes to put it down (snapping as for drawing; also out on the gray beside the
+page), or type a distance on the command line and press Enter: it moves
+that far toward the pointer, in the page's measuring unit (12'-6" works too), as AutoCAD's
+direct distance entry. One undo step; Escape or a right-click puts it back. A click
+anywhere else selects, or starts a box, and moves nothing. Double-clicking a selected markup
+still edits its text. The CAD tab's <b>Move</b> moves by a base point.</li>
+<li><b>Grips</b> work the same way: click one to make it hot, move, click where it goes. That's
+the square handles that resize one markup, the drawing's objects or the box around several
+items, a line's two ends and the diamond in its middle that bends it, the corners of a polygon,
+polyline or measurement, and the round handle above a shape that <b>turns</b> it (the angle
+shows while you move; Shift: 15&deg; steps). The status bar says what the next click does.</li>
 <li>Preferences &gt; Mouse turns each of these on or off (see Preferences).</li>
 </ul>
 <p>The <b>CAD</b> tab (and the CAD menu) shows only in CAD mode. As in AutoCAD, either select
@@ -644,7 +679,8 @@ that several commands fit) and keeps what you typed, to correct it or to pick a 
 list with Up and Down and Enter. A setting switched by typing its name says whether it's now on
 or off.</li>
 <li>Enter on an empty line repeats the last command.</li>
-<li>While a circle is being drawn (its center clicked), type its radius and press Enter.</li>
+<li>While a circle is being drawn (its center clicked), type its radius and press Enter; while
+the selection follows the pointer (picked up by a click), type how far it goes.</li>
 <li>While a command runs, the line says what to do next and takes what you type: an angle, a
 scale factor, or a choice (the first letters of a button's name will do: K for Keep them, D
 for Delete them). A question (Mirror's "delete the originals?", Align's "scale it?") also takes
@@ -863,6 +899,13 @@ flattened. Its font can be Helvetica, Times or Courier (Properties > Font): thos
 every PDF viewer has, so the comment looks the same everywhere. To write text that's part of
 the page, use <b>Add text</b> (below).</li>
 <li><b>Callout</b> (K): press on the point you're pointing at, drag to where the text goes.</li>
+<li><b>More leaders on a callout</b> (as Bluebeam's Add Leader): select the callout, right-click
+where another leader should point and choose <b>Add leader</b> (right-clicked on its box, the new
+leader points away from the box, across from the first one). Each leader runs to the middle of
+the box's nearest side and has the first one's arrowhead and Arrowhead size; drag its end's grip to
+point it elsewhere. <b>Remove leader</b> takes off the added leader nearest where you right-clicked
+(the first one stays). They're drawn in the callout itself, so other PDF viewers show them; one that
+draws the callout anew from its settings shows the first leader only.</li>
 <li><b>Text boxes and callouts fit their text:</b> the box keeps its width and is as tall as its
 text, wrapped in it, when it's made, when its text or font size changes and when you drag its
 side to make it wider or narrower. Drag its top or bottom (or a corner) to give it a height of
@@ -964,10 +1007,12 @@ then flag any later change.</li>
 <h2 id="shapes">Shapes, lines and the pen</h2>
 <ul>
 <li>Rectangle (R), Ellipse (E), Circle (O), Cloud (D), Mask, Polygon (Y), Line (L), Arrow (A),
-Polyline (Shift+L), Arc, Curve, Pen (P). The shapes share one toolbar button: click its arrow to pick another.</li>
+Polyline (Shift+L), Arc, Curve, Pen (P). The shapes share one toolbar button: click its arrow to pick another.
+These are markups; to draw into the page itself, use the Drawing tab (see Drawing tab).</li>
 <li><b>Arc</b> (as AutoCAD's three-point ARC; on the CAD tab under Circle's arrow): click the start, a point the arc
 passes through, then the end; the arc follows the pointer before the last click. Drag its three points to reshape it.</li>
-<li><b>Bend a line or arrow:</b> select it and drag the diamond in its middle: it becomes a smooth curve through that
+<li><b>Bend a line or arrow:</b> select it and drag the diamond in its middle (in CAD mode: click
+it, move, click): it becomes a smooth curve through that
 point; the ends stay where they are and an arrowhead follows the curve. Drag the diamond back onto the straight line to
 straighten it. The <b>Curve</b> tool draws one directly: click the start, the end, then where it bends to.</li>
 <li><b>Circle</b> (O): drag from the center to a point on the circle. In CAD mode, click the
@@ -984,11 +1029,17 @@ Ellipse, Circle, Cloud, Mask, Text box, Callout, Length, Radius, Calibrate Tape 
 Eraser's box, Erase content, Capture area, Crop pages, Links, signature placeholders, legends) work as in
 AutoCAD: click where it starts, move (the shape follows the pointer with no button held), and
 click where it ends. It snaps, and Shift works, as when dragging; pressing, dragging and letting
-go still works too. A click that shakes a little is still a click. Escape or a right-click
+go is a click and a move: the shape goes on following the pointer until you click where it
+ends. A click that shakes a little is still a click. Escape or a right-click
 cancels the shape being drawn; zooming or scrolling between the two clicks doesn't move its first
 point. A click on a markup with the Eraser still deletes it at once, a click on a link with the
 Links tool still opens it, and two clicks on the same spot with Text box make one of the default
-size. Note, Stamp, Count, Numbered dot and Image still place with one click.</li>
+size. Note, Stamp, Count, Numbered dot and Image still place with one click. The <b>Pen</b> draws
+from one click to the next: click to start, move to draw (no button held), click to end; Escape
+drops the stroke. <b>Highlight</b> and the other text tools (Underline, Strikeout, Redact...)
+mark from a click on the first letter to a click on the last. A <b>Dimension</b>'s points are
+clicks too (in the other modes a drag gives
+its first two).</li>
 <li><b>Polygon / polyline:</b> click each point; double-click or Enter to finish, Backspace to take back the last point,
 Escape to cancel.</li>
 <li>With a drawing tool, clicking an existing markup selects it, and dragging moves it or its
@@ -1068,8 +1119,8 @@ Markup tab's tools, stamps, measurements) sit <b>on top of the page</b>. They ca
 hidden, deleted, put on layers or flattened, and the page under them stays as it was; other
 PDF readers list them as comments.</li>
 <li><b>Page content</b> is the page itself: its own text, lines and pictures. <b>Edit text</b>,
-<b>Add text</b>, <b>Edit objects</b>, the <b>Image</b> tool and <b>Erase content</b> change
-it. What they write is part of the page: every reader shows and prints it, and it can't be
+<b>Add text</b>, <b>Edit objects</b>, the <b>Image</b> tool, <b>Erase content</b> and the
+<b>Drawing</b> tab's tools change it. What they write is part of the page: every reader shows and prints it, and it can't be
 hidden or taken off as a markup can.</li>
 <li><b>How to tell:</b> the Properties panel shows a tag above its title, <b>Markup: on top of
 the page</b> (violet) or <b>Page content: changes the page itself</b> (teal), for what's
@@ -1093,6 +1144,46 @@ written where they are, their lines spread apart (or drawn together) as much as 
 (or shrinks). Text at an angle other than a quarter turn (a diagonal watermark) gets no
 underline, strikethrough or background. To change single words, edit the text (Edit text) and
 select them in the box.</li>
+</ul>
+
+<h2 id="drawing">Drawing tab: lines and shapes drawn into the page</h2>
+<p>The <b>Drawing</b> tab draws lines and shapes into the page itself, as its own vector
+drawing, the way a CAD program's lines are part of a plotted sheet. The Markup tab's shapes stay
+markups, on top of the page (see Markup or page content).</p>
+<ul>
+<li><b>Tools:</b> Line, Arrow, Polyline, Polygon, Rectangle, Ellipse, Circle, Arc, Cloud and
+Pen (also in Tools &gt; Drawing). They're drawn exactly as the Markup tab's shapes of the same
+name: a drag (in CAD mode, click, move, click); Polyline and Polygon a click at each point,
+double-click or Enter to finish; Arc the start, a point it passes through, then the end. The
+previews, snapping, Shift (45&deg; steps, squares and circles) and the CAD command line work
+the same. A Drawing tool always draws: a click on a markup doesn't pick it. On the CAD command
+line, "rect" is still the Markup tab's Rectangle: type "drawing rect" for this one.</li>
+<li><b>Style:</b> with a Drawing tool picked, the Properties panel shows that tool's style for
+the next shapes: Line color, Fill (and No border, No fill), Line width, Line style, the Start
+and End arrowhead and Middle arrow of lines (none, open or closed), Opacity and Fill opacity.
+Black, 1 pt, by default, as a drawing's lines usually are; saved for next time, apart from the
+markup tools' styles. A shape with neither a line color nor a fill draws nothing.</li>
+<li><b>Its own layer:</b> everything the Drawing tab draws goes on one layer of the PDF,
+<b>KanzonasPDF drawing</b>, made the first time you draw. The Layers panel lists it: untick it
+to hide the drawing, on screen and in print, as other PDF programs that show layers do.
+Drawing on it again while it's hidden shows it.</li>
+<li><b>Telling it apart from markups:</b> its own tab, its own layer, the Properties tag
+<b>Page content: changes the page itself</b> for its tools and for what they drew, and an
+<b>orange</b> selection when Edit objects or CAD mode selects it (the page's other lines and
+shapes show blue); Properties also says it's on the layer KanzonasPDF drawing.</li>
+<li><b>Changing it afterwards:</b> it's the page's own drawing, so <b>Edit objects</b> (on the
+Drawing tab too) works on it as on any of the page's lines: select, move, resize, rotate,
+delete and copy it; change its Line color, Fill color, Line width, Line style and arrowheads in
+Properties; put it To front, Forward, Backward or To back; Group it with the drawing's own lines
+(each keeps its layer inside the group) and Ungroup. It isn't in the Markups list and can't be
+flattened: it's already part of the page.</li>
+<li><b>Convert to drawing</b> (Drawing tab, Tools &gt; Drawing, a markup's right-click menu):
+the selected shape and line markups (rectangles, ellipses, circles, clouds, polygons, lines,
+arrows, polylines, arcs and pen strokes) become page drawing on the KanzonasPDF drawing layer,
+looking exactly as they did, and are no longer markups. Measurements, notes, stamps, text
+boxes, callouts and highlights stay markups.</li>
+<li><b>Undo:</b> each shape drawn is one step, and so is each Convert to drawing. Save keeps
+them, and the file opened again has them on their layer.</li>
 </ul>
 
 <h2 id="properties">Colors, borders and styles (Properties panel)</h2>
@@ -1151,7 +1242,8 @@ Import tool chest shares a chest with others.</li>
 
 <h2 id="rotate">Rotating markups</h2>
 <ul>
-<li>Select a shape and drag the <b>round handle</b> above it. Hold Shift for 15&deg; steps.</li>
+<li>Select a shape and drag the <b>round handle</b> above it (in CAD mode: click it, move, click).
+Hold Shift for 15&deg; steps.</li>
 <li>Or type an angle in <b>Rotation</b> in the Properties panel (counterclockwise).</li>
 <li>Text boxes and callouts rotate in 90&deg; steps (a limitation of PDF text boxes).</li>
 </ul>
@@ -1205,7 +1297,7 @@ you click. Text keeps reading the right way round.</li>
 
 <h2 id="objects">Objects panel and locking</h2>
 <ul>
-<li><b>Objects</b> tab (left panel, next to Pages, Bookmarks and Layers): every markup on the
+<li><b>Objects</b> panel (View &gt; Objects panel, or its icon on the panel strip): every markup on the
 current page, from front (top of the list) to back. Click a row to select that markup even
 when it's completely covered by others; Ctrl/Shift+click selects several. Front, Up, Down
 and Back change the stacking order.</li>
@@ -1334,7 +1426,8 @@ over another page and it moves there (its outline shows where it lands); markups
 Select do the same.
 Drag a corner handle to resize it, keeping its proportions
 (hold Shift to stretch freely), or a side handle to make it wider or taller. Resizing a shape also
-scales its line thickness. <b>Turn it</b> by dragging the <b>round handle</b> above it: it turns
+scales its line thickness (in CAD mode a handle is clicked, moved and clicked again: see CAD
+mode). <b>Turn it</b> by dragging the <b>round handle</b> above it: it turns
 about its middle, the angle shows in the status bar, and Shift turns it in 15&deg; steps. To turn
 it by an exact angle, right-click &gt; <b>Rotate by an angle...</b> and type the degrees
 (counterclockwise, as a markup's Rotation; -90 turns it a quarter clockwise). The <b>Properties</b>
@@ -1356,8 +1449,11 @@ color</b> (filled shapes), as the drawing has them; <b>Line style</b> (solid, da
 dash-dot); and, for lines (straight, polylines and curves, not closed shapes), <b>Start
 arrowhead</b>, <b>End arrowhead</b> and <b>Middle arrow</b>: none, open or closed (an outlined
 triangle). The arrowheads become part of the line: they move, turn and change color with it,
-and they're as wide as the line. Each change is one step Undo takes back; picking none takes
-them off again. On a dashed or dotted line they're still drawn solid.</li>
+and they're as wide as the line. <b>Arrowhead size</b> makes them from 25% to 500% of the size
+the line's width gives (100%); it stays when the line's width, Line style or arrowheads change.
+Each change is one step Undo takes back; picking none takes them off again. On a dashed or
+dotted line they're still drawn solid. The Drawing tab's Line, Arrow, Polyline and Arc tools
+have Arrowhead size too.</li>
 <li>Delete (or Backspace) deletes the selection. Right-click for Cut, Copy, Paste and Duplicate,
 Ungroup (groups), Rotate clockwise, Rotate
 counterclockwise, Rotate by an angle..., the stacking order commands and Delete, and, for one picture, Copy picture
@@ -1586,6 +1682,19 @@ size. Right-click a marker &gt; <b>Renumber group</b> numbers its group 1, 2, 3.
 no gaps. A Count marker copied with Duplicate (Ctrl+D) or copy and paste takes the next
 number of its group. A selected marker shows a dashed box around it and its number (blue
 dashes over white, so it shows on a blue marker too).</li>
+<li><b>Find similar</b> (Measure tab, "More" group, and the Measure menu), like Bluebeam's
+VisualSearch: counts a symbol for you. Pick Find similar and drag a box tightly around one
+symbol (a light fixture, an outlet, a sprinkler head). Choose where to look (<b>This page</b> or
+<b>All pages</b>), the Count group to <b>Count as</b> (a new one is offered, or pick one the document
+has), the <b>Sensitivity</b> (80% at first; lower finds more, and more that aren't the same) and
+whether to find it <b>Also turned</b> by quarters, then <b>Find</b>. KanzonasPDF looks at each page
+as drawn, without its markups, one page at a time (a window shows how far it is, and <b>Stop</b>
+stops it: nothing is placed then), and places a Count marker on every match, numbered on from the
+group's highest number, as one step. <b>Check them before keeping them</b>: delete any that
+aren't the symbol, or press Ctrl+Z to take them all back. A symbol the group has a marker on
+already isn't counted twice, so you can search again with another sensitivity. It works on
+scanned drawings too; a box with nothing in it finds nothing. It compares pictures, so a symbol
+drawn at another size isn't found.</li>
 <li><b>Dimension</b> (Shift+D; Measure tab, "More" group, the Measure menu and the CAD tab's
 Measure button), like Bluebeam's Dimension and AutoCAD's aligned dimension: click the two
 points to measure, then move the pointer and click where the dimension line goes (in the
@@ -1739,7 +1848,7 @@ it.</li>
 pages to new file (to a new file, not the document itself), Delete pages (the pages selected in
 the page list, or the current page; it asks first, and Ctrl+Z brings them back). A bookmark to a
 deleted page then goes to the page after it (or the last page).</li>
-<li><b>Layers</b> tab: show or hide CAD / optional-content layers. <b>Markups on layers</b>
+<li><b>Layers</b> panel (View &gt; Layers panel): show or hide CAD / optional-content layers. <b>Markups on layers</b>
 (as in Bluebeam): <b>New layer...</b> adds a layer to the document, and <b>New markups go on</b>
 picks the layer the markups you draw go on (No layer: none). To put markups already drawn on a
 layer, select them and right-click &gt; <b>Layer</b> &gt; a layer, No layer, or New layer....
@@ -1771,7 +1880,7 @@ of the <b>Sets</b> panel): pick the PDFs, then where to save the set. A set is a
 its own (.kzset) listing the PDFs; the ones in its folder or below are kept by their place
 next to it, so the folder can be moved or shared with the set in it. <b>Open set...</b>
 opens one (so does dragging a .kzset file onto the window).</li>
-<li>The <b>Sets</b> panel (a tab of the left panel, and an icon on the panel strip) lists each
+<li>The <b>Sets</b> panel (View &gt; Sets panel, and an icon on the panel strip) lists each
 file with its pages under it. On drawing-size pages (11x17 and larger) the sheet number and
 title are read from the title block (SHEET NO, SHEET TITLE), so A-101 FLOOR PLAN is listed;
 other pages by their page label or number. A file that can't be found is listed grayed out.
@@ -1787,7 +1896,7 @@ to the set is saved in its file at once.</li>
 </ul>
 
 <h2 id="bookmarks">Bookmarks and table of contents</h2>
-<p>Bookmarks (the PDF's outline) are listed in the <b>Bookmarks</b> panel (F9). Click one to go
+<p>Bookmarks (the PDF's outline) are listed in the <b>Bookmarks</b> panel (F9 opens and closes it). Click one to go
 to its place. The buttons above the list add a bookmark to the current page (+), rename, delete,
 move up and down, and indent (make it a child of the one above) or outdent. The <b>⋯</b> button,
 a right-click in the list, and <b>Document &gt; Bookmark tools</b> have the rest. Every change is
@@ -2507,11 +2616,14 @@ is the one KanzonasPDF starts with and Escape goes back to), and each mode's own
 <li>Standard: Scroll one page per wheel step (on), Free page movement (off).</li>
 <li>Hand: Free page movement (on), Scroll one page per wheel step (on).</li>
 <li>CAD: The wheel zooms at the cursor (Ctrl+wheel scrolls), Plus cursor, Open canvas around the
-pages, Window (blue) and crossing (green) selection, Click, move, click draws the selection box,
-Hold the button and drag to draw a lasso, Show the CAD tab, Letters typed over the drawing go to
-the command line: all on (the last one is off for whoever had the CAD-style mouse before 1.5, so
-the one-letter tool shortcuts they used keep working). With the click, move, click box and the
-lasso off, a press, drag and release draws a box.</li>
+pages, Window (blue) and crossing (green) selection, Click, move, click, never holding the
+button: selection boxes, grips, moving the selection, drawing (off: drag them), Hold the button
+and drag to draw a lasso, Show the CAD tab, Letters typed over the drawing go to the command
+line: all on but the lasso (off since 1.17: CAD mode holds no button unless you ask for it), and
+the last one off for whoever had the CAD-style mouse before 1.5, so the one-letter tool
+shortcuts they used keep working. With Click, move, click off, CAD mode drags as the other
+modes do: a press, drag and release draws a selection box (or a lasso), moves the selection,
+a grip or a shape.</li>
 <li>Middle-click on a link opens: Ask each time, A new tab, or The split view (see Moving
 around).</li>
 </ul>

@@ -88,10 +88,21 @@ e tutti i 100 passaggi entrano anche in PDF molto grandi; la cronologia resta co
 Se Annulla diventa grigio prima di tornare al punto di partenza, i passaggi precedenti sono oltre i
 100 conservati (o il limite di memoria) e non si possono annullare; il file com'era all'apertura
 resta sul disco finché non lo salvi sopra.</li>
-<li><b>Pannelli:</b> Pagine/Segnalibri/Livelli a sinistra (F4), Proprietà a destra (F6),
-Elenco annotazioni (F7), Cassetta degli attrezzi (F8), Segnalibri (F9), Vista divisa (F10). I pannelli che avevi aperti
-quando hai chiuso KanzonasPDF (con le loro dimensioni, i loro lati e quale tra Proprietà / Cassetta degli attrezzi era in
-primo piano) ricompaiono al successivo avvio; la Vista divisa all'avvio è sempre chiusa.</li>
+<li><b>Pannelli:</b> Pagine (F4), Segnalibri (F9), Livelli, Oggetti e Raccolte partono a sinistra,
+Proprietà (F6) e la Cassetta degli attrezzi (F8) a destra, l'Elenco annotazioni (F7) in basso; la
+Vista divisa è F10. Visualizza &gt; <b>Pannello Livelli</b>, <b>Pannello Oggetti</b> e <b>Pannello Raccolte</b>
+aprono e chiudono gli altri tre (Visualizza &gt; Scorciatoie da tastiera può assegnare loro dei tasti).
+Ogni tasto, comando di menu e icona della barra dei pannelli apre il suo pannello, o lo chiude quando è visibile.
+<b>Più pannelli insieme:</b> i pannelli aperti sullo stesso lato sono impilati uno sopra l'altro;
+trascina la maniglia tra due di essi per dare più altezza a uno, e la maniglia tra i pannelli e
+la pagina per allargare quel lato. Trascina un pannello per il titolo sull'altro lato o in un altro
+punto del suo (sopra o sotto i pannelli che ci sono), oppure su un altro pannello per farne due
+schede dello stesso pannello. Oppure fai clic con il tasto destro sul titolo &gt; <b>Sposta sul lato
+sinistro</b> / <b>Sposta sul lato destro</b>; il resto di quel menu elenca i pannelli e le barre
+degli strumenti da mostrare o nascondere. I pannelli che avevi aperti quando hai chiuso
+KanzonasPDF (i loro lati, le loro dimensioni e quale è in primo piano dove i pannelli sono schede)
+ricompaiono al successivo avvio; una finestra in cui si estrae una scheda parte con i pannelli della
+finestra da cui proviene. La Vista divisa all'avvio è sempre chiusa.</li>
 <li><b>Un documento in una finestra a sé</b> (per un secondo monitor): trascina la sua scheda verso l'alto o verso il basso fuori
 dalla barra delle schede e rilasciala, oppure fai clic destro sulla scheda &gt; <b>Sposta in una nuova finestra</b>, oppure Visualizza &gt;
 <b>Sposta scheda in una nuova finestra</b> (Ctrl+Shift+N). Il documento non viene riaperto: le modifiche non salvate
@@ -142,10 +153,12 @@ delle schede della barra multifunzione contiene tutti i menu, e tutte le scorcia
 (Ctrl+F1, o doppio clic su una scheda) mostra solo i nomi delle schede; fai clic su una scheda per riaprirla. Togli la spunta da
 Visualizza &gt; <b>Barra multifunzione (al posto delle barre degli strumenti)</b> per le classiche barre degli strumenti compatte (zoom, numero di pagina
 e Trova tornano allora nella barra degli strumenti superiore). I menu contengono sempre tutti i comandi.</li>
-<li><b>Barra dei pannelli:</b> le icone sul bordo sinistro aprono i pannelli Pagine, Segnalibri, Livelli, Oggetti
-e Raccolte; fai di nuovo clic sull'icona illuminata per richiudere il pannello e avere più spazio per la pagina.
-Ci sono anche le icone di Elenco annotazioni e Allegati. Visualizza &gt; <b>Mostra barra dei pannelli (bordo
-sinistro)</b> nasconde la barra; i pannelli mostrano allora i loro nomi come schede in basso.</li>
+<li><b>Barra dei pannelli:</b> le icone sul bordo sinistro aprono i pannelli Pagine, Segnalibri, Livelli, Oggetti,
+Raccolte, Proprietà, Cassetta degli attrezzi ed Elenco annotazioni, quanti ne vuoi insieme; un'icona illuminata
+è un pannello visibile. Fai di nuovo clic su un'icona illuminata per chiudere il suo pannello e avere più spazio
+per la pagina (un pannello che è una scheda dietro un altro passa prima in primo piano). C'è anche l'icona
+Allegati. Visualizza &gt; <b>Mostra barra dei pannelli (bordo sinistro)</b> nasconde la barra; il menu
+Visualizza e il pulsante di chiusura di ogni pannello continuano ad aprire e chiudere i pannelli.</li>
 <li><b>Tavolozza dei comandi</b> (Ctrl+Shift+P; menu Guida, scheda Visualizza): digita alcune lettere di ciò che
 vuoi fare e scegli il comando dall'elenco; Invio lo esegue. Ogni comando di menu e ogni strumento è
 presente con il suo menu e la sua scorciatoia, quindi non devi cercare nulla nella barra multifunzione. Le lettere
@@ -334,7 +347,7 @@ Adatta alla larghezza (Ctrl+2), Adatta alla pagina (Ctrl+0), Dimensioni reali (C
 Adatta alla larghezza, alla pagina in cui eri l'ultima volta; puoi cambiarlo in File &gt; Preferenze &gt; Avvio e apertura.
 Adatta alla larghezza e Adatta alla pagina continuano ad adattare la vista quando la finestra o un pannello laterale
 cambiano dimensione, finché non scegli tu uno zoom.</li>
-<li><b>Miniature delle pagine</b> (F4) mostra o nasconde il pannello a sinistra.</li>
+<li><b>Miniature delle pagine</b> (F4) mostra o nasconde il pannello Pagine.</li>
 <li><b>Collegamenti nel PDF:</b> punta un collegamento per vedere dove porta. Con lo strumento <b>Mano</b>, fai clic
 su di esso (il puntatore diventa una mano). Con qualsiasi altro strumento, in ogni modalità del mouse (Standard, Mano,
 CAD), fai <b>Ctrl+clic</b> su di esso (tenendo premuto Ctrl sopra un collegamento compaiono una mano e la destinazione):
@@ -541,6 +554,14 @@ Scala, Specchia, Allinea, Serie ed Elimina agiscono poi su tutto insieme, e un s
 testo del disegno si sposta soltanto: non viene copiato, ruotato, scalato né specchiato). <b>Seleziona</b> (nella
 scheda CAD, oppure V quando le lettere non vanno alla riga di comando) seleziona allo stesso modo solo le tue
 annotazioni o i caratteri del testo della pagina.</p>
+<p><b>Solo clic, come in AutoCAD:</b> in modalità CAD non si tiene mai premuto il pulsante del mouse. Ciò che altri
+programmi fanno trascinando qui è <b>clic, sposta, clic</b>: fai clic per iniziare (il primo angolo di un riquadro di
+selezione, un grip, ciò che è selezionato, il primo punto di una forma), sposta il mouse senza tenere premuto alcun
+pulsante (ciò che stai facendo segue il puntatore, così lo vedi prima che venga fatto) e fai di nuovo clic per finire.
+<b>Esc</b> o un <b>clic destro</b> lo interrompe e rimette tutto com'era. Premere, trascinare e rilasciare conta come
+un clic e uno spostamento: al rilascio non succede nulla, il clic successivo lo completa. Ogni clic, sposta, clic si
+annulla con un solo Ctrl+Z. Tenere premuta la <b>rotellina</b> e trascinare sposta ancora la vista, anche a metà.
+(Preferenze &gt; Mouse, CAD: disattiva <b>Clic, sposta, clic</b> per trascinare invece.)</p>
 <ul>
 <li><b>Fai clic</b> su un elemento per aggiungerlo alla selezione. <b>Shift+clic</b> lo toglie.
 <b>Esc</b> annulla l'intera selezione, anche subito dopo una lettera scritta per la riga di comando o un clic che ha
@@ -550,9 +571,10 @@ sopra il disegno, quindi un clic su di essa prende l'annotazione. Un'annotazione
 clic destro su un'annotazione per il suo menu, sugli oggetti del disegno per il loro.
 <b>Ridimensionamento:</b> una sola annotazione selezionata mostra le sue maniglie (gli angoli e i lati di un
 rettangolo, le estremità di una linea); le forme e le immagini del disegno mostrano maniglie intorno a sé; più elementi
-(o annotazioni insieme a oggetti del disegno) mostrano un unico riquadro con maniglie intorno a tutti. Trascina una
-maniglia per ridimensionare; un angolo mantiene le proporzioni (tieni premuto Shift mentre trascini per ridimensionare
-liberamente; Shift al momento del clic toglie invece un elemento dalla selezione). L'intera modifica si annulla con un
+(o annotazioni insieme a oggetti del disegno) mostrano un unico riquadro con maniglie intorno a tutti. Fai clic su
+una maniglia e diventa <b>attiva</b>: segue il puntatore; fai di nuovo clic dove deve andare. Un angolo mantiene le
+proporzioni (tieni premuto Shift mentre la sposti e al secondo clic per ridimensionare liberamente; Shift al primo clic
+toglie invece un elemento dalla selezione). L'intera modifica si annulla con un
 solo Ctrl+Z.
 Il testo del disegno si sposta soltanto. <b>Fai doppio clic</b> su un testo per modificarlo: il testo della pagina si
 apre in Modifica testo, il testo di un'annotazione (una casella di testo, una nota, il commento di una forma) nel suo
@@ -570,24 +592,36 @@ di nuovo clic. Da sinistra a destra è una <b>finestra blu</b> a tratto continuo
 interno. Da destra a sinistra è un <b>riquadro di intersezione verde</b> tratteggiato: prende tutto ciò che tocca,
 compresa una linea che lo attraversa. Il primo angolo viene segnato appena fai clic, e la barra di stato chiede l'altro
 angolo. Un clic rapido conta come clic anche se il mouse si è mosso un po' mentre premevi, e un nuovo clic sul primo
-angolo mantiene il riquadro. Esc elimina un riquadro iniziato. Tieni premuto Shift al secondo clic per togliere invece
+angolo mantiene il riquadro. Anche premere su un punto vuoto del foglio, trascinare e rilasciare avvia un riquadro: il
+suo altro angolo è il clic successivo. Esc elimina un riquadro iniziato. Tieni premuto Shift al secondo clic per togliere invece
 gli elementi. Un riquadro (o un lazo) può anche iniziare e finire nell'<b>area grigia intorno alla pagina</b>, comodo
 quando la tavola è tutta coperta. Una forma piena o un'immagine che copre l'intera tavola (uno sfondo, una scansione)
 qui conta come foglio vuoto: un clic su di essa avvia un riquadro, e solo una finestra attorno all'intera tavola la
 prende (una forma piena anche un clic proprio sul suo bordo).</li>
-<li><b>Tieni premuto il pulsante e trascina</b>: un <b>lazo</b> che segue il puntatore. Se all'inizio lo disegni verso
-destra è un lazo a finestra blu (prende ciò che sta interamente al suo interno); verso sinistra, un lazo di
+<li><b>Lazo</b>, l'unica cosa della modalità CAD che tiene premuto il pulsante, quindi è disattivato a meno che tu non
+attivi <b>Tieni premuto il pulsante e trascina per disegnare un lazo</b> in Preferenze &gt; Mouse: allora tenendo premuto
+il pulsante e trascinando da un punto vuoto del foglio disegni un lazo che segue il puntatore. Se all'inizio lo disegni
+verso destra è un lazo a finestra blu (prende ciò che sta interamente al suo interno); verso sinistra, un lazo di
 intersezione verde (prende ciò che tocca). Shift+lazo toglie gli elementi.</li>
 <li>Con Seleziona, un riquadro o un lazo che non prende annotazioni seleziona il testo: i caratteri dentro una
 finestra, o quelli toccati da un riquadro di intersezione (Ctrl+C li copia).</li>
 <li>Mentre disegni un riquadro o un lazo, ciò che prenderebbe si <b>illumina</b> (in blu per una finestra,
-in verde per un riquadro di intersezione), così vedi cosa otterrai prima del secondo clic o prima di rilasciare il
-pulsante; una volta preso, viene disegnato tratteggiato con i grip. In un disegno molto grande si completa in un attimo mentre ti muovi.</li>
-<li>Trascina ciò che è selezionato per spostarlo, come in AutoCAD: sopra un elemento selezionato il puntatore è la
-freccia a quattro punte, e trascinando da lì sposti l'intera selezione (annotazioni e linee, testo e immagini della
-pagina insieme; un solo passaggio di annullamento; aggancio come nel disegno). Un trascinamento che parte da un
-altro punto disegna un lazo o un riquadro e non sposta nulla. Le maniglie quadrate di un'annotazione o di un
-oggetto selezionato lo ridimensionano, e <b>Sposta</b> della scheda CAD sposta da un punto base.</li>
+in verde per un riquadro di intersezione), così vedi cosa otterrai prima del secondo clic (o, con un lazo, prima di rilasciare
+il pulsante); una volta preso, viene disegnato tratteggiato con i grip. In un disegno molto grande si completa in un attimo mentre ti muovi.</li>
+<li><b>Spostare:</b> fai clic su ciò che è selezionato per sollevarlo: sopra un elemento selezionato il puntatore è la
+freccia a quattro punte, e dopo il clic l'intera selezione (annotazioni e linee, testo e immagini della pagina insieme)
+segue il puntatore, con il contorno tratteggiato, senza tenere premuto alcun pulsante. Fai clic dove deve andare per
+posarla (aggancio come nel disegno; anche fuori, nel grigio accanto alla pagina), oppure digita una
+distanza nella riga di comando e premi Invio: si sposta di quella distanza verso il puntatore, nell'unità di misura
+della pagina (va bene anche 12'-6"), come l'immissione diretta della distanza di AutoCAD. Un solo passaggio di
+annullamento; Esc o un clic destro la rimette dov'era. Un clic in un altro punto seleziona, o avvia un riquadro, e non
+sposta nulla. Il doppio clic su un'annotazione selezionata ne modifica ancora il testo. <b>Sposta</b> della scheda CAD
+sposta da un punto base.</li>
+<li>I <b>grip</b> funzionano allo stesso modo: fai clic su uno per attivarlo, sposta il mouse, fai clic dove deve
+andare. Sono le maniglie quadrate che ridimensionano un'annotazione, gli oggetti del disegno o il riquadro intorno a più
+elementi, le due estremità di una linea e il rombo al centro che la curva, gli angoli di un poligono, di una polilinea o
+di una misura, e la maniglia rotonda sopra una forma che la <b>ruota</b> (l'angolo si vede mentre sposti il mouse;
+Shift: passi di 15&deg;). La barra di stato dice cosa fa il clic successivo.</li>
 <li>Preferenze &gt; Mouse attiva o disattiva ciascuna di queste funzioni (vedi Preferenze).</li>
 </ul>
 <p>La scheda <b>CAD</b> (e il menu CAD) compare solo in modalità CAD. Come in AutoCAD, puoi selezionare prima e poi
@@ -632,7 +666,8 @@ un EX digitato per sbaglio non chiude mai il programma. Qualsiasi altro testo no
 scegliere un comando dall'elenco con Freccia su e Freccia giù e Invio. Un'impostazione attivata o disattivata
 digitandone il nome indica se ora è attiva o disattivata.</li>
 <li>Invio su una riga vuota ripete l'ultimo comando.</li>
-<li>Mentre disegni un cerchio (dopo aver fatto clic sul centro), digita il raggio e premi Invio.</li>
+<li>Mentre disegni un cerchio (dopo aver fatto clic sul centro), digita il raggio e premi Invio; mentre la
+selezione segue il puntatore (sollevata con un clic), digita di quanto si sposta.</li>
 <li>Mentre un comando è in corso, la riga indica cosa fare dopo e accetta ciò che digiti: un angolo, un
 fattore di scala o una scelta (bastano le prime lettere del nome di un pulsante: M per Mantienili, E
 per Eliminali). Una domanda («eliminare gli originali?» di Specchia, «scalarlo?» di Allinea) accetta anche
@@ -848,6 +883,13 @@ appiattita. Il suo carattere può essere Helvetica, Times o Courier (Proprietà 
 ogni visualizzatore PDF possiede, quindi il commento appare uguale ovunque. Per scrivere testo che fa parte
 della pagina, usa <b>Aggiungi testo</b> (più avanti).</li>
 <li><b>Richiamo</b> (K): premi sul punto che vuoi indicare e trascina fino a dove va il testo.</li>
+<li><b>Più linee guida su un richiamo</b> (come Add Leader di Bluebeam): seleziona il richiamo, fai clic destro dove
+deve puntare un'altra linea guida e scegli <b>Aggiungi linea guida</b> (con clic destro sul suo riquadro, la nuova linea
+guida punta lontano dal riquadro, dal lato opposto alla prima). Ogni linea guida arriva al centro del lato più vicino del
+riquadro e ha la punta di freccia e la Dimensione punta di freccia della prima; trascina il punto di presa della sua
+estremità per farla puntare altrove. <b>Rimuovi linea guida</b> toglie la linea guida aggiunta più vicina a dove hai fatto
+clic destro (la prima resta). Sono disegnate nel richiamo stesso, quindi anche gli altri visualizzatori PDF le mostrano;
+uno che ridisegna il richiamo dalle sue impostazioni mostra solo la prima.</li>
 <li><b>Le caselle di testo e i richiami si adattano al testo:</b> il riquadro mantiene la larghezza ed è alto
 quanto il suo testo, che va a capo al suo interno, quando lo crei, quando cambi il testo o la dimensione del
 carattere e quando trascini un suo lato per allargarlo o restringerlo. Trascina il bordo superiore o inferiore
@@ -951,10 +993,12 @@ segnalano allora qualsiasi modifica successiva.</li>
 <h2 id="shapes">Forme, linee e penna</h2>
 <ul>
 <li>Rettangolo (R), Ellisse (E), Cerchio (O), Nuvola (D), Maschera, Poligono (Y), Linea (L), Freccia (A),
-Polilinea (Shift+L), Arco, Curva, Penna (P). Le forme condividono un unico pulsante della barra degli strumenti: fai clic sulla sua freccia per sceglierne un'altra.</li>
+Polilinea (Shift+L), Arco, Curva, Penna (P). Le forme condividono un unico pulsante della barra degli strumenti: fai clic sulla sua freccia per sceglierne un'altra.
+Sono annotazioni; per disegnare nella pagina stessa, usa la scheda Disegno (vedi Scheda Disegno).</li>
 <li><b>Arco</b> (come l'ARC a tre punti di AutoCAD; nella scheda CAD sotto la freccia di Cerchio): fai clic sull'inizio, su un punto
 per cui passa l'arco, poi sulla fine; l'arco segue il puntatore prima dell'ultimo clic. Trascina i suoi tre punti per cambiarne la forma.</li>
-<li><b>Curvare una linea o una freccia:</b> selezionala e trascina il rombo al centro: diventa una curva morbida che passa per quel
+<li><b>Curvare una linea o una freccia:</b> selezionala e trascina il rombo al centro (in modalità CAD: clic su di
+esso, sposta, clic): diventa una curva morbida che passa per quel
 punto; le estremità restano dove sono e la punta di freccia segue la curva. Trascina di nuovo il rombo sulla linea retta per
 raddrizzarla. Lo strumento <b>Curva</b> ne disegna una direttamente: fai clic sull'inizio, sulla fine, poi sul punto verso cui si piega.</li>
 <li><b>Cerchio</b> (O): trascina dal centro a un punto della circonferenza. In modalità CAD, fai clic sul
@@ -970,12 +1014,17 @@ definitivamente.</li>
 Ellisse, Cerchio, Nuvola, Maschera, Casella di testo, Richiamo, Lunghezza, Raggio, Calibra metro a nastro, il
 riquadro della Gomma, Cancella contenuto, Cattura area, Ritaglia pagine, Collegamenti, segnaposto firma, legende) funzionano come in
 AutoCAD: fai clic dove inizia, sposta il mouse (la forma segue il puntatore senza tenere premuto alcun pulsante) e
-fai clic dove finisce. L'aggancio e Shift funzionano come durante il trascinamento; anche premere, trascinare e rilasciare
-funziona ancora. Un clic con un leggero tremolio resta un clic. Esc o un clic con il tasto destro
+fai clic dove finisce. L'aggancio e Shift funzionano come durante il trascinamento; premere, trascinare e rilasciare è un
+clic e uno spostamento: la forma segue il puntatore finché non fai clic dove finisce. Un clic con un leggero tremolio
+resta un clic. Esc o un clic con il tasto destro
 annulla la forma che stai disegnando; lo zoom o lo scorrimento tra i due clic non sposta il suo primo
 punto. Un clic su un'annotazione con la Gomma la elimina comunque subito, un clic su un collegamento con lo strumento
 Collegamenti lo apre comunque, e due clic nello stesso punto con Casella di testo ne creano una delle dimensioni
-predefinite. Nota, Timbro, Conteggio, Punto numerato e Immagine si posizionano ancora con un solo clic.</li>
+predefinite. Nota, Timbro, Conteggio, Punto numerato e Immagine si posizionano ancora con un solo clic. La <b>Penna</b>
+disegna da un clic al successivo: fai clic per iniziare, sposta il mouse per disegnare (senza tenere premuto alcun
+pulsante) e fai clic per finire; Esc elimina il tratto. <b>Evidenzia</b> e gli altri strumenti per il testo (Sottolinea, Barrato,
+Oscura...) segnano da un clic sulla prima lettera a un clic sull'ultima. Anche i punti di una <b>Quota</b> sono clic (nelle altre
+modalità un trascinamento dà i primi due).</li>
 <li><b>Poligono / polilinea:</b> fai clic su ogni punto; doppio clic o Invio per terminare, Backspace per togliere l'ultimo punto,
 Esc per annullare.</li>
 <li>Con uno strumento di disegno, un clic su un'annotazione esistente la seleziona, e il trascinamento sposta l'annotazione o i suoi
@@ -1054,7 +1103,7 @@ spostare, nascondere, eliminare, mettere su livelli o appiattire, e la pagina so
 com'era; gli altri lettori PDF le elencano come commenti.</li>
 <li><b>Il contenuto della pagina</b> è la pagina stessa: il suo testo, le sue linee e le sue
 immagini. <b>Modifica testo</b>, <b>Aggiungi testo</b>, <b>Modifica oggetti</b>, lo strumento
-<b>Immagine</b> e <b>Cancella contenuto</b> lo cambiano. Ciò che scrivono fa parte della pagina:
+<b>Immagine</b>, <b>Cancella contenuto</b> e gli strumenti della scheda <b>Disegno</b> lo cambiano. Ciò che scrivono fa parte della pagina:
 ogni lettore lo mostra e lo stampa, e non si può nascondere né togliere come un'annotazione.</li>
 <li><b>Come capirlo:</b> il pannello Proprietà mostra un'etichetta sopra il titolo,
 <b>Annotazione: sopra la pagina</b> (viola) o <b>Contenuto della pagina: cambia la pagina
@@ -1081,6 +1130,53 @@ vengono riscritti dove sono, con le righe allontanate (o avvicinate) quanto cres
 dimensione. Il testo inclinato di un angolo che non è un quarto di giro (una filigrana in
 diagonale) non ha sottolineatura, barrato né sfondo. Per cambiare singole parole, modifica il
 testo (Modifica testo) e selezionale nella casella.</li>
+</ul>
+
+<h2 id="drawing">Scheda Disegno: linee e forme disegnate nella pagina</h2>
+<p>La scheda <b>Disegno</b> disegna linee e forme nella pagina stessa, come suo disegno
+vettoriale, così come le linee di un programma CAD fanno parte di una tavola stampata. Le forme
+della scheda Annotazioni restano annotazioni, sopra la pagina (vedi Annotazione o contenuto della
+pagina).</p>
+<ul>
+<li><b>Strumenti:</b> Linea, Freccia, Polilinea, Poligono, Rettangolo, Ellisse, Cerchio, Arco,
+Nuvola e Penna (anche in Strumenti &gt; Disegno). Si disegnano come le forme con lo stesso nome
+della scheda Annotazioni: trascinando (in modalità CAD, clic, sposta, clic); Polilinea e Poligono
+con un clic su ogni punto, doppio clic o Invio per finire; Arco con l'inizio, un punto da cui
+passa e la fine. Le anteprime, l'aggancio, Shift (passi di 45&deg;, quadrati e cerchi) e la riga
+di comando CAD funzionano allo stesso modo. Uno strumento di Disegno disegna sempre: un clic su
+un'annotazione non la seleziona. Nella riga di comando CAD, "rett" resta il Rettangolo della
+scheda Annotazioni: scrivi "drawing rect" (il suo nome inglese) per questo.</li>
+<li><b>Stile:</b> con uno strumento di Disegno scelto, il pannello Proprietà mostra lo stile di
+quello strumento per le prossime forme: Colore linea, Riempimento (e Nessun bordo, Nessun
+riempimento), Spessore linea, Stile linea, la Punta di freccia iniziale e finale e la Freccia
+centrale delle linee (nessuna, aperta o chiusa), Opacità e Opacità del riempimento. Nero, da 1 pt,
+per impostazione predefinita, come sono di solito le linee di un disegno; salvato per la volta
+successiva, a parte gli stili degli strumenti di annotazione. Una forma senza colore della linea
+né riempimento non disegna nulla.</li>
+<li><b>Il suo livello:</b> tutto ciò che disegna la scheda Disegno va su un livello del PDF,
+<b>KanzonasPDF drawing</b>, creato la prima volta che disegni. Il pannello Livelli lo elenca:
+togli la spunta per nascondere il disegno, a schermo e in stampa, come fanno gli altri programmi
+PDF che mostrano i livelli. Se disegni di nuovo mentre è nascosto, torna visibile.</li>
+<li><b>Come distinguerlo dalle annotazioni:</b> la sua scheda, il suo livello, l'etichetta di
+Proprietà <b>Contenuto della pagina: cambia la pagina stessa</b> per i suoi strumenti e per ciò
+che hanno disegnato, e una selezione <b>arancione</b> quando Modifica oggetti o la modalità CAD
+lo selezionano (le altre linee e forme della pagina appaiono in blu); Proprietà dice anche che è
+sul livello KanzonasPDF drawing.</li>
+<li><b>Cambiarlo dopo:</b> è il disegno della pagina stessa, quindi <b>Modifica oggetti</b>
+(anche nella scheda Disegno) lavora su di esso come su qualsiasi linea della pagina: selezionalo,
+spostalo, ridimensionalo, ruotalo, eliminalo e copialo; cambia Colore linea, Colore riempimento,
+Spessore linea, Stile linea e punte di freccia in Proprietà; portalo In cima, Avanti, Indietro o
+In fondo; raggruppalo con le linee del disegno stesso (ognuna mantiene il suo livello nel gruppo)
+e separalo. Non compare nell'elenco annotazioni e non si può appiattire: fa già parte della
+pagina.</li>
+<li><b>Converti in disegno</b> (scheda Disegno, Strumenti &gt; Disegno, il menu del clic destro
+di un'annotazione): le annotazioni di forme e linee selezionate (rettangoli, ellissi, cerchi,
+nuvole, poligoni, linee, frecce, polilinee, archi e tratti di penna) diventano disegno della
+pagina sul livello KanzonasPDF drawing, con lo stesso identico aspetto, e non sono più
+annotazioni. Misure, note, timbri, caselle di testo, richiami ed evidenziazioni restano
+annotazioni.</li>
+<li><b>Annulla:</b> ogni forma disegnata è un passo, e così ogni Converti in disegno. Salva li
+conserva, e il file riaperto li ha sul loro livello.</li>
 </ul>
 
 <h2 id="properties">Colori, bordi e stili (pannello Proprietà)</h2>
@@ -1139,7 +1235,8 @@ Importa cassetta degli attrezzi condivide una cassetta con altre persone.</li>
 
 <h2 id="rotate">Ruotare le annotazioni</h2>
 <ul>
-<li>Seleziona una forma e trascina la <b>maniglia rotonda</b> sopra di essa. Tieni premuto Shift per passi di 15&deg;.</li>
+<li>Seleziona una forma e trascina la <b>maniglia rotonda</b> sopra di essa (in modalità CAD: clic su di essa, sposta,
+clic). Tieni premuto Shift per passi di 15&deg;.</li>
 <li>Oppure digita un angolo in <b>Rotazione</b> nel pannello Proprietà (in senso antiorario).</li>
 <li>Le caselle di testo e i richiami ruotano a passi di 90&deg; (un limite delle caselle di testo PDF).</li>
 </ul>
@@ -1195,7 +1292,7 @@ stesso attorno a qualsiasi linea su cui fai clic. Il testo continua a leggersi n
 
 <h2 id="objects">Pannello Oggetti e blocco</h2>
 <ul>
-<li>Scheda <b>Oggetti</b> (pannello sinistro, accanto a Pagine, Segnalibri e Livelli): tutte le annotazioni della
+<li>Pannello <b>Oggetti</b> (Visualizza &gt; Pannello Oggetti, o la sua icona sulla barra dei pannelli): tutte le annotazioni della
 pagina corrente, dalla più in primo piano (in cima all'elenco) alla più in fondo. Fai clic su una riga per selezionare quell'annotazione anche
 quando è completamente coperta da altre; Ctrl/Shift+clic ne seleziona diverse. Primo piano, Su, Giù
 e Secondo piano cambiano l'ordine di sovrapposizione.</li>
@@ -1324,7 +1421,8 @@ su un'altra pagina e si sposta lì (il contorno mostra dove arriva); le annotazi
 Seleziona fanno lo stesso.
 Trascina una maniglia d'angolo per ridimensionarla mantenendo le proporzioni
 (tieni premuto Shift per deformarla liberamente), o una maniglia laterale per renderla più larga o più alta. Ridimensionare una forma
-ne scala anche lo spessore delle linee. <b>Ruotala</b> trascinando la <b>maniglia rotonda</b> sopra di essa: ruota attorno al
+ne scala anche lo spessore delle linee (in modalità CAD si fa clic su una maniglia, la si sposta e si fa di nuovo clic:
+vedi Modalità CAD). <b>Ruotala</b> trascinando la <b>maniglia rotonda</b> sopra di essa: ruota attorno al
 suo centro, l'angolo appare nella barra di stato e Shift la ruota a passi di 15&deg;. Per ruotarla di un angolo esatto, fai
 clic con il tasto destro &gt; <b>Ruota di un angolo...</b> e digita i gradi (in senso antiorario, come la Rotazione di
 un'annotazione; -90 la ruota di un quarto in senso orario). Anche il pannello <b>Proprietà</b> la mostra: un'immagine o un
@@ -1343,8 +1441,11 @@ spessori di linea.</li>
 (forme piene), come li ha il disegno; <b>Stile linea</b> (continua, tratteggiata, punteggiata, tratto-punto); e, per le
 linee (rette, polilinee e curve, non forme chiuse), <b>Punta di freccia iniziale</b>, <b>Punta di freccia finale</b> e
 <b>Freccia centrale</b>: nessuna, aperta o chiusa (un triangolo di contorno). Le punte di freccia diventano parte della
-linea: si spostano, ruotano e cambiano colore con essa, e hanno il suo stesso spessore. Ogni modifica è un passaggio che
-Annulla annulla; scegliere nessuna le toglie di nuovo. Su una linea tratteggiata o punteggiata sono disegnate continue.</li>
+linea: si spostano, ruotano e cambiano colore con essa, e hanno il suo stesso spessore. <b>Dimensione punta di
+freccia</b> le rende dal 25% al 500% della dimensione data dallo spessore della linea (100%); resta quando cambiano lo
+spessore, lo Stile linea o le punte di freccia. Ogni modifica è un passaggio che Annulla annulla; scegliere nessuna le
+toglie di nuovo. Su una linea tratteggiata o punteggiata sono disegnate continue. Anche gli strumenti Linea, Freccia,
+Polilinea e Arco della scheda Disegno hanno Dimensione punta di freccia.</li>
 <li>Canc (o Backspace) elimina la selezione. Fai clic con il tasto destro per Taglia, Copia, Incolla e Duplica,
 Separa (gruppi), Ruota in senso orario, Ruota
 in senso antiorario, Ruota di un angolo..., i comandi dell'ordine di sovrapposizione ed Elimina e, per una sola immagine, Copia immagine
@@ -1573,6 +1674,18 @@ suo gruppo salgono o scendono per fargli posto), Livello, colore e dimensione. C
 Conteggio copiato con Duplica (Ctrl+D) o con copia e incolla prende il numero successivo del suo
 gruppo. Un indicatore selezionato mostra un riquadro tratteggiato attorno a sé e al suo numero
 (trattini blu su bianco, così si vede anche su un indicatore blu).</li>
+<li><b>Trova simili</b> (scheda Misure, gruppo "Altro", e il menu Misure), come VisualSearch di Bluebeam:
+conta un simbolo al posto tuo. Scegli Trova simili e trascina un riquadro stretto attorno a un simbolo (un
+apparecchio illuminante, una presa, uno sprinkler). Scegli dove cercare (<b>Questa pagina</b> o <b>Tutte le
+pagine</b>), il gruppo di Conteggio in cui <b>Contare come</b> (ne viene proposto uno nuovo, o scegline uno del
+documento), la <b>Sensibilità</b> (80% all'inizio; meno ne trova di più, e più che non sono uguali) e se trovarlo
+<b>Anche ruotato</b> di quarti di giro, poi <b>Trova</b>. KanzonasPDF guarda ogni pagina com'è disegnata, senza le
+annotazioni, una pagina alla volta (una finestra mostra a che punto è, e <b>Interrompi</b> la ferma: allora non viene
+messo nulla), e mette un indicatore di Conteggio su ogni corrispondenza, numerato dal numero più alto del gruppo,
+in un solo passaggio. <b>Controllali prima di tenerli</b>: elimina quelli che non sono il simbolo, o premi Ctrl+Z
+per toglierli tutti. Un simbolo su cui il gruppo ha già un indicatore non viene contato due volte, quindi puoi
+cercare di nuovo con un'altra sensibilità. Funziona anche con disegni scansionati; un riquadro vuoto non trova
+nulla. Confronta immagini, quindi un simbolo disegnato a un'altra dimensione non viene trovato.</li>
 <li><b>Quota</b> (Shift+D; scheda Misure, gruppo "Altro", il menu Misure e il pulsante Misure della scheda CAD),
 come la quota di Bluebeam e la quota allineata di AutoCAD: fai clic sui due
 punti da misurare, poi sposta il puntatore e fai clic dove va la linea di quota (nella
@@ -1723,7 +1836,7 @@ consente.</li>
 pagine in un nuovo file (in un nuovo file, non nel documento stesso), Elimina pagine (le pagine selezionate nell'elenco
 delle pagine, o la pagina corrente; chiede conferma, e Ctrl+Z le ripristina). Un segnalibro a una
 pagina eliminata porta poi alla pagina successiva (o all'ultima pagina).</li>
-<li>Scheda <b>Livelli</b>: mostra o nascondi i livelli CAD / di contenuto opzionale. <b>Annotazioni sui
+<li>Pannello <b>Livelli</b> (Visualizza &gt; Pannello Livelli): mostra o nascondi i livelli CAD / di contenuto opzionale. <b>Annotazioni sui
 livelli</b> (come in Bluebeam): <b>Nuovo livello...</b> aggiunge un livello al documento, e <b>Le nuove
 annotazioni vanno su</b> sceglie il livello su cui vanno le annotazioni che disegni (Nessun livello: nessuno).
 Per mettere su un livello annotazioni già disegnate, selezionale e fai clic destro &gt; <b>Livello</b> &gt; un
@@ -1756,7 +1869,7 @@ Raccolta del pannello <b>Raccolte</b>): scegli i PDF, poi dove salvare la raccol
 piccolo file a sé (.kzset) che elenca i PDF; quelli nella sua cartella o sotto vengono tenuti in base alla
 loro posizione rispetto a esso, così la cartella si può spostare o condividere con la raccolta dentro.
 <b>Apri raccolta...</b> ne apre una (come trascinare un file .kzset sulla finestra).</li>
-<li>Il pannello <b>Raccolte</b> (una scheda del pannello di sinistra e un'icona sulla barra dei pannelli)
+<li>Il pannello <b>Raccolte</b> (Visualizza &gt; Pannello Raccolte, e un'icona sulla barra dei pannelli)
 elenca ogni file con le sue pagine sotto. Nelle pagine di formato da disegno (11x17 e più grandi) il numero
 e il titolo della tavola vengono letti dal cartiglio (SHEET NO, SHEET TITLE), così compare A-101 FLOOR PLAN;
 le altre pagine con la loro etichetta o il loro numero. Un file che non si trova viene elencato in grigio.
@@ -1772,7 +1885,7 @@ Una modifica alla raccolta viene salvata subito nel suo file.</li>
 </ul>
 
 <h2 id="bookmarks">Segnalibri e sommario</h2>
-<p>I segnalibri (la struttura del PDF) sono elencati nel pannello <b>Segnalibri</b> (F9). Fai clic su uno per andare
+<p>I segnalibri (la struttura del PDF) sono elencati nel pannello <b>Segnalibri</b> (F9 lo apre e lo chiude). Fai clic su uno per andare
 al suo punto. I pulsanti sopra l'elenco aggiungono un segnalibro alla pagina corrente (+), rinominano, eliminano,
 spostano su e giù, e aumentano il rientro (lo rendono figlio di quello sopra) o lo riducono. Il pulsante <b>⋯</b>,
 il clic con il pulsante destro nell'elenco e <b>Documento &gt; Strumenti segnalibri</b> offrono il resto. Ogni modifica è
@@ -2517,11 +2630,14 @@ esistenti si aggiornano la prossima volta che le sposti o le modifichi.</li>
 <li>Standard: Scorri di una pagina per ogni scatto della rotellina (attivato), Movimento libero della pagina (disattivato).</li>
 <li>Mano: Movimento libero della pagina (attivato), Scorri di una pagina per ogni scatto della rotellina (attivato).</li>
 <li>CAD: La rotellina esegue lo zoom sul cursore (Ctrl+rotellina scorre), Cursore a croce, Area di lavoro libera attorno alle
-pagine, Selezione a finestra (blu) e intersecante (verde), Clic, sposta, clic disegna il riquadro di selezione,
-Tieni premuto il pulsante e trascina per disegnare un lazo, Mostra la scheda CAD, Le lettere digitate sul disegno vanno alla
-riga di comando: tutte attivate (l'ultima è disattivata per chi usava il mouse in stile CAD prima della 1.5, così
-le scorciatoie degli strumenti a una lettera che usava continuano a funzionare). Con il riquadro clic, sposta, clic e il
-lazo disattivati, premere, trascinare e rilasciare disegna un riquadro.</li>
+pagine, Selezione a finestra (blu) e intersecante (verde), Clic, sposta, clic, senza mai tenere premuto il pulsante:
+riquadri di selezione, grip, spostare la selezione, disegnare (disattivato: si trascinano), Tieni premuto il pulsante e
+trascina per disegnare un lazo, Mostra la scheda CAD, Le lettere digitate sul disegno vanno alla riga di comando: tutte
+attivate tranne il lazo (disattivato dalla 1.17: la modalità CAD non tiene premuto alcun pulsante a meno che tu non lo
+chieda), e l'ultima disattivata per chi usava il mouse in stile CAD prima della 1.5, così le scorciatoie degli
+strumenti a una lettera che usava continuano a funzionare. Con Clic, sposta, clic disattivato, la modalità CAD
+trascina come le altre modalità: premere, trascinare e rilasciare disegna un riquadro di selezione (o un lazo), sposta
+la selezione, un grip o una forma.</li>
 <li>Il clic centrale su un collegamento apre: Chiedi ogni volta, Una nuova scheda o La vista divisa (vedi Spostarsi nel
 documento).</li>
 </ul>

@@ -1,5 +1,6 @@
 """Turning the page's own pictures, shapes and groups (Edit objects, and CAD mode): drag the
-round handle above the selection (Shift: 15 degree steps), or right-click > Rotate by an
+round handle above the selection (in CAD mode: click it, move, click; Shift: 15 degree
+steps), or right-click > Rotate by an
 angle... and type the angle (degrees, counterclockwise, as a markup's Rotation). One undo
 step; text in the selection has no handle (it's moved, not turned).
 
@@ -95,14 +96,23 @@ class Turning(unittest.TestCase):
         return self.page._objects_handles().get("rot")
 
     def drag(self, a, b, mods=Qt.NoModifier):
+        """Press at a, move to b, release; in CAD mode (1.17: no button held there) a click
+        at a, the move with no button held, and a click at b."""
         w = self.page
         a, b = QPointF(a), QPointF(b)
-        QTest.mousePress(w, Qt.LeftButton, Qt.NoModifier, a.toPoint())
+        held = Qt.NoButton if self.cad else Qt.LeftButton
+        if self.cad:
+            QTest.mouseClick(w, Qt.LeftButton, Qt.NoModifier, a.toPoint())
+        else:
+            QTest.mousePress(w, Qt.LeftButton, Qt.NoModifier, a.toPoint())
         for k in range(1, 6):
             q = a + (b - a) * k / 5
             w.mouseMoveEvent(QMouseEvent(QEvent.MouseMove, q, w.mapToGlobal(q), Qt.NoButton,
-                                         Qt.LeftButton, mods))
-        QTest.mouseRelease(w, Qt.LeftButton, mods, b.toPoint())
+                                         held, mods))
+        if self.cad:
+            QTest.mouseClick(w, Qt.LeftButton, mods, b.toPoint())
+        else:
+            QTest.mouseRelease(w, Qt.LeftButton, mods, b.toPoint())
         APP.processEvents()
 
     def turn_by_dragging(self, ccw_degrees, mods=Qt.NoModifier):

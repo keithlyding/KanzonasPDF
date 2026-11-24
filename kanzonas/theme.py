@@ -46,9 +46,15 @@ ICONS = {
     "m_area": "texture-box",
     "m_angle": "angle-acute", "m_radius": "radius-outline", "m_perimeter": "vector-square",
     "m_volume": "cube-outline", "space": "floor-plan", "m_cutout": "vector-difference-ab",
+    "findsimilar": "selection-search",
     "m_count": "counter", "m_calibrate": "tape-measure", "redact": "marker-cancel",
     "f_text": "form-textbox", "f_check": "checkbox-marked-outline", "f_radio": "radiobox-marked",
     "f_combo": "form-dropdown", "f_sign": "draw-pen", "f_initials": "alpha-i-box-outline",
+    # the Drawing tab (drawing.py): vector icons, apart from the markup shapes' outlines
+    "d_line": "vector-line", "d_arrow": "arrow-top-right-thin", "d_polyline": "vector-polyline",
+    "d_polygon": "vector-polygon-variant", "d_rect": "vector-rectangle",
+    "d_ellipse": "vector-ellipse", "d_circle": "vector-circle", "d_arc": "chart-arc",
+    "d_cloud": "weather-cloudy", "d_ink": "fountain-pen-tip",
     # CAD tab
     "cad_move": "cursor-move", "cad_copy": "content-copy", "cad_rotate": "rotate-right-variant",
     "cad_scale": "resize", "cad_mirror": "reflect-horizontal", "cad_delete": "delete-outline",

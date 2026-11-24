@@ -743,8 +743,14 @@ class _Canvas(QWidget):
         return w, QPointF(pos) - QPointF(w.pos())
 
     def mousePressEvent(self, e):
-        from . import cad_select
+        from . import cad_grips, cad_select
         v = self._view
+        hot = cad_grips.owner(v) if getattr(v, "doc", None) is not None else None
+        if hot is not None and e.button() in (Qt.LeftButton, Qt.RightButton):
+            # (a grip made hot by a click: this click places it, off the page too)
+            self._fwd = hot
+            self._send(hot, e, hot.mousePressEvent)
+            return
         if e.button() == Qt.LeftButton and getattr(v, "doc", None) is not None:
             pk = v._cad_pick
             if pk is not None:
@@ -777,7 +783,13 @@ class _Canvas(QWidget):
         self.update_gray()              # (what's drawn out here: _paint_overlays)
 
     def mouseDoubleClickEvent(self, e):
+        from . import cad_grips
         v = self._view
+        hot = cad_grips.owner(v) if getattr(v, "doc", None) is not None else None
+        if hot is not None:
+            self._fwd = hot
+            self._send(hot, e, hot.mouseDoubleClickEvent)
+            return
         if getattr(v, "doc", None) is not None and not v.read_only and v._cad_pick is None:
             w, _pos = self._page_at(e.position())
             if w is not None:
@@ -968,6 +980,9 @@ class DocumentView(QScrollArea):
         self.dirty = False
         self.zoom = 1.0
         self.tool = "select"
+        # a Drawing tab tool picked (drawing.TOOLS): self.tool is then the markup tool whose
+        # clicks, previews and snapping it uses, and what's drawn goes into the page itself
+        self.drawing_tool = None
         self.selection = None          # (page index, annotation xref): the first one selected
         self.selected_model = None
         self.extra = []                # more selected xrefs on the same page, in click order
@@ -2172,6 +2187,7 @@ class DocumentView(QScrollArea):
     type_to_line = False        # CAD: letters typed over the drawing go to the command line
     _cad_pick = None            # CAD: a click, move, click box in progress (cad_select.py)
     _cad_shape = None           # CAD: a shape started with a click, ended by the next (cad_draw.py)
+    _cad_hot = None             # CAD: the page with a grip made hot by a click (cad_grips.py)
     _picked = {}                # what's selected -> when it was selected (_note_picks)
     _pick_n = 0
     space_pan = False           # Space held: a drag moves the page, with any tool
@@ -2325,6 +2341,9 @@ class DocumentView(QScrollArea):
         cad_draw.cancel(self)           # (a shape started with a click belongs to the old tool)
         if self._cad_cmd is not None:
             self._cad_cmd.cancel()
+        from . import drawing
+        self.drawing_tool = tool if drawing.base_tool(tool) else None
+        tool = drawing.base_tool(tool) or tool
         self.tool = tool
         for w in getattr(self, "pages", []):
             # a stamp / signature preview or a shape half-drawn belongs to the old tool
@@ -2918,6 +2937,7 @@ class DocumentView(QScrollArea):
         if not source:
             return
         kept = self._selection_kept()
+        layers = self._layer_keys()
         back = self._undo_step(source.pop(), way)
         if back is None:
             # (its entries in the journal are gone: it, and what's before it, can't be
@@ -2930,10 +2950,22 @@ class DocumentView(QScrollArea):
         self._trim_history()
         self._warm_tags()
         self._select_kept(kept)
+        if self._layer_keys() != layers:
+            # (a layer made or taken away, as the first drawing on the Drawing tab makes
+            # one: the Layers panel lists them again)
+            self.layersChanged.emit()
         # (the view told of the change while the step was between the two lists: Redo
         # stayed grayed out after an undo, and Ctrl+Y did nothing. Found by
         # tests/battery_random.py)
         self.historyChanged.emit()
+
+    def _layer_keys(self):
+        """The document's layers (xref and name), to tell whether an undo or redo changed
+        them."""
+        try:
+            return sorted((x, o.get("name")) for x, o in (self.doc.get_ocgs() or {}).items())
+        except Exception:
+            return []                   # (no layers can be read: none to list)
 
     def _selection_kept(self):
         """What's selected before an undo or redo, to select again after it (the owner,
@@ -4302,6 +4334,12 @@ class DocumentView(QScrollArea):
 
     # ---- tool styles --------------------------------------------------------
     def tool_props(self, tool):
+        from . import drawing
+        if self.drawing_tool is not None and drawing.base_tool(self.drawing_tool) == tool:
+            props = annotations.tool_props(self.drawing_tool)
+            if tool == "cloud":
+                props["cloud"] = True
+            return props
         return annotations.tool_props(tool) if tool in annotations.DEFAULTS else {}
 
     def tool_color(self, tool):
@@ -4321,6 +4359,9 @@ class DocumentView(QScrollArea):
         the next markup, not the one just drawn, and seemed to do nothing). In CAD mode, as
         in AutoCAD, what's drawn isn't selected: a selection there shows grips, and the next
         line starting on its end would take a grip instead."""
+        from . import drawing
+        if self.drawing_tool is not None and drawing.makes(self.drawing_tool, model):
+            return self._draw_into_page(index, model)
         if select is None:
             select = self.mouse_mode != "cad"
         made = {}
@@ -4340,6 +4381,102 @@ class DocumentView(QScrollArea):
         if "xref" in made and model.get("kind") in annotations.MEASURES:
             self.note_unscaled(index, model["kind"])
         return made.get("xref")
+
+    # ---- the Drawing tab: shapes written into the page itself (drawing.py) --------------
+    def _draw_into_page(self, index, model):
+        """Draw model (made by a Drawing tool as its markup tool makes a markup) into the
+        page, on the drawing layer, in one undo step. Nothing is selected: Properties keeps
+        showing the tool's style for the next one. Returns True when drawn."""
+        from . import drawing
+        if not drawing.draws(model):
+            self.statusMessage.emit(tr("Nothing to draw: give the tool a line color or a fill "
+                                       "in Properties"))
+            return None
+        had = drawing.layer_xref(self.doc) is not None
+        made = {}
+
+        def do():
+            made["ok"] = drawing.draw(self.doc[index], model)
+        if not self.modify(do, [index]) or not made.get("ok"):
+            return None
+        if not had:
+            self._redraw_all()          # (a new layer: the Layers panel lists it)
+        else:
+            self._show_drawing_layer()
+        if not DocumentView.reuse_tools:
+            self.toolUsed.emit()
+        self.statusMessage.emit(tr("Drawn into the page, on the layer {layer} (Ctrl+Z undoes "
+                                   "it)").format(layer=drawing.LAYER))
+        return True
+
+    def _show_drawing_layer(self):
+        """The drawing layer shown again when it's hidden, so what was just drawn on it shows
+        (a viewing choice, as the Layers panel's)."""
+        from . import drawing
+        ocg = drawing.layer_xref(self.doc)
+        if ocg is None or ocg not in markup_layers.hidden(self.doc):
+            return
+        for number, x in markup_layers.ui_layers(self.doc):
+            if x == ocg:
+                self.set_layer(number, True)
+
+    def convertible_selection(self):
+        """The selected markups Convert to drawing takes: [(xref, model)]."""
+        from . import drawing
+        if self.selection is None or self.read_only:
+            return []
+        return [(x, m) for x, m in self.selected_models() if drawing.convertible(m)]
+
+    def convert_to_drawing(self):
+        """Convert to drawing: the selected shape and line markups drawn into the page as
+        they look, on the drawing layer, and taken off as markups. One undo step. Returns
+        how many."""
+        from . import drawing
+        got = self.convertible_selection()
+        if not got:
+            self.statusMessage.emit(tr("Select a shape or line markup to convert (measurements, "
+                                       "notes, stamps, text and highlights stay markups)"))
+            return 0
+        index = self.selection[0]
+        xrefs = [x for x, _m in got]
+        had = drawing.layer_xref(self.doc) is not None
+        self.clear_selection()
+        made = {}
+
+        def do():
+            made["done"] = drawing.convert(self.doc[index], xrefs)
+        if not self.modify(do, [index], permission=pymupdf.PDF_PERM_MODIFY) or \
+                not made.get("done"):
+            return 0
+        if not had:
+            self._redraw_all()
+        else:
+            self._show_drawing_layer()
+        n = len(made["done"])
+        self.statusMessage.emit(tr("{n} markup(s) converted to drawing, on the layer {layer} "
+                                   "(Ctrl+Z undoes it)").format(n=n, layer=drawing.LAYER))
+        return n
+
+    def drawing_names(self, index):
+        """The names page index's content gives the drawing layer (drawing.layer_names),
+        kept until the page changes."""
+        from . import drawing
+        key = ("drawnames", index)
+        got = self._card_cache.get(key)
+        if got is None or got[0] != getattr(self, "_gen", 0):
+            got = self._card_cache[key] = (getattr(self, "_gen", 0),
+                                           drawing.layer_names(self.doc[index]))
+        return got[1]
+
+    def objects_drawn(self):
+        """Whether the page's own objects selected are all the Drawing tab's (on its layer)."""
+        from . import drawing
+        if self.obj_sel is None or not self.obj_sel[1]:
+            return False
+        index, items = self.obj_sel
+        names = self.drawing_names(index)
+        return bool(names) and all(drawing.on_layer((it.get("obj") or {}).get("ctx"), names)
+                                   for it in items)
 
     def apply_text_tool(self, index, tool, a, b):
         self.apply_text_span(tool, (index, a), (index, b))
@@ -4465,7 +4602,7 @@ class DocumentView(QScrollArea):
             else:
                 self.add_link(index, rect)
             return
-        if tool in ("erasecontent", "capture", "crop"):
+        if tool in ("erasecontent", "capture", "crop", "findsimilar"):
             if is_click or rect.width < 2 or rect.height < 2:
                 self.statusMessage.emit(tr("Drag a box around the area"))
                 return
@@ -4476,6 +4613,8 @@ class DocumentView(QScrollArea):
                 self.setFocus()         # so Escape still puts the Crop tool down
             elif tool == "capture":
                 self.capture_area(index, rect)
+            elif tool == "findsimilar":
+                self.find_similar(index, rect)
             else:
                 self.erase_content(index, rect)
             return
@@ -5070,6 +5209,114 @@ class DocumentView(QScrollArea):
             if not new["holes"]:
                 new.pop("holes")
         self.commit_model(index, xref, new)
+
+    # ---- Find similar: a symbol's matches placed as Count markers (visual_search.py) ---
+    _find_job = None                    # the search running (one page a step), or None
+
+    def ask_find_similar(self, groups, default):
+        """{"scope": "page" or "all", "group", "sensitivity" (0-1), "turned"} from the Find
+        similar dialog, or None. (Tests replace it.)"""
+        from . import measure_ui
+        dlg = measure_ui.FindSimilarDialog(self, groups, default, self.doc.page_count)
+        return dlg.values() if dlg.exec() == dlg.DialogCode.Accepted else None
+
+    def find_similar(self, index, rect):
+        """Measure > Find similar: the symbol in rect (page index) searched for on that page or
+        every page, a page a step from the event loop (a window shows how far it is and can
+        stop it); what's found placed as Count markers of a group in one undo step."""
+        from . import counts, visual_search as VS
+        if self._find_job is not None:
+            return
+        page = self.doc[index]
+        rect = pymupdf.Rect(rect)
+        found = counts.markers(self.doc)
+        groups, _last = counts.summary(self.doc, found)
+        opts = self.ask_find_similar(sorted(groups), counts.next_group_name(self.doc))
+        if not opts:
+            return
+        pages = [index] if opts["scope"] == "page" else list(range(self.doc.page_count))
+        zoom = VS.zoom_for(page, rect)
+        for i in pages:                 # (one zoom for all: the symbol's picture fits them)
+            r = self.doc[i].rect
+            zoom = min(zoom, max(0.25, (VS.PIXELS / max(1.0, r.width * r.height)) ** 0.5))
+        tmpl = VS.template(page, rect, zoom)
+        if tmpl is None:
+            self.statusMessage.emit(tr("There's nothing in that box to look for: drag a box "
+                                       "around one symbol"))
+            return
+        from PySide6.QtWidgets import QProgressDialog
+        bar = QProgressDialog(tr("Finding similar symbols..."), tr("Stop"), 0, len(pages), self)
+        bar.setWindowTitle(tr("Find similar"))
+        bar.setMinimumDuration(400)
+        # (the window's own reset when it reaches its end counts as no stop: a flag of ours)
+        bar.setAutoReset(False)
+        bar.setAutoClose(False)
+        hits = {}
+        self._find_job = {"pages": pages, "k": 0, "bar": bar, "stopped": False}
+        bar.canceled.connect(lambda: self._find_job and self._find_job.update(stopped=True))
+
+        def step():
+            job = self._find_job
+            if job is None:
+                return
+            if job["stopped"] or job["k"] >= len(pages):
+                self._find_job = None
+                bar.close()
+                if not job["stopped"]:
+                    self._place_found(hits, opts["group"], found)
+                else:
+                    self.statusMessage.emit(tr("Find similar stopped: nothing was placed"))
+                return
+            i = pages[job["k"]]
+            got = VS.search_page(self.doc[i], tmpl, zoom, opts["sensitivity"], opts["turned"])
+            if got:
+                hits[i] = [r for r, _score in got]
+            job["k"] += 1
+            bar.setValue(job["k"])
+            QTimer.singleShot(0, step)
+        QTimer.singleShot(0, step)
+
+    def _place_found(self, hits, group, found):
+        """Count markers of group at the middles of hits ({page index: [Rect]}), numbered on
+        from the group's highest, in one undo step; a match where the group has a marker
+        already is left out (so searching again doesn't count a symbol twice)."""
+        from . import counts
+        have = {}
+        for i, _x, m in found:
+            if counts.group_of(m) == group:
+                have.setdefault(i, []).append(m["points"][0])
+        todo = {}
+        for i, rects in hits.items():
+            for r in rects:
+                c = (r.tl + r.br) / 2
+                near = max(r.width, r.height) / 2
+                if any(abs(c - q) < near for q in have.get(i, ())):
+                    continue
+                todo.setdefault(i, []).append(c)
+        n = sum(len(v) for v in todo.values())
+        if not n:
+            self.statusMessage.emit(tr("Find similar found nothing new to count"))
+            return
+        props = dict(annotations.tool_props("m_count"), group=group)
+        look = counts.look_of(found, group)
+        if look:
+            props.update(look)
+        start = counts.last_numbers(self.doc).get(group, 0)
+
+        def do():
+            k = start
+            for i in sorted(todo):
+                pg = self.doc[i]
+                for c in todo[i]:
+                    k += 1
+                    annotations.write(pg, {"kind": "m_count", "props": dict(props),
+                                           "points": [pymupdf.Point(c)], "n": k,
+                                           "rect": pymupdf.Rect()})
+        if self.modify(do, sorted(todo), permission=pymupdf.PDF_PERM_ANNOTATE):
+            self.statusMessage.emit(tr(
+                "Found {n} similar symbols on {pages} pages, counted as {group}: check them, "
+                "delete any that aren't (Ctrl+Z takes them all back)").format(
+                n=n, pages=len(todo), group=group))
 
     # ---- a Count group's quantities per item and waste (takeoff.group_setup) ----------
     def set_count_setup(self, group, items, waste):
@@ -6703,6 +6950,49 @@ class DocumentView(QScrollArea):
         tool = tool_chest.tool_for(m)
         return tool if tool in annotations.DEFAULTS else None
 
+    def selected_callout(self):
+        """(page, xref, model) of the one callout selected, else None."""
+        m = self.selected_model
+        if self.read_only or self.extra or self.selection is None or m is None or \
+                m["kind"] != "callout":
+            return None
+        return self.selection[0], self.selection[1], m
+
+    def add_callout_leader(self, at=None):
+        """Right-click > Add leader (the owner, 23 Nov: "add leaders to callouts", as
+        Bluebeam's Add Leader): one more leader on the selected callout, pointing at at (page
+        coordinates: where it was right-clicked). Right-clicked on the callout's box, or
+        with no point, it points away from the box on the side across from its first
+        leader. One undo step."""
+        sel = self.selected_callout()
+        if sel is None:
+            return False
+        index, xref, m = sel
+        box = pymupdf.Rect(m["rect"])
+        if at is None or (box + (-4, -4, 4, 4)).contains(at):
+            c = (box.tl + box.br) / 2
+            away = c - m["points"][0]
+            n = abs(away) or 1.0
+            at = c + away / n * (max(box.width, box.height) / 2 + 40)
+        new = annotations.copy(m)
+        new["points"] = list(m["points"]) + [pymupdf.Point(at)]
+        self.commit_models(index, [(xref, new)], olds={xref: m})
+        self.statusMessage.emit(tr("Leader added: drag its end to point it elsewhere"))
+        return True
+
+    def remove_callout_leader(self, near):
+        """Right-click > Remove leader: the selected callout's leader whose end is nearest
+        near (page coordinates), one of those added (its first stays). One undo step."""
+        sel = self.selected_callout()
+        if sel is None or len(sel[2]["points"]) < 2:
+            return False
+        index, xref, m = sel
+        k = min(range(1, len(m["points"])), key=lambda i: abs(m["points"][i] - near))
+        new = annotations.copy(m)
+        new["points"] = [q for i, q in enumerate(m["points"]) if i != k]
+        self.commit_models(index, [(xref, new)], olds={xref: m})
+        return True
+
     def set_selected_as_default(self):
         """Right-click > Set as Default: the selected markup's style becomes its tool's
         default style, for the next markups made with it (as Bluebeam's Set as Default)."""
@@ -7207,6 +7497,10 @@ class DocumentView(QScrollArea):
         return True
 
     def keyPressEvent(self, e):
+        if e.key() == Qt.Key_Escape:
+            from . import cad_grips
+            if cad_grips.cancel(self):
+                return          # (CAD mode: a hot grip or a selection picked up goes back)
         if self._cad_cmd is not None and e.key() in (Qt.Key_Escape, Qt.Key_Return,
                                                      Qt.Key_Enter):
             if e.key() == Qt.Key_Escape:
@@ -8285,6 +8579,12 @@ class DocumentView(QScrollArea):
     # ---- CAD mode: the page made ready while nothing happens -------------------------------
     PREP_WAIT = 600             # ms without a new reason before preparing starts
     PREP_SLICE = 0.03           # seconds of preparing at a time
+    # the mouse buttons pressed on this view's pages and not yet let go (page_widget: added
+    # by a press, taken off by its release and by a move that has them up): the idle
+    # preparation waits for them. Qt's own state (QApplication.mouseButtons) can stay "held"
+    # when a release never reaches the window (let go outside it, a press left without its
+    # release), and a move's buttons say so too: CAD mode's preparation then waited for good
+    held_buttons = Qt.MouseButton.NoButton
 
     def _cad_prepare_soon(self):
         """In CAD mode, read the page's objects and their lines in short slices while you
@@ -8303,10 +8603,12 @@ class DocumentView(QScrollArea):
         if not self.cad_select or getattr(self, "doc", None) is None or self.doc.is_closed or \
                 not getattr(self, "pages", None):
             return
-        if QApplication.mouseButtons() != Qt.NoButton:
-            # a mouse button held (a drag, a box): not now. A slice run between two mouse
+        from . import cad_grips
+        if self.held_buttons != Qt.NoButton or cad_grips.owner(self) is not None:
+            # a mouse button held (a drag, a box), or a grip or the selection following the
+            # pointer after a click (cad_grips.py): not now. A slice run between two mouse
             # moves made each move of a drag on a big sheet wait for it (41 ms a move on the
-            # owner's 174,000-object sheet, 23 Nov); it goes on once the button is let go
+            # owner's 174,000-object sheet, 23 Nov); it goes on once it's placed
             self._prep_timer.start(self.PREP_WAIT)
             return
         index = self.current_page()
@@ -9767,8 +10069,9 @@ class DocumentView(QScrollArea):
     def object_style(self):
         """For Properties: what the selected shapes are drawn with ({"stroke", "fill",
         "dash"}: the outlined ones' color and Line style, the filled ones' fill color) and the
-        arrowheads of the open lines among them ({"start", "end", "mid"}); each value "" when
-        they differ, and a key left out when none of them has it."""
+        arrowheads of the open lines among them ({"start", "end", "mid"} and their Arrowhead
+        size "head_size", 1 the size the line width gives); each value "" when they differ,
+        and a key left out when none of them has it."""
         from . import page_objects as P
         if self.obj_sel is None:
             return {}
@@ -9776,7 +10079,8 @@ class DocumentView(QScrollArea):
         objs = self._obj_cache.get(index)
         if objs is None or not objs.found:
             return {}
-        vals = {k: set() for k in ("stroke", "fill", "dash", "start", "end", "mid")}
+        vals = {k: set() for k in ("stroke", "fill", "dash", "start", "end", "mid",
+                                   "head_size")}
         for it in items:
             if it["kind"] != "shape" or it["n"] >= len(objs.found):
                 continue
@@ -9790,15 +10094,17 @@ class DocumentView(QScrollArea):
             h = P.heads_of(objs.data, d)
             body = P._split(objs.data[d["start"]:d["end"]])[1]
             if st["stroke"] and P.can_have_heads(body, h[3] if h else 0):
-                h = h or ("none", "none", "none", 0)
+                h = h or ("none", "none", "none", 0, 1.0)
                 for k, v in zip(("start", "end", "mid"), h):
                     vals[k].add(v)
+                vals["head_size"].add(round(h[4], 4))
         return {k: (v.pop() if len(v) == 1 else "") for k, v in vals.items() if v}
 
     def style_objects(self, stroke=None, fill=None, dash=None, heads=None):
         """Properties on the page's own shapes: Line color / Fill color (#rrggbb), Line style
         (a key of page_objects.DASHES) and arrowheads ({"start", "end", "mid"} -> none, open
-        or closed, on open lines), in one undo step; they stay selected."""
+        or closed, and "size" -> their Arrowhead size, on open lines), in one undo step; they
+        stay selected."""
         from . import page_objects
         if self.obj_sel is None or (stroke is None and fill is None and dash is None and
                                     not heads):

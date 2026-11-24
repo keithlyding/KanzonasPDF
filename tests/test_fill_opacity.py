@@ -67,6 +67,20 @@ class Drawn(unittest.TestCase):
                     self.assertEqual(pixel(self.page, EDGE)[1:], (0, 0))
                 self.page.delete_annot(a)
 
+    def test_a_callouts_box_not_its_closed_arrowhead(self):
+        # (its closed arrowhead is filled before its box: the first fill was the head's, and
+        # the box stayed solid while the head went see-through; 1.16.4)
+        p = dict(A.tool_props("callout"), head="closed", fill="#00ff00", fill_opacity=0.3,
+                 stroke="#ff0000")
+        A.write(self.page, {"kind": "callout", "props": p, "points": [pymupdf.Point(400, 600)],
+                            "text": "", "rect": pymupdf.Rect(BOX)})
+        self.assertAlmostEqual(pixel(self.page, INSIDE)[0], 179, delta=3)
+        # (the head as solid as before: MuPDF fills a callout's closed head with its fill
+        # color, solid green inside it)
+        head = self.page.get_pixmap(clip=pymupdf.Rect(388, 585, 400, 600), annots=True)
+        colors = [head.pixel(x, y) for x in range(head.width) for y in range(head.height)]
+        self.assertIn((0, 255, 0), colors)
+
     def test_times_the_markups_opacity(self):
         a = make(self.page, "rect", 0.3, opacity=0.5)
         self.assertAlmostEqual(pixel(self.page, INSIDE)[0], 217, delta=3)    # 15% green

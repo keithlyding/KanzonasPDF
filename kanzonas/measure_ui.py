@@ -171,6 +171,49 @@ def summary_rows(doc):
     return takeoff.summary(takeoff.items(doc))
 
 
+class FindSimilarDialog(QDialog):
+    """Measure > Find similar's choices: where to look (this page, every page), the Count group
+    the matches go in, how alike they must be (sensitivity), and whether to find the symbol
+    turned by quarters too."""
+
+    def __init__(self, parent, groups, default, page_count):
+        super().__init__(parent)
+        from PySide6.QtWidgets import QCheckBox, QSpinBox
+        self.setWindowTitle(tr("Find similar"))
+        form = QFormLayout(self)
+        self.this_page = QRadioButton(tr("This page"))
+        self.all_pages = QRadioButton(tr("All {n} pages").format(n=page_count))
+        self.this_page.setChecked(True)
+        where = QVBoxLayout()
+        where.addWidget(self.this_page)
+        where.addWidget(self.all_pages)
+        form.addRow(tr("Look on"), where)
+        self.group = QComboBox()
+        self.group.setEditable(True)
+        self.group.addItems([default] + [g for g in groups if g != default])
+        form.addRow(tr("Count as"), self.group)
+        self.sensitivity = QSpinBox()
+        self.sensitivity.setRange(50, 99)
+        self.sensitivity.setSuffix(" %")
+        self.sensitivity.setValue(80)
+        self.sensitivity.setToolTip(tr("How alike a symbol must be to count: lower finds more, "
+                                       "and more that aren't the same"))
+        form.addRow(tr("Sensitivity"), self.sensitivity)
+        self.turned = QCheckBox(tr("Also turned by a quarter, a half or three quarters"))
+        form.addRow("", self.turned)
+        btns = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        btns.button(QDialogButtonBox.Ok).setText(tr("Find"))
+        btns.accepted.connect(self.accept)
+        btns.rejected.connect(self.reject)
+        form.addRow(btns)
+
+    def values(self):
+        return {"scope": "all" if self.all_pages.isChecked() else "page",
+                "group": self.group.currentText().strip() or tr("Count 1"),
+                "sensitivity": self.sensitivity.value() / 100.0,
+                "turned": self.turned.isChecked()}
+
+
 class CountSetupDialog(QDialog):
     """A Count group's quantities per counted item (each fixture = 2 boxes + 1 whip: each row
     an item, its quantity per counted item and its unit) and its waste or extra percent, for

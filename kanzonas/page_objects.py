@@ -2330,8 +2330,10 @@ _STROKE_SET = _STROKE | {b"CS"}
 _OWN_COLOR = re.compile(
     rb"\nq\n((?:(?:-?[\d.]+ -?[\d.]+ -?[\d.]+ (?:RG|rg)|-?[\d.]+ w|\[[-\d. ]*\] -?[\d.]+ d) ?)*)"
     rb"\n(/KZHeads <<[^<>]*>> DP\n)?((?:\nq (?:-?[\d.]+ +){6}cm\n)*)\Z")
-_HEADS_MARK = re.compile(rb"/KZHeads <</S/(\w+)/E/(\w+)/M/(\w+)/N (\d+)>> DP")
+_HEADS_MARK = re.compile(rb"/KZHeads <</S/(\w+)/E/(\w+)/M/(\w+)/N (\d+)(?:/Z ([\d.]+))?>> DP")
+_OC_MARK = re.compile(rb"^/OC\s*/[^\s/\[\]()<>{}%]+\s*BDC$")       # (a layer's marked content)
 HEAD_KINDS = ("none", "open", "closed")      # a drawing line's arrowheads (closed: outlined)
+HEAD_SCALES = (0.25, 5.0)    # their Arrowhead size's range (as annotations.HEAD_SCALES)
 # a Line style's dash pattern, in line widths (as annotations.DASHES)
 DASHES = {"solid": None, "dash": (3, 2), "dot": (1, 1.5), "dashdot": (3, 1.5, 1, 1.5)}
 
@@ -2363,12 +2365,38 @@ def _own(data, d):
 
 def heads_of(data, d):
     """The arrowheads a drawing line was given (Properties > Start / End arrowhead, Middle
-    arrow): (start, end, middle, how many subpaths they added), or None when it has none."""
+    arrow, Arrowhead size): (start, end, middle, how many subpaths they added, their size:
+    1 the size the line width gives), or None when it has none."""
     m = _own(data, d)
     h = _HEADS_MARK.search(m.group(2) or b"") if m else None
     if not h:
         return None
-    return tuple(x.decode() for x in h.groups()[:3]) + (int(h.group(4)),)
+    return tuple(x.decode() for x in h.groups()[:3]) + (int(h.group(4)),
+                                                         head_scale(h.group(5) or 1))
+
+
+def head_scale(v):
+    """An Arrowhead size (1 = the size the line width gives) within HEAD_SCALES."""
+    try:
+        v = float(v)
+    except (TypeError, ValueError):
+        return 1.0
+    return min(HEAD_SCALES[1], max(HEAD_SCALES[0], v)) if v == v else 1.0
+
+
+def head_length(width, size=1.0):
+    """How long a line's arrowheads are drawn: from its width on the page (points), times
+    its Arrowhead size."""
+    return max(6.0, 3.0 * width + 3.0) * head_scale(size)
+
+
+def head_marker(heads, count, size=1.0):
+    """The /KZHeads marked-content point recording a line's arrowheads (heads: start, end,
+    middle), the subpaths they added (count) and their Arrowhead size (left out at 1)."""
+    size = head_scale(size)
+    z = b"" if abs(size - 1.0) < 1e-6 else b"/Z %.4g" % size
+    return b"/KZHeads <</S/%s/E/%s/M/%s/N %d%s>> DP\n" % (
+        heads[0].encode(), heads[1].encode(), heads[2].encode(), count, z)
 
 
 def _color_hex(op, args):
@@ -2544,8 +2572,8 @@ def recolor(page, ns, stroke=None, fill=None, objs=None, width=None, dash=None, 
     """Give shapes ns (path objects) a new line color (stroke) and/or fill color (fill), each
     (r, g, b) from 0 to 1 or None to keep it; a new line width (width: points on the page,
     whatever the shape's own scale); a Line style (dash: a key of DASHES); and arrowheads
-    (heads: {"start", "end", "mid"} -> a key of HEAD_KINDS, on open lines only, added to the
-    line's own path, so they move and turn with it). They're set in a  q ... Q  of the
+    (heads: {"start", "end", "mid"} -> a key of HEAD_KINDS, and "size" -> their Arrowhead size,
+    on open lines only, added to the line's own path, so they move and turn with it). They're set in a  q ... Q  of the
     shape's own, so what's drawn after it keeps its settings; a shape restyled this way before
     has its settings replaced in that one (no nesting), and its arrowheads replaced. Pictures
     and groups are left as they are. objs: the page's Objects (already read). Returns the
@@ -2584,17 +2612,16 @@ def recolor(page, ns, stroke=None, fill=None, objs=None, width=None, dash=None, 
             want = (heads.get("start", had[0] if had else "none"),
                     heads.get("end", had[1] if had else "none"),
                     heads.get("mid", had[2] if had else "none"))
+            size = head_scale(heads.get("size", had[4] if had else 1.0))
             w_page = (width if width is not None else page_width(d))
-            length = max(6.0, 3.0 * w_page + 3.0) / k
+            length = head_length(w_page, size) / k
             first = _first_dash(d.get("state"),
                                 _dash_op(dash, (width / k) if width is not None
                                          else d.get("width", 1.0)) if dash is not None
                                 else None)
             body, count = _with_heads(body, want, had[3] if had else 0, length,
                                       first * 0.9 if first else None)
-            marker = (b"/KZHeads <</S/%s/E/%s/M/%s/N %d>> DP\n" % (
-                want[0].encode(), want[1].encode(), want[2].encode(), count)) \
-                if count else None
+            marker = head_marker(want, count, size) if count else None
         if m:
             # restyled before: its settings (the line after its own  q ) replaced there, not
             # a wrapper in a wrapper
@@ -2692,13 +2719,28 @@ def reorder(page, ns, how, dry_run=False):
         return True
     snippet = b""
     pieces = []
+    # (each keeps its layers: the ones not open where it goes are opened around it, so
+    # hiding a layer still hides it, a drawing.py shape sent to the back included)
+    there = set()
+    if how in ("forward", "backward"):
+        there = set((d.get("ctx") or ((), ()))[0])     # (d: the object it goes past)
     for n in sel:
         d = found[n]
         old = data[d["start"]:d["end"]]
+        moved = old
+        own = _own(data, d)
+        if own is not None:
+            # (restyled before, recolor: its settings and its arrowheads' marker go with it,
+            # as recolor writes them, so Properties reads them where it now is; its arrowheads
+            # showed "none" after To back or To front)
+            moved = b"\nq\n" + own.group(1) + b"\n" + (own.group(2) or b"") + old + b"\nQ\n"
         m = d["ctm"] * ~target
-        snippet += (b"\nq %.6f %.6f %.6f %.6f %.4f %.4f cm\n" % tuple(m) + _DEFAULTS + b" " +
+        layers = [b for b in (d.get("ctx") or ((), ()))[0]
+                  if _OC_MARK.match(b.strip()) and b not in there]
+        snippet += (b"".join(b"\n" + b for b in layers) +
+                    b"\nq %.6f %.6f %.6f %.6f %.4f %.4f cm\n" % tuple(m) + _DEFAULTS + b" " +
                     d.get("state", b"") +
-                    b"\n" + old + b"\nQ\n")
+                    b"\n" + moved + b"\nQ\n" + b"EMC\n" * len(layers))
         keep = _split(old)[0] if old[:2] != b"BI" else b""
         pieces.append((d["start"], d["end"], b" " + keep + b" "))
     pieces.append((at, at, snippet))
@@ -2822,10 +2864,12 @@ def _value_text(kind, val):
             "bool": val, "string": val}.get(kind)
 
 
-def _expand(doc, page, fx, taken, depth=0):
+def _expand(doc, page, fx, taken, depth=0, clip=True):
     """The drawing instructions of Form XObject fx, to stand in for its "/Name Do" on the
     page (None when fx isn't a usable form). A group holding nothing but one other group (a
-    wrapper, as many programs write) is taken apart too."""
+    wrapper, as many programs write) is taken apart too. clip: kept inside the form's box
+    (False: a markup's appearance drawn into the page, drawing.py, whose shapes then stay
+    under the same clipping as the page's own lines, so they can be grouped with them)."""
     if fx is None or depth > 8 or doc.xref_get_key(fx, "Subtype")[1] != "/Form":
         return None
     box, fm = _form_box(doc, fx)
@@ -2879,8 +2923,10 @@ def _expand(doc, page, fx, taken, depth=0):
         if sub is not None:
             body = body[:inner[0]["start"]] + sub + body[inner[0]["end"]:]
     m = " ".join(f"{v:g}" for v in (fm.a, fm.b, fm.c, fm.d, fm.e, fm.f)).encode()
-    clip = f"{box.x0:g} {box.y0:g} {box.width:g} {box.height:g} re W n".encode()
-    return b"\nq " + m + b" cm " + clip + b"\n" + body + b"\nQ\n"
+    if not clip:
+        return b"\nq " + m + b" cm\n" + body + b"\nQ\n"
+    box_clip = f"{box.x0:g} {box.y0:g} {box.width:g} {box.height:g} re W n".encode()
+    return b"\nq " + m + b" cm " + box_clip + b"\n" + body + b"\nQ\n"
 
 
 def group_problem(objs, items):
@@ -2912,6 +2958,15 @@ def group_problem(objs, items):
             shapes = objs.clip_shapes()
             clips = {frozenset(shapes[k] if k < len(shapes) else ("?", k) for k in c)
                      for c in clips}
+        if len(clips) > 1:
+            # a clip some of them are under and others not that holds all of them (a CAD
+            # sheet's frame, and lines drawn with the Drawing tab, which have none) cuts
+            # nothing off: drawn inside it or not, they look the same
+            common = frozenset.intersection(*clips)
+            area = _pdf_area(objs, drawn)
+            if area is not None and all(_clip_holds(k, area)
+                                        for k in frozenset.union(*clips) - common):
+                clips = {common}
     if len(clips) > 1:
         return tr("The selected objects are drawn under different clipping: they can't be "
                   "one group.")
@@ -2920,6 +2975,36 @@ def group_problem(objs, items):
         return tr("The selected objects are tagged as different parts of the page (for "
                   "screen readers): they can't be one group.")
     return None
+
+
+def _pdf_area(objs, items):
+    """Where items (Objects items) are drawn, in the page's PDF space, their lines' width
+    around them; None when it can't be told."""
+    tm = getattr(objs, "tm", None)
+    if tm is None or not items:
+        return None
+    area = bounding(pymupdf.Rect(it["rect"]) for it in items) * ~tm
+    pad = max(page_width(it["obj"]) for it in items if it.get("obj")) if \
+        any(it.get("obj") for it in items) else 0.0
+    return area.normalize() + (-pad - 1, -pad - 1, pad + 1, pad + 1)
+
+
+def _clip_holds(key, area):
+    """Whether clip key (a clip_shapes entry) is a rectangle, not turned, holding area (PDF
+    space): it cuts nothing of what's drawn there."""
+    path, ctm = key
+    if not isinstance(path, bytes) or not isinstance(ctm, tuple) or len(ctm) != 6 or \
+            abs(ctm[1]) > 1e-9 or abs(ctm[2]) > 1e-9:
+        return False                    # (a clip that couldn't be read: as it was, apart)
+    t = path.split()
+    if len(t) != 6 or t[4] != b"re" or t[5] not in (b"W", b"W*"):
+        return False
+    try:
+        x, y, w, h = (float(v) for v in t[:4])
+    except ValueError:
+        return False
+    box = (pymupdf.Rect(x, y, x + w, y + h).normalize() * pymupdf.Matrix(*ctm)).normalize()
+    return box.contains(area)
 
 
 def _layer_split(chains):

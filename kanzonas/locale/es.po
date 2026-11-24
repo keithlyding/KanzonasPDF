@@ -7229,8 +7229,8 @@ msgid "Window (blue) and crossing (green) selection: clicks add to the selection
 msgstr "Selección por ventana (azul) y por captura (verde): los clics agregan a la selección, Shift quita y Escape la borra"
 
 #: cad
-msgid "Click, move, click draws the selection box"
-msgstr "Clic, mover, clic dibuja el recuadro de selección"
+msgid "Click, move, click, never holding the button: selection boxes, grips, moving the selection, drawing (off: drag them)"
+msgstr "Clic, mover, clic, sin mantener nunca el botón presionado: recuadros de selección, pinzamientos, mover la selección, dibujar (desactivado: se arrastran)"
 
 #: cad
 msgid "Hold the button and drag to draw a lasso"
@@ -11934,3 +11934,174 @@ msgstr "Grupo (1 objeto)"
 
 msgid "Group ({n} objects)"
 msgstr "Grupo ({n} objetos)"
+
+msgid "Finding similar symbols..."
+msgstr "Buscando símbolos similares..."
+
+msgid "Find similar"
+msgstr "Buscar similares"
+
+msgid "There's nothing in that box to look for: drag a box around one symbol"
+msgstr "No hay nada que buscar en ese cuadro: arrastre un cuadro alrededor de un símbolo"
+
+msgid "Find similar found nothing new to count"
+msgstr "Buscar similares no encontró nada nuevo que contar"
+
+msgid "Find similar stopped: nothing was placed"
+msgstr "Buscar similares se detuvo: no se puso nada"
+
+msgid "Found {n} similar symbols on {pages} pages, counted as {group}: check them, delete any that aren't (Ctrl+Z takes them all back)"
+msgstr "Se encontraron {n} símbolos similares en {pages} páginas, contados como {group}: revíselos y borre los que no lo sean (Ctrl+Z los quita todos)"
+
+msgid "Find similar: drag a box around a symbol; the matching ones on this page or every page are placed as Count markers of a group, for you to check"
+msgstr "Buscar similares: arrastre un cuadro alrededor de un símbolo; los que coinciden en esta página o en todas se ponen como marcadores de Conteo de un grupo, para que los revise"
+
+msgid "Look on"
+msgstr "Buscar en"
+
+msgid "Count as"
+msgstr "Contar como"
+
+msgid "How alike a symbol must be to count: lower finds more, and more that aren't the same"
+msgstr "Cuánto debe parecerse un símbolo para contarse: menos encuentra más, y más que no son iguales"
+
+msgid "Sensitivity"
+msgstr "Sensibilidad"
+
+msgid "Also turned by a quarter, a half or three quarters"
+msgstr "También girado un cuarto, media o tres cuartos de vuelta"
+
+msgid "Count 1"
+msgstr "Conteo 1"
+
+msgid "All {n} pages"
+msgstr "Todas las {n} páginas"
+
+msgid "Add leader"
+msgstr "Agregar línea guía"
+
+msgid "Remove leader"
+msgstr "Quitar línea guía"
+
+msgid "Leader added: drag its end to point it elsewhere"
+msgstr "Línea guía agregada: arrastre su extremo para que apunte a otro lugar"
+
+msgid "Move to the &left side"
+msgstr "Mover al lado &izquierdo"
+
+msgid "Move to the &right side"
+msgstr "Mover al lado &derecho"
+
+msgid "Properties panel (click again to fold it away)"
+msgstr "Panel Propiedades (haga clic de nuevo para plegarlo)"
+
+msgid "Tool chest (click again to fold it away)"
+msgstr "Caja de herramientas (haga clic de nuevo para plegarla)"
+
+msgid "Markups list (click again to fold it away)"
+msgstr "Lista de marcas (haga clic de nuevo para plegarla)"
+
+msgid "Icons on the left edge that open and close the panels, several at once"
+msgstr "Iconos en el borde izquierdo que abren y cierran los paneles, varios a la vez"
+
+msgid "La&yers panel"
+msgstr "Panel de ca&pas"
+
+msgid "Ob&jects panel"
+msgstr "Panel de ob&jetos"
+
+msgid "S&ets panel"
+msgstr "Panel de co&njuntos"
+
+msgid "Show or hide the PDF's layers; pick the layer new markups go on"
+msgstr "Mostrar u ocultar las capas del PDF; elegir la capa en la que van las marcas nuevas"
+
+msgid "The page's markups from front to back: select, lock or hide them"
+msgstr "Las marcas de la página, de delante hacia atrás: selecciónelas, bloquéelas u ocúltelas"
+
+msgid "The PDFs of a set and their sheets, as one list"
+msgstr "Los PDF de un conjunto y sus hojas, en una sola lista"
+
+msgid "Nothing to draw: give the tool a line color or a fill in Properties"
+msgstr "Nada que dibujar: dé a la herramienta un color de línea o un relleno en Propiedades"
+
+msgid "Select a shape or line markup to convert (measurements, notes, stamps, text and highlights stay markups)"
+msgstr "Seleccione una marca de forma o de línea para convertirla (las mediciones, notas, sellos, textos y resaltados siguen siendo marcas)"
+
+msgid "Drawn into the page, on the layer {layer} (Ctrl+Z undoes it)"
+msgstr "Dibujado en la página, en la capa {layer} (Ctrl+Z lo deshace)"
+
+msgid "{n} markup(s) converted to drawing, on the layer {layer} (Ctrl+Z undoes it)"
+msgstr "{n} marca(s) convertida(s) en dibujo, en la capa {layer} (Ctrl+Z lo deshace)"
+
+msgid "Line drawn into the page: drag, or click both ends (Shift = 45° steps)"
+msgstr "Línea dibujada en la página: arrastre, o haga clic en sus dos extremos (Shift = pasos de 45°)"
+
+msgid "Arrow drawn into the page: from its tail to its head (Shift = 45° steps)"
+msgstr "Flecha dibujada en la página: desde su cola hasta su punta (Shift = pasos de 45°)"
+
+msgid "Polyline drawn into the page: click each point, double-click or Enter to finish"
+msgstr "Polilínea dibujada en la página: haga clic en cada punto, doble clic o Enter para terminar"
+
+msgid "Polygon drawn into the page: click each corner, double-click or Enter to finish"
+msgstr "Polígono dibujado en la página: haga clic en cada esquina, doble clic o Enter para terminar"
+
+msgid "Rectangle drawn into the page: drag a box (Shift = square)"
+msgstr "Rectángulo dibujado en la página: arrastre un recuadro (Shift = cuadrado)"
+
+msgid "Ellipse drawn into the page: drag a box (Shift = circle)"
+msgstr "Elipse dibujada en la página: arrastre un recuadro (Shift = círculo)"
+
+msgid "Circle drawn into the page: from the center to a point on it"
+msgstr "Círculo dibujado en la página: desde el centro hasta un punto del círculo"
+
+msgid "Arc drawn into the page: click the start, a point it passes through, then the end"
+msgstr "Arco dibujado en la página: haga clic en el inicio, en un punto por el que pasa y luego en el final"
+
+msgid "Revision cloud drawn into the page: drag a box"
+msgstr "Nube de revisión dibujada en la página: arrastre un recuadro"
+
+msgid "Freehand pen, drawn into the page"
+msgstr "Lápiz a mano alzada, dibujado en la página"
+
+msgid "Page content: the selected shape and line markups drawn into the page as they look, on the layer KanzonasPDF drawing (measurements, notes, stamps, text and highlights stay markups)"
+msgstr "Contenido de la página: las marcas de formas y líneas seleccionadas se dibujan en la página tal como se ven, en la capa KanzonasPDF drawing (las mediciones, notas, sellos, textos y resaltados siguen siendo marcas)"
+
+msgid "Convert to drawing"
+msgstr "Convertir en dibujo"
+
+msgid "&Drawing"
+msgstr "&Dibujo"
+
+msgid "Drawing"
+msgstr "Dibujo"
+
+msgid "Draw"
+msgstr "Dibujar"
+
+msgid "Drawn with the Drawing tab, on the layer KanzonasPDF drawing."
+msgstr "Dibujado con la pestaña Dibujo, en la capa KanzonasPDF drawing."
+
+msgid "For the next shapes you draw with this tool, saved for next time. They're drawn into the page itself, on the layer KanzonasPDF drawing; Edit objects selects and changes them."
+msgstr "Para las próximas formas que dibuje con esta herramienta; se guarda para la próxima vez. Se dibujan en la propia página, en la capa KanzonasPDF drawing; Editar objetos las selecciona y las cambia."
+
+msgid "Move to draw, click to end the stroke (Escape or a right-click cancels)"
+msgstr "Mueva para dibujar, haga clic para terminar el trazo (Escape o un clic derecho cancela)"
+
+msgid "Move to turn it, click to set the angle; Shift: 15° steps (Escape or a right-click puts it back)"
+msgstr "Mueva para girarlo, haga clic para fijar el ángulo; Shift: pasos de 15° (Escape o un clic derecho lo deja como estaba)"
+
+msgid "Move it, click where it goes, or type the distance toward the pointer and press Enter (Escape or a right-click puts it back)"
+msgstr "Muévalo, haga clic donde va, o escriba la distancia hacia el puntero y presione Enter (Escape o un clic derecho lo deja como estaba)"
+
+msgid "Move the grip, click where it goes (Escape or a right-click puts it back)"
+msgstr "Mueva el pinzamiento, haga clic donde va (Escape o un clic derecho lo deja como estaba)"
+
+msgid "Put back as it was"
+msgstr "Se dejó como estaba"
+
+msgid "Point the way it goes, then type the distance as a number (or 12'-6\") and press Enter; or click where it goes"
+msgstr "Apunte hacia donde va, luego escriba la distancia como un número (o 12'-6\") y presione Enter; o haga clic donde va"
+
+msgid "Move to where the text ends, click there (Escape or a right-click cancels)"
+msgstr "Mueva hasta donde termina el texto y haga clic ahí (Escape o un clic derecho cancela)"

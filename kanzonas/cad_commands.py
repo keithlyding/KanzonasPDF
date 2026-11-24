@@ -183,6 +183,15 @@ WHOLE_NAME_ONLY = {"Exit", "Close tab", "Delete pages", "Remove crop", "Remove s
                    "Clear all digital signatures", "Delete comments", "Remove background",
                    "Remove watermarks", "Delete selected annotation"}
 MIN_TYPED = 3                           # letters needed before a part of a name runs a command
+DRAWING_PREFIX = "Drawing "             # the Drawing tab's tools' names (main_window, kz_id)
+
+
+def _markups_first(found):
+    """[(name, action)] matched by what was typed, the Drawing tab's tools left out when other
+    commands match too: they share the markup tools' names ("rect" stays the Markup tab's
+    Rectangle, as before them); theirs is "drawing rect"."""
+    mine = [(n, a) for n, a in found if not n.startswith(DRAWING_PREFIX)]
+    return mine if mine and len(mine) < len(found) else found
 
 
 class CommandLine(QWidget):
@@ -312,8 +321,8 @@ class CommandLine(QWidget):
                         self.command.cancel()
                 else:
                     self.edit.clear()
-                    from . import cad_draw, cad_select
-                    if v is not None and not cad_draw.cancel(v):
+                    from . import cad_draw, cad_grips, cad_select
+                    if v is not None and not cad_grips.cancel(v) and not cad_draw.cancel(v):
                         cad_select.cancel(v)
                         v.escape_selection()
                 self._back_to_page()
@@ -368,8 +377,10 @@ class CommandLine(QWidget):
             return
         v = self._view()
         if v is not None:
-            from . import cad_draw
-            if cad_draw.typed(v, text):     # (a circle's radius, while one is drawn)
+            from . import cad_draw, cad_grips
+            # (a distance, while the selection follows the pointer; a circle's radius, while
+            # one is drawn)
+            if cad_grips.typed(v, text) or cad_draw.typed(v, text):
                 self.edit.clear()
                 self._hide_list()
                 self._back_to_page()
@@ -411,6 +422,7 @@ class CommandLine(QWidget):
                 whole.append((name, a))
             elif any(_word_start(text, n) for n in (shown, name)):
                 starts.append((name, a))
+        whole, starts = _markups_first(whole), _markups_first(starts)
         if len(whole) == 1:
             found = whole
         elif whole:

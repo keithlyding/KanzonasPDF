@@ -1,6 +1,8 @@
 """CAD mode draws shapes click, move, click (as AutoCAD and Bluebeam do): a click starts the
 shape, the preview follows the pointer with no button held, the next click ends it. A press,
-drag and release still draws it. Escape or a right-click cancels; a quick second click that
+drag and release is a click and a move (1.17, the owner: "No clicking and holding for
+anything"): the shape follows on until the next click. Escape or a right-click cancels; a
+quick second click that
 arrives as a double-click still ends it; a click with a little shake is still a click.
 Standard mode is unchanged: a click starts nothing, a drag draws. Also the Circle tool (from
 the center to a point on the circle, an ellipse markup in a square; the radius can be typed on
@@ -125,8 +127,8 @@ def _texts():
 
 class ClickClick(Base):
     def both_ways(self, tool, a=A_, b=B_):
-        """The markups a click, move, click makes, and those a drag makes (on another copy
-        of the page)."""
+        """The markups a click, move, click makes, and those a press, drag and release to the
+        end, then a click there, make (on another copy of the page)."""
         self.v.set_tool(tool)
         with _texts():
             self.click(a)
@@ -140,6 +142,10 @@ class ClickClick(Base):
         other.set_tool(tool)
         with _texts():
             self.drag(a, b, other)
+            self.assertEqual(markups(other), [], tool)      # (the drag drew nothing yet)
+            self.assertIsNotNone(self.pending(other), tool)
+            self.click(b, other)
+        self.assertIsNone(self.pending(other))
         dragged = markups(other)
         return clicked, dragged
 
@@ -207,8 +213,11 @@ class ClickClick(Base):
         QTest.mouseRelease(w, Qt.LeftButton, Qt.NoModifier, self.at((A_[0] + 12, A_[1] + 4)), 20)
         self.assertIsNotNone(self.pending())
         cad_draw.cancel(self.v)
-        # a real drag draws at once
+        # a real drag is a click and a move: the line goes on to the next click
         self.drag(A_, (A_[0] + 40, A_[1]))
+        self.assertIsNotNone(self.pending())
+        self.assertEqual(markups(self.v), [])
+        self.click((A_[0] + 40, A_[1]))
         self.assertIsNone(self.pending())
         self.assertEqual(len(markups(self.v)), 1)
 
@@ -287,7 +296,7 @@ class ClickClick(Base):
     def test_eraser_click_on_a_markup_erases_it(self):
         v = self.v
         v.set_tool("rect")
-        self.drag(A_, B_)
+        self.click_click(A_, B_)
         self.assertEqual(len(markups(v)), 1)
         v.set_tool("eraser")
         self.click((A_[0], (A_[1] + B_[1]) / 2))    # on its left edge

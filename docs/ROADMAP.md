@@ -151,7 +151,7 @@ a decision changes or a piece of work lands. Details of each version are in
   appearance, the PDF's line endings kept); **grouping the drawing's own objects on big CAD
   sheets**: across layers (each object keeps its layer inside the group), shown as one group,
   and fast (the owner's 174,000-object sheet: 4.6 s to under half a second). The arrowheads of
-  the drawing's own lines (Edit objects) keep their size for now.
+  the drawing's own lines (Edit objects) kept their size until 1.17.
 - 1.16.4 (the owner, 23 Nov: "when making custom colors, a recent or currently used colors
   section"): one color picker for every color in the app (`kanzonas/color_picker.py`): Qt's own
   color dialog inside a small dialog, with a Recent row (the last 12 colors picked anywhere,
@@ -160,7 +160,49 @@ a decision changes or a piece of work lands. Details of each version are in
   small dialog around Qt's rather than Qt's dialog with a strip added: the system's dialog
   (macOS's color panel, GTK's) can't hold the rows, and Qt's own custom color slots are the
   user's to keep.
+- 1.17 (the owner, 23 Nov: "the side panels must be able to show several at once, on the
+  right and on the left, stacked, with handles to resize"): every panel (Pages, Bookmarks,
+  Layers, Objects, Sets, Properties, Tool chest, Markups list) is a Qt dock widget of its own
+  (`kanzonas/side_panels.py`), no longer Bookmarks, Layers, Objects and Sets as tabs inside
+  Pages: stacked on either side with QMainWindow's handles, dragged by the title (or moved
+  from the title's right-click menu) to the other side, kept with saveState (LAYOUT_VERSION 2;
+  a layout 1.16 saved is still read). Dock widgets rather than our own splitters: Properties,
+  Tool chest and the Markups list were dock widgets already, and Qt gives the handles,
+  dragging, tabs and the saved layout. Panels don't float (one left on a monitor that's gone
+  would be lost). The panel strip has an icon for each panel; a pulled-out window starts with
+  the panels of the window it came from.
+- 1.17 (the owner, 23 Nov: the markup shapes stay markups; drawing that isn't a markup gets a
+  tab of its own): the **Drawing tab** (`kanzonas/drawing.py`): line, arrow, polyline,
+  polygon, rectangle, ellipse, circle, arc, cloud and pen drawn into the page's content stream
+  (with the markup tools' clicks, previews, snapping and CAD click-click; each tool's own
+  style in Properties), on one layer, the optional content group "KanzonasPDF drawing", so the
+  Layers panel hides it and Edit objects selects, restyles, groups and reorders it as the
+  drawing's own lines (the stacking order commands now keep an object's layer; a frame clip
+  holding all of them no longer stops grouping them). Told apart from markups by its tab, its
+  layer, an orange selection and Properties' Page content tag. **Convert to drawing** (the
+  Drawing tab, a markup's right-click menu) draws shape and line markups into the page as
+  their appearance draws them, one undo step; measurements, notes, stamps, text and
+  highlights stay markups.
+- 1.17 (the owner, 23 Nov: "in cad mouse mode, the mouse clicks need to function like a cad
+  mouse. No clicking and holding for anything"): CAD mode works by click, move, click
+  (`kanzonas/cad_grips.py`), replacing 1.12.1's drag of the selection: a click on what's
+  selected picks it up and the next click puts it down; a click on a grip (a markup's
+  handles and line ends, the box around several items, the drawing's objects' handles and
+  round turning handle) makes it hot until the next click; the Pen draws from one click to
+  the next, and Highlight and the other text tools mark from one click to the next; a press, drag and release is a click and a move everywhere (selection box,
+  shapes, a Dimension's points). Escape or a right-click puts it back; one undo step each;
+  the middle button still pans; a distance typed on the command line moves the picked-up
+  selection that far toward the pointer (AutoCAD's direct distance entry). The lasso, which can only be held, is off by default; the
+  Click, move, click option (Preferences > Mouse) off gives the drags back. The Standard and
+  Hand modes are unchanged. Not changed in CAD mode: Edit text's drag of a line, the form
+  field tools and a signature's box (a click does what's needed there without holding).
 
+- 1.17 (the owner, 23 Nov: "add leaders to callouts"): a callout's **leaders** (right-click >
+  Add leader, Remove leader): PDF gives a callout one leader (/CL), so the others are drawn in
+  its appearance, each to the middle of the box's nearest side with a copy of the first one's
+  arrowhead, and kept in KZProps; other viewers show them, and a program drawing the callout
+  anew from its settings shows the first only. **Arrowhead size** for the drawing's own lines
+  and the Drawing tab's lines too, kept in the line's /KZHeads marker.
 ## Next
 The owner sets this list; nothing below is promised until it's here.
 - **Takeoff and quantity surveying** (the owner, 23 Nov 2026: estimators and quantity surveyors
@@ -188,7 +230,7 @@ The owner sets this list; nothing below is promised until it's here.
      measurement; the summary and the Excel export show counts and resulting quantities.
   6. **Slope for roof areas** (1.16.3): a pitch on an Area (6:12, or degrees) turning the plan area into
      the sloped area.
-  7. **Find similar symbols** (as Bluebeam's VisualSearch): one symbol picked, its matches
+  7. **Find similar symbols** (1.17, as Bluebeam's VisualSearch): one symbol picked, its matches
      found on the page or the whole set and placed as Count markers in a group, for the
      user to check before keeping. Last, the hardest: fast on big sheets, with no worker
      thread touching the document.

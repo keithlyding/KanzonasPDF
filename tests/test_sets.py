@@ -194,7 +194,7 @@ class InTheWindow(unittest.TestCase):
         w.open_file(self.path)                  # (a .kzset: opened as a set)
         pump()
         self.assertIsNotNone(w.sets.docset)
-        self.assertTrue(w.dock.isVisible())
+        self.assertTrue(w.sets_dock.isVisible())
         self.assertEqual(self.paths(), [os.path.normcase(self.a)])      # its first sheet
         w._set_step(1)
         self.assertEqual(w.view().current_page(), 1)

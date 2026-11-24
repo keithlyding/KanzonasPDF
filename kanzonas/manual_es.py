@@ -91,10 +91,21 @@ y los 100 pasos caben incluso en PDF muy grandes; el historial sigue sin superar
 Si Deshacer se pone gris antes de volver al punto de partida, los pasos anteriores quedan fuera de
 los 100 que se conservan (o del límite de memoria) y no se pueden deshacer; el archivo tal como se
 abrió sigue en el disco hasta que lo guarde encima.</li>
-<li><b>Paneles:</b> Páginas/Marcadores/Capas a la izquierda (F4), Propiedades a la derecha (F6),
-Lista de marcas (F7), Caja de herramientas (F8), Marcadores (F9), Vista dividida (F10). Los paneles que tenía abiertos
-al cerrar KanzonasPDF (y sus tamaños, sus lados y cuál de Propiedades / Caja de herramientas estaba
-delante) vuelven la próxima vez que se inicia; la Vista dividida siempre se inicia cerrada.</li>
+<li><b>Paneles:</b> Páginas (F4), Marcadores (F9), Capas, Objetos y Conjuntos empiezan a la izquierda,
+Propiedades (F6) y la Caja de herramientas (F8) a la derecha, la Lista de marcas (F7) abajo; la
+Vista dividida es F10. Ver &gt; <b>Panel de capas</b>, <b>Panel de objetos</b> y <b>Panel de conjuntos</b>
+abren y cierran los otros tres (Ver &gt; Métodos abreviados de teclado puede darles teclas).
+Cada tecla, comando de menú e icono de la franja de paneles abre su panel, o lo cierra cuando está a la vista.
+<b>Varios paneles a la vez:</b> los paneles abiertos del mismo lado se apilan uno encima de otro;
+arrastre el asa entre dos de ellos para dar más altura a uno, y el asa entre los paneles y la
+página para ensanchar ese lado. Arrastre un panel por su título al otro lado o a otro lugar del
+suyo (encima o debajo de los paneles que hay allí), o sobre otro panel para que los dos sean
+pestañas de un mismo panel. O haga clic con el botón derecho en su título &gt; <b>Mover al lado
+izquierdo</b> / <b>Mover al lado derecho</b>; el resto de ese menú enumera los paneles y las barras
+de herramientas que se pueden mostrar u ocultar. Los paneles que tenía abiertos al cerrar
+KanzonasPDF (sus lados, sus tamaños y cuál está delante donde los paneles son pestañas) vuelven la
+próxima vez que se inicia; una ventana a la que se saca una pestaña empieza con los paneles de la
+ventana de la que viene. La Vista dividida siempre se inicia cerrada.</li>
 <li><b>Un documento en su propia ventana</b> (para un segundo monitor): arrastre su pestaña hacia arriba o hacia abajo fuera
 de la barra de pestañas y suéltela, o haga clic con el botón derecho en la pestaña &gt; <b>Mover a una nueva ventana</b>, o Ver &gt;
 <b>Mover pestaña a una nueva ventana</b> (Ctrl+Shift+N). El documento no se vuelve a abrir: los cambios sin guardar
@@ -146,9 +157,11 @@ de las pestañas de la cinta tiene todos los menús, y todos los métodos abrevi
 Ver &gt; <b>Cinta (en lugar de barras de herramientas)</b> para usar las barras de herramientas compactas clásicas (el zoom, el número de página
 y Buscar vuelven entonces a la barra de herramientas superior). Los menús siempre tienen todos los comandos.</li>
 <li><b>Franja de paneles:</b> los iconos del borde izquierdo abren los paneles Páginas, Marcadores, Capas,
-Objetos y Conjuntos; haga clic de nuevo en el icono iluminado para plegar el panel y tener más espacio para la página.
-Los iconos de Lista de marcas y Archivos adjuntos también están allí. Ver &gt; <b>Mostrar franja de paneles (borde
-izquierdo)</b> oculta la franja; los paneles muestran entonces sus nombres como pestañas en la parte inferior.</li>
+Objetos, Conjuntos, Propiedades, Caja de herramientas y Lista de marcas, tantos a la vez como quiera; un icono
+iluminado es un panel a la vista. Haga clic de nuevo en un icono iluminado para cerrar su panel y tener más
+espacio para la página (un panel que es una pestaña detrás de otro pasa primero al frente). El icono de
+Archivos adjuntos también está allí. Ver &gt; <b>Mostrar franja de paneles (borde izquierdo)</b> oculta la
+franja; el menú Ver y el botón de cerrar de cada panel siguen abriendo y cerrando los paneles.</li>
 <li><b>Paleta de comandos</b> (Ctrl+Shift+P; menú Ayuda, pestaña Ver): escriba algunas letras de lo que
 quiere hacer y elija el comando en la lista; Enter lo ejecuta. Todos los comandos de menú y todas las herramientas están
 allí con su menú y su método abreviado, así que no hay que buscar nada en la cinta. Las letras
@@ -334,7 +347,7 @@ Ajustar al ancho (Ctrl+2), ajustar página (Ctrl+0), tamaño real (Ctrl+1). Los 
 la página donde estaba la última vez; cámbielo en Archivo &gt; Preferencias &gt; Inicio y apertura.
 Ajustar al ancho y Ajustar página siguen ajustando cuando la ventana o un panel lateral cambian de tamaño, hasta que
 usted elige un zoom.</li>
-<li><b>Miniaturas de páginas</b> (F4) muestra u oculta el panel izquierdo.</li>
+<li><b>Miniaturas de páginas</b> (F4) muestra u oculta el panel Páginas.</li>
 <li><b>Vínculos del PDF:</b> coloque el puntero sobre un vínculo para ver a dónde lleva. Con la herramienta <b>Mano</b>, haga clic
 en él (el puntero se convierte en una mano). Con cualquier otra herramienta, en todos los modos del mouse (Estándar, Mano,
 CAD), haga <b>Ctrl+clic</b> en él (al mantener Ctrl sobre un vínculo se ve una mano y adónde lleva): un clic normal
@@ -545,6 +558,14 @@ dibujo y las marcas dibujadas encima (nubes, líneas, notas...), en una sola sel
 Simetría, Alinear, Matriz y Eliminar trabajan entonces sobre todo junto, y un solo Ctrl+Z lo deshace (el texto del
 dibujo solo se mueve: no se copia, gira, escala ni refleja). <b>Seleccionar</b> (la pestaña CAD, o V cuando las letras
 no van a la línea de comandos) selecciona del mismo modo solo sus marcas, o los caracteres del texto de la página.</p>
+<p><b>Solo clics, como en AutoCAD:</b> en el modo CAD nunca se mantiene presionado el botón del mouse. Lo que otros
+programas hacen arrastrando aquí es <b>clic, mover, clic</b>: haga clic para empezar (la primera esquina de un recuadro de
+selección, un pinzamiento, lo seleccionado, el primer punto de una forma), mueva el mouse sin presionar ningún botón (lo
+que está haciendo sigue al puntero, así lo ve antes de que se haga) y vuelva a hacer clic para terminar. <b>Escape</b> o
+un <b>clic derecho</b> lo detiene y lo deja todo como estaba. Presionar, arrastrar y soltar cuenta como un clic y un
+movimiento: al soltar no se hace nada, el clic siguiente lo termina. Cada clic, mover, clic se deshace con un solo Ctrl+Z.
+Mantener presionada la <b>rueda</b> y arrastrar sigue desplazando la vista, también a mitad de camino. (Preferencias &gt;
+Mouse, CAD: desactive <b>Clic, mover, clic</b> para arrastrar en su lugar.)</p>
 <ul>
 <li>Haga <b>clic</b> en algo para agregarlo a la selección. <b>Shift+clic</b> lo quita. <b>Escape</b> borra toda la
 selección, también justo después de escribir una letra para la línea de comandos o de un clic que empezó un cuadro de
@@ -555,8 +576,9 @@ una marca para ver su propio menú, y en los objetos del dibujo para ver el suyo
 <b>Cambiar el tamaño:</b> una marca seleccionada muestra sus propios controladores (las esquinas y los lados de un
 rectángulo, los extremos de una línea); las formas e imágenes propias del dibujo muestran controladores a su alrededor;
 varios elementos (o marcas junto con objetos del dibujo) muestran un solo recuadro con controladores alrededor de todos.
-Arrastre un controlador para cambiar el tamaño; una esquina conserva las proporciones (mantenga presionada Shift mientras
-arrastra para cambiarlo libremente; Shift en el propio clic quita un elemento de la selección). Todo el cambio se deshace
+Haga clic en un controlador y queda <b>activo</b>: sigue al puntero; vuelva a hacer clic donde va. Una esquina conserva
+las proporciones (mantenga presionada Shift mientras lo mueve y en el segundo clic para cambiar el tamaño libremente;
+Shift en el primer clic quita un elemento de la selección). Todo el cambio se deshace
 con un solo Ctrl+Z. El texto propio del dibujo solo se mueve. <b>Doble clic</b> en un texto para editarlo: el texto propio
 de la página se abre en Editar texto, el texto de una marca (un cuadro de texto, una nota, el comentario de una forma) en
 su editor.
@@ -572,25 +594,37 @@ clic. De izquierda a derecha es una <b>ventana azul</b> de línea continua: toma
 derecha a izquierda es un <b>recuadro de captura verde</b> de línea discontinua: toma todo lo que toca, incluida una
 línea que lo atraviese. La primera esquina se marca en cuanto hace clic, y la barra de estado pide la otra esquina. Un
 clic rápido cuenta como clic aunque el mouse se haya movido un poco al presionar, y hacer clic otra vez en la primera
-esquina conserva el recuadro. Escape descarta un recuadro empezado. Mantenga presionada Shift en el segundo clic para
+esquina conserva el recuadro. Presionar en el papel vacío, arrastrar y soltar también empieza un recuadro: su otra
+esquina es el clic siguiente. Escape descarta un recuadro empezado. Mantenga presionada Shift en el segundo clic para
 quitar elementos en lugar de agregarlos. Un recuadro (o un lazo) también puede empezar y terminar en el <b>área gris
 alrededor de la página</b>, útil cuando la hoja está cubierta. Una forma rellena o una imagen que cubre toda la hoja (un
 fondo, un escaneo) cuenta aquí como papel vacío: un clic en ella empieza un recuadro, y solo una ventana alrededor de toda
 la hoja la toma (una forma rellena, también un clic justo en su borde).</li>
-<li><b>Mantenga presionado el botón y arrastre</b>: un <b>lazo</b> que sigue al puntero. Si al principio lo dibuja hacia
+<li><b>Lazo</b>, lo único del modo CAD que mantiene presionado el botón, así que está desactivado salvo que active
+<b>Mantenga presionado el botón y arrastre para dibujar un lazo</b> en Preferencias &gt; Mouse: entonces mantener
+presionado el botón y arrastrar desde el papel vacío dibuja un lazo que sigue al puntero. Si al principio lo dibuja hacia
 la derecha es un lazo de ventana azul (lo que queda completamente dentro); hacia la izquierda, un lazo de captura verde
 (lo que toca). Shift+lazo quita elementos.</li>
 <li>Con Seleccionar, un recuadro o un lazo que no toma marcas selecciona texto: los caracteres dentro de una ventana, o
 los que toca un recuadro de captura (Ctrl+C los copia).</li>
 <li>Mientras dibuja un recuadro o un lazo, lo que tomaría <b>brilla</b> (azul para una ventana, verde para un recuadro de
-captura), así que ve lo que obtendrá antes del segundo clic o antes de soltar; una vez tomado, se dibuja con línea
+captura), así que ve lo que obtendrá antes del segundo clic (o, con un lazo, antes de soltar); una vez tomado, se dibuja con línea
 discontinua y pinzamientos. En un dibujo muy grande se completa en un
 momento mientras se mueve.</li>
-<li>Arrastre lo seleccionado para moverlo, como en AutoCAD: sobre un elemento seleccionado el puntero es la flecha de
-cuatro puntas, y arrastrar desde él mueve toda la selección (marcas y las líneas, el texto y las imágenes propios de la
-página a la vez; un solo paso de deshacer; con el ajuste igual que al dibujar). Un arrastre que empieza en cualquier
-otro lugar dibuja un lazo o un cuadro y no mueve nada. Los controladores cuadrados de una marca u objeto seleccionado
-cambian su tamaño, y <b>Mover</b> de la pestaña CAD mueve desde un punto base.</li>
+<li><b>Mover:</b> haga clic en lo seleccionado para levantarlo: sobre un elemento seleccionado el puntero es la flecha
+de cuatro puntas, y después del clic toda la selección (marcas y las líneas, el texto y las imágenes propios de la página
+a la vez) sigue al puntero, con su contorno discontinuo, sin presionar ningún botón. Haga clic donde va para dejarla (con el ajuste
+igual que al dibujar; también fuera, en el gris junto a la página), o escriba una distancia en
+la línea de comandos y presione Enter: se mueve esa distancia hacia el puntero, en la unidad de medida de la página
+(12'-6" también sirve), como la entrada directa de distancia de AutoCAD. Un solo paso de deshacer;
+Escape o un clic derecho la deja donde estaba. Un clic en cualquier otro lugar selecciona, o empieza un recuadro, y no
+mueve nada. El doble clic en una marca seleccionada sigue editando su texto. <b>Mover</b> de la pestaña CAD mueve desde
+un punto base.</li>
+<li>Los <b>pinzamientos</b> funcionan igual: haga clic en uno para activarlo, mueva y haga clic donde va. Son los
+controladores cuadrados que cambian el tamaño de una marca, de los objetos del dibujo o del recuadro alrededor de varios
+elementos, los dos extremos de una línea y el rombo de su centro que la curva, las esquinas de un polígono, una polilínea
+o una medición, y el controlador redondo encima de una forma que la <b>gira</b> (el ángulo se ve mientras mueve; Shift:
+pasos de 15&deg;). La barra de estado indica qué hace el clic siguiente.</li>
 <li>Preferencias &gt; Mouse activa o desactiva cada una de estas funciones (vea Preferencias).</li>
 </ul>
 <p>La pestaña <b>CAD</b> (y el menú CAD) solo aparece en el modo CAD. Como en AutoCAD, seleccione primero y luego
@@ -633,7 +667,8 @@ programa. Cualquier otra cosa no ejecuta nada: la línea indica <b>Comando desco
 coinciden) y conserva lo que escribió, para corregirlo o para elegir un comando de la lista con Arriba y Abajo y Enter.
 Un ajuste que se activa escribiendo su nombre indica si ahora está activado o desactivado.</li>
 <li>Enter con la línea vacía repite el último comando.</li>
-<li>Mientras se dibuja un círculo (con el centro ya marcado), escriba su radio y presione Enter.</li>
+<li>Mientras se dibuja un círculo (con el centro ya marcado), escriba su radio y presione Enter; mientras la
+selección sigue al puntero (levantada con un clic), escriba cuánto se mueve.</li>
 <li>Mientras se ejecuta un comando, la línea indica qué hacer a continuación y toma lo que escribe: un ángulo, un factor
 de escala o una elección (bastan las primeras letras del nombre de un botón: C para Conservarlos, E para
 Eliminarlos). Una pregunta («¿eliminar los originales?» de Simetría, «¿escalarlo?» de Alinear) también acepta
@@ -841,6 +876,13 @@ acopla. Su fuente puede ser Helvetica, Times o Courier (Propiedades > Fuente): s
 tiene todo visor de PDF, así que el comentario se ve igual en todas partes. Para escribir texto que forme parte de
 la página, use <b>Agregar texto</b> (más abajo).</li>
 <li><b>Llamada</b> (K): presione en el punto que señala y arrastre hasta donde va el texto.</li>
+<li><b>Más líneas guía en una llamada</b> (como Add Leader de Bluebeam): seleccione la llamada, haga clic con el
+botón derecho donde deba apuntar otra línea guía y elija <b>Agregar línea guía</b> (con clic derecho en su cuadro, la
+nueva línea guía apunta lejos del cuadro, al lado opuesto de la primera). Cada línea guía va al centro del lado más
+cercano del cuadro y lleva la punta de flecha y el Tamaño de punta de flecha de la primera; arrastre el pinzamiento de su
+extremo para que apunte a otro lugar. <b>Quitar línea guía</b> quita la línea guía agregada más cercana a donde hizo clic
+con el botón derecho (la primera se queda). Se dibujan en la propia llamada, así que otros visores de PDF las muestran;
+uno que vuelva a dibujar la llamada a partir de sus ajustes muestra solo la primera.</li>
 <li><b>Los cuadros de texto y las llamadas se ajustan a su texto:</b> el cuadro mantiene su ancho y es tan alto como
 su texto, que se ajusta dentro, al crearlo, al cambiar su texto o el tamaño de fuente y al arrastrar su lado para
 hacerlo más ancho o más angosto. Arrastre su borde superior o inferior (o una esquina) para darle una altura propia:
@@ -950,11 +992,13 @@ señalan entonces cualquier cambio posterior.</li>
 <h2 id="shapes">Formas, líneas y el lápiz</h2>
 <ul>
 <li>Rectángulo (R), Elipse (E), Círculo (O), Nube (D), Máscara, Polígono (Y), Línea (L), Flecha (A),
-Polilínea (Shift+L), Arco, Curva, Lápiz (P). Las formas comparten un botón de la barra de herramientas: haga clic en su flecha para elegir otra.</li>
+Polilínea (Shift+L), Arco, Curva, Lápiz (P). Las formas comparten un botón de la barra de herramientas: haga clic en su flecha para elegir otra.
+Son marcas; para dibujar en la propia página, use la pestaña Dibujo (vea Pestaña Dibujo).</li>
 <li><b>Arco</b> (como el ARCO de tres puntos de AutoCAD; en la pestaña CAD bajo la flecha de Círculo): haga clic en el inicio, en
 un punto por el que pasa el arco y luego en el final; el arco sigue al puntero antes del último clic. Arrastre sus tres puntos para
 cambiar su forma.</li>
-<li><b>Curvar una línea o flecha:</b> selecciónela y arrastre el rombo de su centro: se vuelve una curva suave que pasa por ese
+<li><b>Curvar una línea o flecha:</b> selecciónela y arrastre el rombo de su centro (en el modo CAD: clic en él, mover,
+clic): se vuelve una curva suave que pasa por ese
 punto; los extremos se quedan donde están y la punta de flecha sigue la curva. Lleve el rombo de vuelta a la línea recta para
 enderezarla. La herramienta <b>Curva</b> dibuja una directamente: haga clic en el inicio, en el final y luego hasta donde se curva.</li>
 <li><b>Círculo</b> (O): arrastre desde el centro hasta un punto del círculo. En el modo CAD, haga
@@ -971,13 +1015,16 @@ Rectángulo, Elipse, Círculo, Nube, Máscara, Cuadro de texto, Llamada, Longitu
 cinta métrica, el cuadro del Borrador, Borrar contenido, Capturar área, Recortar páginas,
 Vínculos, marcadores de posición de firma, leyendas) funcionan como en AutoCAD: haga clic donde empieza,
 mueva el puntero (la forma lo sigue sin mantener el botón presionado) y haga clic donde termina.
-Se ajusta, y Shift funciona, igual que al arrastrar; presionar, arrastrar y soltar también sigue
-funcionando. Un clic que tiembla un poco sigue siendo un clic. Esc o un clic derecho cancela la
+Se ajusta, y Shift funciona, igual que al arrastrar; presionar, arrastrar y soltar es un clic y un
+movimiento: la forma sigue al puntero hasta que haga clic donde termina. Un clic que tiembla un poco sigue siendo un clic. Esc o un clic derecho cancela la
 forma que se está dibujando; acercar, alejar o desplazarse entre los dos clics no mueve su primer
 punto. Un clic sobre una marca con el Borrador la sigue eliminando de inmediato, un clic sobre un
 vínculo con la herramienta Vínculos lo sigue abriendo, y dos clics en el mismo lugar con Cuadro
 de texto crean uno del tamaño predeterminado. Nota, Sello, Conteo, Punto numerado e Imagen se siguen colocando
-con un clic.</li>
+con un clic. El <b>Lápiz</b> dibuja de un clic al siguiente: haga clic para empezar, mueva para dibujar (sin presionar
+ningún botón) y haga clic para terminar; Escape descarta el trazo. <b>Resaltado</b> y las demás herramientas de texto (Subrayado, Tachado,
+Censurar...) marcan desde un clic en la primera letra hasta un clic en la última. Los puntos de una <b>Cota</b> también son clics (en
+los otros modos un arrastre da los dos primeros).</li>
 <li><b>Polígono / polilínea:</b> haga clic en cada punto; doble clic o Enter para terminar, Retroceso para quitar el último
 punto, Esc para cancelar.</li>
 <li>Con una herramienta de dibujo, hacer clic en una marca existente la selecciona, y arrastrar mueve la marca o sus
@@ -1056,8 +1103,8 @@ las herramientas de la pestaña Marcas, sellos, mediciones) quedan <b>encima de 
 pueden mover, ocultar, eliminar, poner en capas o acoplar, y la página de debajo queda como
 estaba; otros lectores de PDF las muestran como comentarios.</li>
 <li><b>El contenido de la página</b> es la propia página: su texto, sus líneas y sus imágenes.
-<b>Editar texto</b>, <b>Agregar texto</b>, <b>Editar objetos</b>, la herramienta <b>Imagen</b> y
-<b>Borrar contenido</b> lo cambian. Lo que escriben forma parte de la página: todos los lectores
+<b>Editar texto</b>, <b>Agregar texto</b>, <b>Editar objetos</b>, la herramienta <b>Imagen</b>,
+<b>Borrar contenido</b> y las herramientas de la pestaña <b>Dibujo</b> lo cambian. Lo que escriben forma parte de la página: todos los lectores
 lo muestran y lo imprimen, y no se puede ocultar ni quitar como una marca.</li>
 <li><b>Cómo saberlo:</b> el panel de propiedades muestra una etiqueta sobre su título, <b>Marca:
 encima de la página</b> (violeta) o <b>Contenido de la página: cambia la propia página</b>
@@ -1080,6 +1127,53 @@ párrafo de varias líneas a su propio ancho, como Editar texto; una sola línea
 bloques de Agregar texto se escriben donde están, con sus líneas separadas (o juntas) tanto como crece (o se achica)
 el tamaño. El texto en un ángulo que no es un cuarto de vuelta (una marca de agua en diagonal) no lleva subrayado,
 tachado ni fondo. Para cambiar palabras sueltas, edite el texto (Editar texto) y selecciónelas en el cuadro.</li>
+</ul>
+
+<h2 id="drawing">Pestaña Dibujo: líneas y formas dibujadas en la página</h2>
+<p>La pestaña <b>Dibujo</b> dibuja líneas y formas en la propia página, como su propio dibujo
+vectorial, igual que las líneas de un programa de CAD forman parte de un plano trazado. Las formas
+de la pestaña Marcas siguen siendo marcas, encima de la página (vea Marca o contenido de la
+página).</p>
+<ul>
+<li><b>Herramientas:</b> Línea, Flecha, Polilínea, Polígono, Rectángulo, Elipse, Círculo, Arco,
+Nube y Lápiz (también en Herramientas &gt; Dibujo). Se dibujan igual que las formas del mismo
+nombre de la pestaña Marcas: arrastrando (en el modo CAD, clic, mover, clic); Polilínea y
+Polígono con un clic en cada punto, doble clic o Enter para terminar; Arco con el inicio, un punto
+por el que pasa y el final. Las vistas previas, el ajuste, Shift (pasos de 45&deg;, cuadrados y
+círculos) y la línea de comandos de CAD funcionan igual. Una herramienta de Dibujo siempre
+dibuja: un clic sobre una marca no la elige. En la línea de comandos de CAD, "rect" sigue siendo
+el Rectángulo de la pestaña Marcas: escriba "drawing rect" (su nombre en inglés) para este.</li>
+<li><b>Estilo:</b> con una herramienta de Dibujo elegida, el panel de propiedades muestra el
+estilo de esa herramienta para las próximas formas: Color de línea, Relleno (y Sin borde, Sin
+relleno), Grosor de línea, Estilo de línea, la Punta de flecha inicial y final y la Flecha
+central de las líneas (ninguna, abierta o cerrada), Opacidad y Opacidad del relleno. Negro, de
+1 pt, por omisión, como suelen ser las líneas de un dibujo; se guarda para la próxima vez,
+aparte de los estilos de las herramientas de marcas. Una forma sin color de línea ni relleno no
+dibuja nada.</li>
+<li><b>Su propia capa:</b> todo lo que dibuja la pestaña Dibujo va a una capa del PDF,
+<b>KanzonasPDF drawing</b>, creada la primera vez que dibuja. El panel Capas la muestra:
+desmárquela para ocultar el dibujo, en pantalla y al imprimir, como hacen otros programas de PDF
+que muestran capas. Si vuelve a dibujar mientras está oculta, se muestra de nuevo.</li>
+<li><b>Cómo distinguirlo de las marcas:</b> su propia pestaña, su propia capa, la etiqueta de
+Propiedades <b>Contenido de la página: cambia la propia página</b> para sus herramientas y para lo
+que dibujaron, y una selección <b>naranja</b> cuando Editar objetos o el modo CAD lo seleccionan
+(las demás líneas y formas de la página se ven en azul); Propiedades dice además que está en la
+capa KanzonasPDF drawing.</li>
+<li><b>Cambiarlo después:</b> es el propio dibujo de la página, así que <b>Editar objetos</b>
+(también en la pestaña Dibujo) trabaja con él como con cualquier línea de la página: selecciónelo,
+muévalo, cambie su tamaño, gírelo, elimínelo y cópielo; cambie su Color de línea, Color de
+relleno, Grosor de línea, Estilo de línea y puntas de flecha en Propiedades; llévelo Al frente,
+Adelante, Atrás o Al fondo; agrúpelo con las líneas del propio dibujo (cada una conserva su capa
+dentro del grupo) y desagrúpelo. No aparece en la lista de marcas ni se puede acoplar: ya forma
+parte de la página.</li>
+<li><b>Convertir en dibujo</b> (pestaña Dibujo, Herramientas &gt; Dibujo, el menú del clic
+derecho de una marca): las marcas de formas y líneas seleccionadas (rectángulos, elipses,
+círculos, nubes, polígonos, líneas, flechas, polilíneas, arcos y trazos de lápiz) pasan a ser
+dibujo de la página en la capa KanzonasPDF drawing, con el mismo aspecto exacto, y dejan de ser
+marcas. Las mediciones, notas, sellos, cuadros de texto, llamadas y resaltados siguen siendo
+marcas.</li>
+<li><b>Deshacer:</b> cada forma dibujada es un paso, y también cada Convertir en dibujo. Guardar
+los conserva, y el archivo abierto de nuevo los tiene en su capa.</li>
 </ul>
 
 <h2 id="properties">Colores, bordes y estilos (Panel de propiedades)</h2>
@@ -1138,7 +1232,8 @@ Importar caja de herramientas comparte un cofre con otras personas.</li>
 
 <h2 id="rotate">Girar marcas</h2>
 <ul>
-<li>Seleccione una forma y arrastre el <b>controlador redondo</b> que está encima de ella. Mantenga presionada Shift para pasos de 15&deg;.</li>
+<li>Seleccione una forma y arrastre el <b>controlador redondo</b> que está encima de ella (en el modo CAD: clic en él,
+mover, clic). Mantenga presionada Shift para pasos de 15&deg;.</li>
 <li>O escriba un ángulo en <b>Rotación</b> en el panel de propiedades (en sentido antihorario).</li>
 <li>Los cuadros de texto y las llamadas giran en pasos de 90&deg; (una limitación de los cuadros de texto de PDF).</li>
 </ul>
@@ -1191,7 +1286,7 @@ El texto se sigue leyendo al derecho.</li>
 
 <h2 id="objects">Panel Objetos y bloqueo</h2>
 <ul>
-<li>Pestaña <b>Objetos</b> (panel izquierdo, junto a Páginas, Marcadores y Capas): todas las marcas de la
+<li>Panel <b>Objetos</b> (Ver &gt; Panel de objetos, o su icono en la franja de paneles): todas las marcas de la
 página actual, de delante (arriba en la lista) hacia atrás. Haga clic en una fila para seleccionar esa marca incluso
 cuando está completamente tapada por otras; Ctrl/Shift+clic selecciona varias. Al frente, Subir, Bajar
 y Al fondo cambian el orden de apilamiento.</li>
@@ -1322,7 +1417,8 @@ la suelta sobre otra página, se mueve allí (su contorno muestra dónde queda);
 hacen lo mismo.
 Arrastre un controlador de esquina para cambiar su tamaño conservando sus proporciones
 (mantenga presionada Shift para estirarla libremente), o un controlador lateral para hacerla más ancha o más alta. Cambiar el tamaño de una forma también
-cambia la escala del grosor de sus líneas. <b>Gírela</b> arrastrando el <b>controlador redondo</b> que tiene encima: gira
+cambia la escala del grosor de sus líneas (en el modo CAD se hace clic en un controlador, se mueve y se vuelve a hacer
+clic: vea Modo CAD). <b>Gírela</b> arrastrando el <b>controlador redondo</b> que tiene encima: gira
 alrededor de su centro, el ángulo aparece en la barra de estado y Shift la gira en pasos de 15&deg;. Para girarla un ángulo
 exacto, haga clic con el botón derecho &gt; <b>Girar un ángulo...</b> y escriba los grados (en sentido contrario a las agujas
 del reloj, como la Rotación de una marca; -90 la gira un cuarto en el sentido de las agujas del reloj). El panel
@@ -1342,8 +1438,11 @@ grosores de línea.</li>
 (formas rellenas), tal como los tiene el dibujo; <b>Estilo de línea</b> (continua, discontinua, punteada, raya y punto);
 y, para las líneas (rectas, polilíneas y curvas, no formas cerradas), <b>Punta de flecha inicial</b>, <b>Punta de flecha
 final</b> y <b>Flecha central</b>: ninguna, abierta o cerrada (un triángulo de contorno). Las puntas de flecha pasan a
-formar parte de la línea: se mueven, giran y cambian de color con ella, y tienen su mismo grosor. Cada cambio es un paso
-que Deshacer revierte; elegir ninguna las quita de nuevo. En una línea discontinua o punteada se dibujan continuas.</li>
+formar parte de la línea: se mueven, giran y cambian de color con ella, y tienen su mismo grosor. <b>Tamaño de punta
+de flecha</b> las hace del 25% al 500% del tamaño que da el grosor de la línea (100%); se mantiene cuando cambian el
+grosor, el Estilo de línea o las puntas de flecha. Cada cambio es un paso que Deshacer revierte; elegir ninguna las
+quita de nuevo. En una línea discontinua o punteada se dibujan continuas. Las herramientas Línea, Flecha, Polilínea y
+Arco de la pestaña Dibujo también tienen Tamaño de punta de flecha.</li>
 <li>Supr (o Retroceso) elimina la selección. Haga clic con el botón derecho para Cortar, Copiar, Pegar y Duplicar,
 Desagrupar (grupos), Girar en el sentido de las agujas del reloj, Girar
 en sentido contrario a las agujas del reloj, Girar un ángulo..., los comandos de orden de apilamiento y Eliminar, y, para una sola imagen, Copiar imagen
@@ -1571,6 +1670,18 @@ tamaño. Clic derecho en un marcador &gt; <b>Renumerar el grupo</b> numera su gr
 sin huecos. Un marcador de Conteo copiado con Duplicar (Ctrl+D) o con copiar y pegar toma el siguiente
 número de su grupo. Un marcador seleccionado muestra un recuadro discontinuo alrededor de él y de su número
 (trazos azules sobre blanco, para que se vea también sobre un marcador azul).</li>
+<li><b>Buscar similares</b> (pestaña Medir, grupo "Más", y el menú Medir), como VisualSearch de Bluebeam:
+cuenta un símbolo por usted. Elija Buscar similares y arrastre un cuadro ajustado alrededor de un símbolo (una
+luminaria, un enchufe, un rociador). Elija dónde buscar (<b>Esta página</b> o <b>Todas las páginas</b>), el grupo
+de Conteo en que <b>Contar como</b> (se ofrece uno nuevo, o elija uno del documento), la <b>Sensibilidad</b> (80% al
+principio; menos encuentra más, y más que no son iguales) y si buscarlo <b>También girado</b> en cuartos de vuelta, y
+luego <b>Buscar</b>. KanzonasPDF mira cada página tal como se dibuja, sin sus marcas, una página a la vez (una
+ventana muestra cuánto lleva, y <b>Detener</b> lo detiene: entonces no se pone nada), y pone un marcador de Conteo
+en cada coincidencia, numerado desde el número más alto del grupo, como un solo paso. <b>Revíselos antes de
+quedárselos</b>: borre los que no sean el símbolo, o presione Ctrl+Z para quitarlos todos. Un símbolo en que el
+grupo ya tiene un marcador no se cuenta dos veces, así que puede buscar de nuevo con otra sensibilidad. Funciona
+también con planos escaneados; un cuadro sin nada no encuentra nada. Compara imágenes, así que un símbolo dibujado
+a otro tamaño no se encuentra.</li>
 <li><b>Cota</b> (Shift+D; pestaña Medir, grupo "Más", el menú Medir y el botón Medir de la pestaña CAD),
 como la Cota de Bluebeam y la cota alineada de AutoCAD: haga clic en los dos puntos que va a medir, luego
 mueva el puntero y haga clic donde va la línea de cota (en el modo del mouse Estándar también puede
@@ -1724,7 +1835,7 @@ documento protegido contra cambios lo rechaza.</li>
 páginas a un archivo nuevo (a un archivo nuevo, no al propio documento), Eliminar páginas (las páginas seleccionadas en
 la lista de páginas, o la página actual; pregunta primero, y Ctrl+Z las recupera). Un marcador a una
 página eliminada lleva entonces a la página siguiente (o a la última página).</li>
-<li>Pestaña <b>Capas</b>: muestre u oculte las capas de CAD / de contenido opcional. <b>Marcas en capas</b> (como en
+<li>Panel <b>Capas</b> (Ver &gt; Panel de capas): muestre u oculte las capas de CAD / de contenido opcional. <b>Marcas en capas</b> (como en
 Bluebeam): <b>Nueva capa...</b> agrega una capa al documento, y <b>Las marcas nuevas van en</b> elige la capa en la que van
 las marcas que dibuja (Sin capa: ninguna). Para poner en una capa marcas ya dibujadas, selecciónelas y haga clic con el
 botón derecho &gt; <b>Capa</b> &gt; una capa, Sin capa o Nueva capa.... Una marca en una capa oculta no se dibuja y no se puede
@@ -1758,7 +1869,7 @@ conjunto es un pequeño archivo propio (.kzset) que enumera los PDF; los que est
 o por debajo se guardan por su lugar junto a él, de modo que la carpeta se puede mover o
 compartir con el conjunto dentro. <b>Abrir conjunto...</b> abre uno (también
 arrastrar un archivo .kzset a la ventana).</li>
-<li>El panel <b>Conjuntos</b> (una pestaña del panel izquierdo y un icono de la franja de
+<li>El panel <b>Conjuntos</b> (Ver &gt; Panel de conjuntos, y un icono de la franja de
 paneles) muestra cada archivo con sus páginas debajo. En las páginas de tamaño de plano (11x17 y
 mayores) el número y el título del plano se leen del cajetín (SHEET NO, SHEET TITLE), así que se
 muestra A-101 FLOOR PLAN; las demás páginas, por su etiqueta o número de página. Un archivo que
@@ -1777,7 +1888,7 @@ momento.</li>
 </ul>
 
 <h2 id="bookmarks">Marcadores y tabla de contenido</h2>
-<p>Los marcadores (el esquema del PDF) aparecen en el panel <b>Marcadores</b> (F9). Haga clic en
+<p>Los marcadores (el esquema del PDF) aparecen en el panel <b>Marcadores</b> (F9 lo abre y lo cierra). Haga clic en
 uno para ir a su lugar. Los botones sobre la lista agregan un marcador a la página actual (+),
 cambian el nombre, eliminan, suben y bajan, y aplican sangría (lo convierten en secundario del de
 arriba) o la reducen. El botón <b>⋯</b>, un clic derecho en la lista y <b>Documento &gt;
@@ -2535,11 +2646,14 @@ se inicia KanzonasPDF y a la que vuelve Escape) y las opciones de cada modo:
 <li>Estándar: Desplazar una página por paso de la rueda (activado), Movimiento libre de la página (desactivado).</li>
 <li>Mano: Movimiento libre de la página (activado), Desplazar una página por paso de la rueda (activado).</li>
 <li>CAD: La rueda acerca y aleja en el cursor (Ctrl+rueda desplaza), Cursor en cruz, Lienzo abierto alrededor de las
-páginas, Selección por ventana (azul) y por captura (verde), Clic, mover, clic dibuja el recuadro de selección, Mantenga
-presionado el botón y arrastre para dibujar un lazo, Mostrar la pestaña CAD, Las letras escritas sobre el dibujo van a la
-línea de comandos: todas activadas (la última está desactivada para quien usaba el mouse estilo CAD antes de la 1.5, así
-siguen funcionando los atajos de una letra que usaba). Con el recuadro de clic, mover, clic y el lazo desactivados,
-presionar, arrastrar y soltar dibuja un recuadro.</li>
+páginas, Selección por ventana (azul) y por captura (verde), Clic, mover, clic, sin mantener nunca el botón presionado:
+recuadros de selección, pinzamientos, mover la selección, dibujar (desactivado: se arrastran), Mantenga presionado el
+botón y arrastre para dibujar un lazo, Mostrar la pestaña CAD, Las letras escritas sobre el dibujo van a la línea de
+comandos: todas activadas salvo el lazo (desactivado desde la 1.17: el modo CAD no mantiene presionado ningún botón salvo
+que usted lo pida), y la última desactivada para quien usaba el mouse estilo CAD antes de la 1.5, así siguen
+funcionando los atajos de una letra que usaba. Con Clic, mover, clic desactivado, el modo CAD arrastra como los otros
+modos: presionar, arrastrar y soltar dibuja un recuadro de selección (o un lazo), mueve la selección, un pinzamiento o
+una forma.</li>
 <li>Clic central en un vínculo abre: Preguntar cada vez, Una pestaña nueva o La vista dividida (vea Desplazarse por el
 documento).</li>
 </ul>
