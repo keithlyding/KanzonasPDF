@@ -611,8 +611,8 @@ before you let go); once taken, it's drawn dashed with grips. On a very big draw
 <li><b>Moving:</b> click what's selected to pick it up: over a selected item the pointer is
 the four-way arrow, and after the click the whole selection (markups and the page's own lines,
 text and pictures together) follows the pointer, its outline dashed, with no button held.
-Click where it goes to put it down, on this page, the one beside it or the gray around it
-(snapping as for drawing), or type a distance on the command line and press Enter: it moves
+Click where it goes to put it down (snapping as for drawing; also out on the gray beside the
+page), or type a distance on the command line and press Enter: it moves
 that far toward the pointer, in the page's measuring unit (12'-6" works too), as AutoCAD's
 direct distance entry. One undo step; Escape or a right-click puts it back. A click
 anywhere else selects, or starts a box, and moves nothing. Double-clicking a selected markup

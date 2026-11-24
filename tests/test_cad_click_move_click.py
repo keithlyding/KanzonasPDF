@@ -191,7 +191,7 @@ class Moving(Base):
         self.click((210, 450))                          # the click puts it down
         self.assertIn((160, 450, 360, 450), self.drawn())
 
-    def test_put_down_on_another_page_or_off_the_page(self):
+    def test_put_down_off_the_page(self):
         v = self.v
         v.set_tool("editobjects")
         self.click((150, 400))

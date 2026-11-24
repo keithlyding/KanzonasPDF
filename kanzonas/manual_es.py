@@ -600,8 +600,8 @@ discontinua y pinzamientos. En un dibujo muy grande se completa en un
 momento mientras se mueve.</li>
 <li><b>Mover:</b> haga clic en lo seleccionado para levantarlo: sobre un elemento seleccionado el puntero es la flecha
 de cuatro puntas, y después del clic toda la selección (marcas y las líneas, el texto y las imágenes propios de la página
-a la vez) sigue al puntero, con su contorno discontinuo, sin presionar ningún botón. Haga clic donde va para dejarla, en
-esta página, en la de al lado o en el gris que la rodea (con el ajuste igual que al dibujar), o escriba una distancia en
+a la vez) sigue al puntero, con su contorno discontinuo, sin presionar ningún botón. Haga clic donde va para dejarla (con el ajuste
+igual que al dibujar; también fuera, en el gris junto a la página), o escriba una distancia en
 la línea de comandos y presione Enter: se mueve esa distancia hacia el puntero, en la unidad de medida de la página
 (12'-6" también sirve), como la entrada directa de distancia de AutoCAD. Un solo paso de deshacer;
 Escape o un clic derecho la deja donde estaba. Un clic en cualquier otro lugar selecciona, o empieza un recuadro, y no

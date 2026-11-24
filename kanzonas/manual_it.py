@@ -598,7 +598,7 @@ il pulsante); una volta preso, viene disegnato tratteggiato con i grip. In un di
 <li><b>Spostare:</b> fai clic su ciò che è selezionato per sollevarlo: sopra un elemento selezionato il puntatore è la
 freccia a quattro punte, e dopo il clic l'intera selezione (annotazioni e linee, testo e immagini della pagina insieme)
 segue il puntatore, con il contorno tratteggiato, senza tenere premuto alcun pulsante. Fai clic dove deve andare per
-posarla, su questa pagina, su quella accanto o nel grigio intorno (aggancio come nel disegno), oppure digita una
+posarla (aggancio come nel disegno; anche fuori, nel grigio accanto alla pagina), oppure digita una
 distanza nella riga di comando e premi Invio: si sposta di quella distanza verso il puntatore, nell'unità di misura
 della pagina (va bene anche 12'-6"), come l'immissione diretta della distanza di AutoCAD. Un solo passaggio di
 annullamento; Esc o un clic destro la rimette dov'era. Un clic in un altro punto seleziona, o avvia un riquadro, e non
