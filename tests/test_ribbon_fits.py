@@ -40,6 +40,10 @@ ON_TABS = {
     "Markup": "a_chest a_props t:arc t:arrow t:attach t:callout t:circle t:cloud t:comment "
               "t:curve t:dot t:ellipse t:eraser t:highlight t:ink t:legend t:line t:mask t:note "
               "t:polygon t:polyline t:rect t:stamp t:strikeout t:textbox t:underline",
+    # (1.17: drawing that isn't a markup, written into the page: drawing.py)
+    "Drawing": "A:z_back A:z_backward A:z_forward A:z_front a_group a_props a_to_drawing "
+               "a_ungroup t:d_arc t:d_arrow t:d_circle t:d_cloud t:d_ellipse t:d_ink t:d_line "
+               "t:d_polygon t:d_polyline t:d_rect t:editobjects",
     "Measure": "a_grid a_grid_settings a_measure_summary a_scale_bar a_sheet_scales a_snap_grid "
                "a_snap_objects a_snap_page t:m_angle t:m_area t:m_calibrate t:m_count t:m_dim "
                "t:m_length t:m_perimeter t:m_poly t:m_radius t:m_volume t:space",

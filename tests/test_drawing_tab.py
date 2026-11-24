@@ -371,6 +371,35 @@ class EditObjects(Base):
         v.ungroup_objects()
         self.assertEqual(len(self.drawn(v)), 1)
 
+    def test_grouped_with_a_cad_sheets_clipped_lines(self):
+        # (a plotted sheet draws its lines inside its frame, a clip; the Drawing tab's have
+        # none: a clip holding all of them cuts nothing, so they can be one group)
+        d = pymupdf.open()
+        p = d.new_page(width=600, height=800)
+        x = d.get_new_xref()
+        d.update_object(x, "<<>>")
+        d.update_stream(x, b"q 10 10 580 780 re W n 0 0 1 RG 2 w 40 740 m 560 740 l S "
+                           b"40 700 m 560 700 l S Q\nq 30 600 100 50 re W n 0 0 1 RG 2 w "
+                           b"20 620 m 300 620 l S Q\n")
+        p.set_contents(x)
+        path = os.path.join(tempfile.mkdtemp(), "plot.pdf")
+        d.save(path)
+        v = self.view(path)
+        self.draw(v, "d_line", (100, 200), (300, 300))
+        objs = v.content_objects(0)
+        framed, cut, mine = objs.items[0], objs.items[2], objs.items[3]
+        self.assertTrue(drawing.on_layer(mine["obj"]["ctx"], v.drawing_names(0)))
+        self.assertIsNone(po.group_problem(objs, [framed, objs.items[1], mine]))
+        # (a clip that cuts one of them off is still one they can't be grouped across)
+        self.assertIsNotNone(po.group_problem(objs, [cut, mine]))
+        before = pixels(v.doc[0])
+        v.set_tool("editobjects")
+        v.select_objects(0, [framed, objs.items[1], mine])
+        self.assertIsNot(v.group_objects(), False)
+        self.assertEqual(len([it for it in v.content_objects(0).items
+                              if it["kind"] == "group"]), 1)
+        self.assertEqual(differing(before, pixels(v.doc[0])), 0)
+
     def test_sent_to_the_back_on_its_layer(self):
         v = self.view()
         A.set_tool_props("d_rect", dict(A.tool_props("d_rect"), fill="#ffff00"))

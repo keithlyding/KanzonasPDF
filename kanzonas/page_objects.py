@@ -2925,6 +2925,15 @@ def group_problem(objs, items):
             shapes = objs.clip_shapes()
             clips = {frozenset(shapes[k] if k < len(shapes) else ("?", k) for k in c)
                      for c in clips}
+        if len(clips) > 1:
+            # a clip some of them are under and others not that holds all of them (a CAD
+            # sheet's frame, and lines drawn with the Drawing tab, which have none) cuts
+            # nothing off: drawn inside it or not, they look the same
+            common = frozenset.intersection(*clips)
+            area = _pdf_area(objs, drawn)
+            if area is not None and all(_clip_holds(k, area)
+                                        for k in frozenset.union(*clips) - common):
+                clips = {common}
     if len(clips) > 1:
         return tr("The selected objects are drawn under different clipping: they can't be "
                   "one group.")
@@ -2933,6 +2942,35 @@ def group_problem(objs, items):
         return tr("The selected objects are tagged as different parts of the page (for "
                   "screen readers): they can't be one group.")
     return None
+
+
+def _pdf_area(objs, items):
+    """Where items (Objects items) are drawn, in the page's PDF space, their lines' width
+    around them; None when it can't be told."""
+    tm = getattr(objs, "tm", None)
+    if tm is None or not items:
+        return None
+    area = bounding(pymupdf.Rect(it["rect"]) for it in items) * ~tm
+    pad = max(page_width(it["obj"]) for it in items if it.get("obj")) if \
+        any(it.get("obj") for it in items) else 0.0
+    return area.normalize() + (-pad - 1, -pad - 1, pad + 1, pad + 1)
+
+
+def _clip_holds(key, area):
+    """Whether clip key (a clip_shapes entry) is a rectangle, not turned, holding area (PDF
+    space): it cuts nothing of what's drawn there."""
+    path, ctm = key
+    if path is None or len(ctm) != 6 or abs(ctm[1]) > 1e-9 or abs(ctm[2]) > 1e-9:
+        return False
+    t = path.split()
+    if len(t) != 6 or t[4] != b"re" or t[5] not in (b"W", b"W*"):
+        return False
+    try:
+        x, y, w, h = (float(v) for v in t[:4])
+    except ValueError:
+        return False
+    box = (pymupdf.Rect(x, y, x + w, y + h).normalize() * pymupdf.Matrix(*ctm)).normalize()
+    return box.contains(area)
 
 
 def _layer_split(chains):
