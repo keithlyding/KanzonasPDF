@@ -341,9 +341,10 @@ class OffThePage(Window):
 
 
 class CadDrag(Window):
-    """1.12.1 (the owner, 12 Nov, in CAD mode): what's selected moves by dragging it, with
-    the four-way arrow over it; a drag anywhere else still draws a box or lasso; the text
-    cursor only with a tool that works on text."""
+    """1.12.1 (the owner, 12 Nov, in CAD mode): what's selected moves, with the four-way
+    arrow over it; since 1.17 (the owner, 23 Nov: "No clicking and holding for anything") by
+    a click on it, a move and a click where it goes. A drag anywhere else still moves nothing;
+    the text cursor only with a tool that works on text."""
 
     def setUp(self):
         def build(pg):
@@ -370,7 +371,7 @@ class CadDrag(Window):
             pump(2)
         return self.pw.cursor().shape()
 
-    def test_a_drag_from_the_selection_moves_it_all(self):
+    def test_a_click_on_the_selection_moves_it_all(self):
         w, v, pw = self.w, self.v, self.pw
         # the rectangle's outline and the text line clicked: both selected
         self.click(pw, self.at(P(300, 330)))
@@ -380,7 +381,12 @@ class CadDrag(Window):
         self.assertEqual(self.hover(P(300, 330)), Qt.SizeAllCursor)
         self.assertEqual(self.hover(P(150, 596)), Qt.SizeAllCursor)
         undo_before = len(v._undo)
-        self.drag(pw, self.at(P(300, 330)), self.at(P(340, 300)))
+        self.click(pw, self.at(P(300, 330)))            # picked up
+        self.hover(P(340, 300))                         # (no button held)
+        page = v.doc[0]
+        self.assertAlmostEqual(page.load_annot(self.x).rect.x0, 299, delta=0.5)   # (not yet)
+        del page
+        self.click(pw, self.at(P(340, 300)))            # put down
         page = v.doc[0]
         r = page.load_annot(self.x).rect
         self.assertAlmostEqual(r.x0, 339, delta=1.5)

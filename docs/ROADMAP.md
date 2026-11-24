@@ -183,6 +183,19 @@ a decision changes or a piece of work lands. Details of each version are in
   Drawing tab, a markup's right-click menu) draws shape and line markups into the page as
   their appearance draws them, one undo step; measurements, notes, stamps, text and
   highlights stay markups.
+- 1.17 (the owner, 23 Nov: "in cad mouse mode, the mouse clicks need to function like a cad
+  mouse. No clicking and holding for anything"): CAD mode works by click, move, click
+  (`kanzonas/cad_grips.py`), replacing 1.12.1's drag of the selection: a click on what's
+  selected picks it up and the next click puts it down; a click on a grip (a markup's
+  handles and line ends, the box around several items, the drawing's objects' handles and
+  round turning handle) makes it hot until the next click; the Pen draws from one click to
+  the next, and Highlight and the other text tools mark from one click to the next; a press, drag and release is a click and a move everywhere (selection box,
+  shapes, a Dimension's points). Escape or a right-click puts it back; one undo step each;
+  the middle button still pans; a distance typed on the command line moves the picked-up
+  selection that far toward the pointer (AutoCAD's direct distance entry). The lasso, which can only be held, is off by default; the
+  Click, move, click option (Preferences > Mouse) off gives the drags back. The Standard and
+  Hand modes are unchanged. Not changed in CAD mode: Edit text's drag of a line, the form
+  field tools and a signature's box (a click does what's needed there without holding).
 
 ## Next
 The owner sets this list; nothing below is promised until it's here.

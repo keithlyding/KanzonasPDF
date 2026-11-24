@@ -321,8 +321,8 @@ class CommandLine(QWidget):
                         self.command.cancel()
                 else:
                     self.edit.clear()
-                    from . import cad_draw, cad_select
-                    if v is not None and not cad_draw.cancel(v):
+                    from . import cad_draw, cad_grips, cad_select
+                    if v is not None and not cad_grips.cancel(v) and not cad_draw.cancel(v):
                         cad_select.cancel(v)
                         v.escape_selection()
                 self._back_to_page()
@@ -377,8 +377,10 @@ class CommandLine(QWidget):
             return
         v = self._view()
         if v is not None:
-            from . import cad_draw
-            if cad_draw.typed(v, text):     # (a circle's radius, while one is drawn)
+            from . import cad_draw, cad_grips
+            # (a distance, while the selection follows the pointer; a circle's radius, while
+            # one is drawn)
+            if cad_grips.typed(v, text) or cad_draw.typed(v, text):
                 self.edit.clear()
                 self._hide_list()
                 self._back_to_page()

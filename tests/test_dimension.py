@@ -1,6 +1,6 @@
 """The Dimension tool (dimensions.py), like Bluebeam's Dimension and AutoCAD's DIMALIGNED:
 click the two points to measure, then where the dimension line goes (in the standard mouse
-mode a drag gives the two points too). It draws two extension lines, a dimension line with
+mode a drag gives the two points too; in CAD mode a drag is a click and a move). It draws two extension lines, a dimension line with
 arrowheads and the measured length above it, in the page's scale and unit as Length does.
 
 Checked: drawn by clicks and by a drag; the measured text with a calibrated scale; its grips
@@ -74,9 +74,10 @@ class Drawing(unittest.TestCase):
     MODE_CAD = True
 
     def setUp(self):
-        for key in ("cad_select", "snap_objects", "snap_grid", "snap_page", "mouse_mode"):
+        for key in ("cad_select", "snap_objects", "snap_grid", "snap_page", "mouse_mode",
+                    "click_click"):
             self.addCleanup(setattr, DocumentView, key, getattr(DocumentView, key))
-        DocumentView.cad_select = self.MODE_CAD
+        DocumentView.cad_select = DocumentView.click_click = self.MODE_CAD
         DocumentView.mouse_mode = "cad" if self.MODE_CAD else "standard"
         DocumentView.snap_objects = DocumentView.snap_grid = DocumentView.snap_page = False
 
@@ -116,6 +117,14 @@ class Drawing(unittest.TestCase):
         self.send(v, QEvent.MouseMove, pt, Qt.NoButton)
 
     def drag(self, v, a, b):
+        """Press at a, move to b, release; in CAD mode (1.17: no button held there) a click
+        at a, the move with no button held, a click at b."""
+        if self.MODE_CAD:
+            self.click(v, a)
+            self.hover(v, ((a[0] + b[0]) / 2, (a[1] + b[1]) / 2))
+            self.hover(v, b)
+            self.click(v, b)
+            return
         self.send(v, QEvent.MouseButtonPress, a, Qt.LeftButton)
         self.send(v, QEvent.MouseMove, ((a[0] + b[0]) / 2, (a[1] + b[1]) / 2), Qt.LeftButton)
         self.send(v, QEvent.MouseMove, b, Qt.LeftButton)
@@ -311,6 +320,22 @@ class Drawing(unittest.TestCase):
         v.set_page_scale([0], measure.scale_from_preset(48), "ft-in", '1/4" = 1\'-0"')
         (x2, _m), = self.markups(v)
         self.assertEqual(v.doc[0].load_annot(x2).info["content"], "10'-8\"")
+
+
+    def test_in_cad_mode_a_drag_is_a_click_and_a_move(self):
+        if not self.MODE_CAD:
+            self.skipTest("in the standard mode a drag gives the two points (tested below)")
+        v = self.view()
+        self.send(v, QEvent.MouseButtonPress, A_, Qt.LeftButton)
+        self.send(v, QEvent.MouseMove, B_, Qt.LeftButton)
+        self.send(v, QEvent.MouseButtonRelease, B_, Qt.NoButton)
+        self.assertEqual(len(v.pages[0]._poly), 1)          # (the release adds no point)
+        self.click(v, B_)
+        self.assertEqual(len(v.pages[0]._poly), 2)
+        self.hover(v, C_)
+        self.click(v, C_)
+        (xref, m), = self.markups(v)
+        self.assertTrue(A._same(m["points"], [P(A_), P(B_), P(196, 260)], 0.6))
 
 
 class DrawingStandardMode(Drawing):

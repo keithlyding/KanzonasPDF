@@ -15,6 +15,7 @@ from PySide6.QtWidgets import QWidget, QToolTip, QApplication
 
 from . import annotations as A
 from . import cad_draw
+from . import cad_grips
 from . import cad_select
 from . import curves
 from . import render_layers as RL
@@ -418,6 +419,8 @@ class PageWidget(QWidget):
         self._text_sel = None       # (mode, words) while selecting text
         self._text_mode = None      # "text" or "box" for the drag in progress
         self._ink = []
+        self._hot_ink = False       # CAD mode: the Pen's stroke started by a click (cad_grips.py)
+        self._hot_text = False      # ... and text marked up from a click to the next one
         self._hover = None          # edit-text hover rect
         self._edit = None           # dragging a selected annotation
         self._cards = []            # [(QRectF, xref)] comment boxes drawn last paint
@@ -514,6 +517,23 @@ class PageWidget(QWidget):
             p = getattr(self, name, None)
             if isinstance(p, QPointF):
                 setattr(self, name, moved(p))
+        # (and in CAD mode, zooming between two clicks: a grip made hot, the selection picked
+        # up, a stroke of the Pen: cad_grips.py)
+        if self._ink:
+            self._ink = [moved(p) for p in self._ink]
+        for st in (self._edit, self._obj_edit, getattr(self, "_cad_resize", None),
+                   self._cad_down):
+            if not st:
+                continue
+            for key, val in list(st.items()):
+                if isinstance(val, QPointF):
+                    st[key] = moved(val)
+                elif isinstance(val, QRectF):
+                    st[key] = QRectF(moved(val.topLeft()), moved(val.bottomRight()))
+            if isinstance(st.get("pts"), list):
+                st["pts"] = [moved(p) for p in st["pts"]]
+            for key in ("ghost_pm", "ghost_rect", "bounds_rect", "ghost_path"):
+                st.pop(key, None)       # (pictures of it at the old zoom: drawn again)
 
     def invalidate(self):
         """The page changed: its markups are drawn again; its content too if that changed
@@ -1537,15 +1557,28 @@ class PageWidget(QWidget):
         """Selected markups in CAD mode (changed by commands, not handles): dashed over white
         with grips on their ends and corners, as selected drawing objects are, so a blue
         markup shows as selected too."""
-        lines = []
-        curved = len(models) <= CURVED_MAX
-        for m in models:
-            try:
-                lines += self._model_lines(m, page, curved)
-            except Exception:
-                continue
-        paint_selected_path(p, lines_path(lines))
-        paint_grips(p, [QPointF(x, y) for x, y in grip_points(lines)])
+        # (worked out once for the same markups and zoom: painted again on each pointer move
+        # while a click, move, click follows the pointer, 2,000 markups' outlines took 75 ms
+        # a paint. The models are kept with it, so their ids stay theirs)
+        t = self._screen_transform(page)
+        key = (tuple(map(id, models)), t.m11(), t.m12(), t.m21(), t.m22(), t.dx(), t.dy())
+        got = getattr(self, "_cad_marks", None)
+        if got is None or got[0] != key:
+            lines = []
+            curved = len(models) <= CURVED_MAX
+            for m in models:
+                try:
+                    lines += self._model_lines(m, page, curved)
+                except Exception:
+                    continue        # (a markup that can't be outlined: the rest are)
+            path = lines_path(lines)
+            got = self._cad_marks = (key, list(models), path,
+                                     [QPointF(x, y) for x, y in grip_points(lines)],
+                                     path.boundingRect().adjusted(-5, -5, 5, 5))
+        if p.device() is not self and QRectF(self.rect()).contains(got[4]):
+            return              # (drawn on the gray around the page: none of it would show)
+        paint_selected_path(p, got[2])
+        paint_grips(p, got[3])
 
     def _paint_selection(self, p, page):
         model = self._selected_here()
@@ -2356,8 +2389,8 @@ class PageWidget(QWidget):
                     self.setCursor(handle_cursor(hid))
                     return
         if self.view.cad_select:
-            # (CAD mode: dragging draws a lasso, nothing moves; what a click takes, markups
-            # too, gets the pick box cursor and fades: cad_select.rollover)
+            # (CAD mode: what a click takes, markups too, gets the pick box cursor and fades:
+            # cad_select.rollover; what's selected, the four-way arrow)
             cad_select.apply_cursor(self)
             item = None
         else:
@@ -2510,6 +2543,9 @@ class PageWidget(QWidget):
             self._mid_pan = True
             self.view.begin_pan(e.globalPosition())
             return
+        self._swallow = False
+        if cad_grips.press(self, e):
+            return                          # (CAD mode: the click that places a hot grip)
         cmd = self.view._cad_cmd
         if cmd is not None and cmd.selecting and e.button() == Qt.RightButton:
             cmd.enter_key()                 # (selection done: the command goes on)
@@ -2647,11 +2683,17 @@ class PageWidget(QWidget):
             if self._triple_click(e):
                 return
             self._begin_text_drag(pos, pdf, marquee=tool == "select" and ctrl_held(e))
+            if cad_grips.on(self.view):
+                self._hot_text = True       # (CAD mode: a click starts it, the next ends it)
+                cad_grips.hold(self)
         elif tool in SHAPE_TOOLS:
             self._drag_start = self._drag_now = pos
             self._shape_press = (e.position(), e.timestamp())   # (a click or a drag: cad_draw)
         elif tool == "ink":
             self._ink = [pos]
+            if cad_grips.on(self.view):
+                self._hot_ink = True        # (CAD mode: a click starts it, the next ends it)
+                cad_grips.hold(self)
         elif tool == "edittext":
             # click a line to type in it; press on it and drag to move it (like Acrobat)
             self._hover = None
@@ -2924,6 +2966,12 @@ class PageWidget(QWidget):
         if getattr(self, "_mid_pan", False):
             self.view.continue_pan(e.globalPosition())
             return
+        hot = cad_grips.owner(self.view)
+        if hot is not None:
+            # (CAD mode: a hot grip or the selection picked up follows the pointer, button
+            # held or not, wherever it is)
+            cad_grips.move(hot, e if hot is self else cad_grips.mapped(hot, e))
+            return
         pos = e.position()
         tool = self.view.tool
         cmd = self.view._cad_cmd
@@ -3026,7 +3074,21 @@ class PageWidget(QWidget):
                 tm["now"] = pos
                 self.setCursor(Qt.SizeAllCursor)
                 self.update()
-        elif self._obj_edit is not None:
+        elif self._obj_edit is not None or self._edit is not None:
+            self._edit_move(e, pos)
+        elif self._text_sel is not None:
+            self._text_drag_move(pos)
+        elif self._drag_start is not None:
+            self._drag_now = self._shape_point(pos, e, self._drag_start)
+            self.update()
+        elif self._ink:
+            self._ink.append(pos)
+            self.update()
+
+    def _edit_move(self, e, pos):
+        """A drag (or, in CAD mode, a hot grip: cad_grips.py) of the selected objects' or
+        markup's handle, or of them, reached pos: the preview follows."""
+        if self._obj_edit is not None:
             if (pos - self._obj_edit["start"]).manhattanLength() >= 3:
                 if self._obj_edit["mode"] == "box":
                     self._obj_edit["now"] = pos
@@ -3053,21 +3115,18 @@ class PageWidget(QWidget):
                 if self._edit["mode"] in ("move", "group"):
                     self._show_drop(e, self._edit["start"], self._markups_box())
                 self.update()
-        elif self._text_sel is not None:
-            self._drag_now = pos
-            end_i, end_pt = self.view.page_point_from(self, pos)
-            spans = self.view.text_selection_span(
-                self.index, self.to_pdf(self._drag_start), end_i, end_pt, box=self._marquee)
-            self._text_mode = "box" if self._marquee else (spans[0][1] if spans else "text")
-            self._text_sel = (self._text_mode, [])
-            self.view._set_text_drag(spans)
-            self.view.autoscroll_toward(self.mapToGlobal(pos))
-        elif self._drag_start is not None:
-            self._drag_now = self._shape_point(pos, e, self._drag_start)
-            self.update()
-        elif self._ink:
-            self._ink.append(pos)
-            self.update()
+
+    def _text_drag_move(self, pos):
+        """Selecting (or marking up) text from the press reached pos: what it takes so far
+        is shown."""
+        self._drag_now = pos
+        end_i, end_pt = self.view.page_point_from(self, pos)
+        spans = self.view.text_selection_span(
+            self.index, self.to_pdf(self._drag_start), end_i, end_pt, box=self._marquee)
+        self._text_mode = "box" if self._marquee else (spans[0][1] if spans else "text")
+        self._text_sel = (self._text_mode, [])
+        self.view._set_text_drag(spans)
+        self.view.autoscroll_toward(self.mapToGlobal(pos))
 
     def _shape_point(self, pos, e, start):
         """Where a shape drawn from widget point start ends with the pointer at pos: snapped,
@@ -3093,8 +3152,8 @@ class PageWidget(QWidget):
             over = self._card_at(pos)
         if over is not None:
             if self.view.cad_select and self.view.tool == "select":
-                # CAD mode: dragging draws a lasso, nothing moves; the pick box shows a
-                # click takes it (cad_select.rollover)
+                # CAD mode: the pick box shows a click takes it (cad_select.rollover), the
+                # four-way arrow that a click on what's selected picks it up
                 cad_select.apply_cursor(self)
             else:
                 self.setCursor(Qt.SizeAllCursor)
@@ -3111,6 +3170,9 @@ class PageWidget(QWidget):
     def mouseReleaseEvent(self, e):
         if self._gone():
             return                      # (its tab is closing: the document is closed)
+        if getattr(self, "_swallow", False) and e.button() != Qt.MiddleButton:
+            self._swallow = False       # (the click that placed a hot grip: cad_grips.press)
+            return
         press = getattr(self, "_link_press", None)
         self._link_press = None
         self._release(e)
@@ -3120,9 +3182,8 @@ class PageWidget(QWidget):
                 self.view.follow_link(press[0])
 
     def _release(self, e):
-        if e.button() == Qt.LeftButton and self._edit is not None:
-            self._snap_mark = None
-            self._snap_guides = []
+        if e.button() == Qt.LeftButton and cad_grips.owner(self.view) is self:
+            return              # (CAD mode: the click made it hot; the next click places)
         if e.button() == Qt.MiddleButton and getattr(self, "_mid_pan", False):
             self._mid_pan = False
             self.view.end_pan()
@@ -3141,8 +3202,9 @@ class PageWidget(QWidget):
         if self._dim_press is not None:
             start, self._dim_press = self._dim_press, None
             if tool == "m_dim" and len(self._poly) == 1 and \
-                    not cad_draw.is_click(start, pos, None):
+                    not cad_draw.is_click(start, pos, None) and not cad_grips.clicks(self.view):
                 # released after a drag: that's its second point; a click then places its line
+                # (in CAD mode a drag is a click and a move: the next click is the point)
                 if tool in SNAP_TOOLS:
                     pos = self._snap(pos, e)
                 if shift_held(e):
@@ -3184,48 +3246,9 @@ class PageWidget(QWidget):
         elif self._obj_edit is not None:
             self._objects_release(e, pos)
         elif self._edit is not None:
-            ed, self._edit = self._edit, None
-            preview = ed.get("preview")
-            self.update()
-            if ed["mode"] in ("move", "group") and preview is not None and \
-                    self._dropped_elsewhere(e, ed["start"]):
-                return
-            if ed["mode"] == "group" and ed.get("delta") is not None:
-                delta = ed["delta"]
-                self.view.commit_models(self.index, [(x, A.moved(m, delta))
-                                                     for x, m in ed["group"]])
-            elif preview is not None:
-                if A.fits_text(preview) and ed["mode"] in box_handles(QRectF()):
-                    # a text box or callout resized (issue #90): a new width, its height
-                    # follows the text; its height changed by hand, it keeps that box (and
-                    # stops following its text: Right-click > Fit to text turns it on again)
-                    across = A.quarter(preview["props"]) in (90, 270)
-                    sides = "lr" if across else "tb"
-                    if any(c in sides for c in ed["mode"]):
-                        preview = A.copy(preview)
-                        preview["props"]["fit"] = False
-                    else:
-                        preview = A.fitted(self.view.doc[self.index], preview)
-                self.view.commit_model(self.index, self.view.selection[1], preview)
+            self._edit_release(e, pos)
         elif self._text_sel is not None:
-            a, b = self._drag_start, pos
-            mode = self._text_mode
-            end_i, end_pt = self.view.page_point_from(self, pos)
-            start_pt = self.to_pdf(a)
-            marquee = self._marquee
-            self._text_sel = None
-            self._text_mode = None
-            self._marquee = False
-            self._drag_start = self._drag_now = None
-            self.view._set_text_drag(None)
-            if (b - a).manhattanLength() >= 3:
-                if tool == "select" and mode == "box" and end_i == self.index:
-                    # a box drawn from empty space selects the markups inside it
-                    box = pymupdf.Rect(start_pt, self.to_pdf(b)).normalize()
-                    if self.view.select_in_box(self.index, box, add=ctrl_held(e)) or ctrl_held(e):
-                        return
-                self.view.apply_text_span("select" if tool == "hand" else tool,
-                                          (self.index, start_pt), (end_i, end_pt), box=marquee)
+            self._text_release(e, pos)
         elif self._drag_start is not None and tool in FORM_TOOLS:
             a, b = self._drag_start, self._drag_now
             self._drag_start = self._drag_now = None
@@ -3247,6 +3270,58 @@ class PageWidget(QWidget):
             if len(pts) > 1:
                 self.view.apply_ink(self.index, pts)
 
+    def _edit_release(self, e, pos):
+        """The end of a drag of a selected markup or its handle (in CAD mode, the click that
+        places a hot grip): the change is made, one undo step."""
+        self._snap_mark = None
+        self._snap_guides = []
+        ed, self._edit = self._edit, None
+        preview = ed.get("preview")
+        self.update()
+        if ed["mode"] in ("move", "group") and preview is not None and \
+                self._dropped_elsewhere(e, ed["start"]):
+            return
+        if ed["mode"] == "group" and ed.get("delta") is not None:
+            delta = ed["delta"]
+            self.view.commit_models(self.index, [(x, A.moved(m, delta))
+                                                 for x, m in ed["group"]])
+        elif preview is not None:
+            if A.fits_text(preview) and ed["mode"] in box_handles(QRectF()):
+                # a text box or callout resized (issue #90): a new width, its height
+                # follows the text; its height changed by hand, it keeps that box (and
+                # stops following its text: Right-click > Fit to text turns it on again)
+                across = A.quarter(preview["props"]) in (90, 270)
+                sides = "lr" if across else "tb"
+                if any(c in sides for c in ed["mode"]):
+                    preview = A.copy(preview)
+                    preview["props"]["fit"] = False
+                else:
+                    preview = A.fitted(self.view.doc[self.index], preview)
+            self.view.commit_model(self.index, self.view.selection[1], preview)
+
+    def _text_release(self, e, pos):
+        """The end of selecting (or marking up) text from the press (in CAD mode, the click
+        that ends it: cad_grips.py): the text from there to pos is selected or marked up."""
+        tool = self.view.tool
+        a, b = self._drag_start, pos
+        mode = self._text_mode
+        end_i, end_pt = self.view.page_point_from(self, pos)
+        start_pt = self.to_pdf(a)
+        marquee = self._marquee
+        self._text_sel = None
+        self._text_mode = None
+        self._marquee = False
+        self._drag_start = self._drag_now = None
+        self.view._set_text_drag(None)
+        if (b - a).manhattanLength() >= 3:
+            if tool == "select" and mode == "box" and end_i == self.index:
+                # a box drawn from empty space selects the markups inside it
+                box = pymupdf.Rect(start_pt, self.to_pdf(b)).normalize()
+                if self.view.select_in_box(self.index, box, add=ctrl_held(e)) or ctrl_held(e):
+                    return
+            self.view.apply_text_span("select" if tool == "hand" else tool,
+                                      (self.index, start_pt), (end_i, end_pt), box=marquee)
+
     def finish_poly(self, cancel=False):
         pts, self._poly, self._poly_hover = self._poly, [], None
         self.update()
@@ -3260,6 +3335,8 @@ class PageWidget(QWidget):
     def mouseDoubleClickEvent(self, e):
         if self._gone():
             return                      # (its tab is closing: the document is closed)
+        if cad_grips.double_click(self, e):
+            return                      # (CAD mode: the click that places a hot grip)
         if e.button() == Qt.LeftButton and cad_draw.finish(self, e):
             return      # (CAD mode: a quick second click near the first ends the shape)
         if cad_select.double_click(self, e):

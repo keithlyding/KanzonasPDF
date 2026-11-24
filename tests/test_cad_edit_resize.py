@@ -1,7 +1,8 @@
 """CAD mode (from using 1.7.1): a double-click on text edits it (the page's own text opens in
 Edit text, a markup's text in its editor), and a selection can be resized there: one markup
 by its own handles, several items (markups, or markups and the drawing's objects) by one box
-around them all, one undo step.
+around them all, one undo step. Since 1.17 a handle is clicked (it turns hot), the pointer
+moved and clicked again where it goes: no button is held in CAD mode.
 
     QT_QPA_PLATFORM=offscreen python -m unittest tests.test_cad_edit_resize
 """
@@ -80,17 +81,18 @@ class CadWindow(unittest.TestCase):
         page = self.v.doc[0]
         return [a.xref for a in A.each_annot(page)]
 
-    def drag(self, a, b, mods=Qt.NoModifier):
-        """Press at a, move to b, release; mods held while moving (Shift at the press itself
-        takes an item out of a CAD selection)."""
+    def grip(self, a, b, mods=Qt.NoModifier):
+        """Click the grip at a, move to b with no button held, click there (1.17: CAD mode
+        holds no button); mods held while moving and at the second click (Shift at the
+        first click itself takes an item out of a CAD selection)."""
         w = self.page
         a, b = QPointF(a), QPointF(b)
-        QTest.mousePress(w, Qt.LeftButton, Qt.NoModifier, a.toPoint())
+        QTest.mouseClick(w, Qt.LeftButton, Qt.NoModifier, a.toPoint())
         for k in range(1, 6):
             w.mouseMoveEvent(QMouseEvent(QEvent.MouseMove, a + (b - a) * k / 5,
                                          w.mapToGlobal(a + (b - a) * k / 5), Qt.NoButton,
-                                         Qt.LeftButton, mods))
-        QTest.mouseRelease(w, Qt.LeftButton, mods, b.toPoint())
+                                         Qt.NoButton, mods))
+        QTest.mouseClick(w, Qt.LeftButton, mods, b.toPoint())
         APP.processEvents()
 
 
@@ -128,7 +130,7 @@ class Resize(CadWindow):
         self.page.repaint()
         model = self.page._selected_here()
         corner = self.page._handles(model)["br"].center()
-        self.drag(corner, corner + QPointF(50, 40))
+        self.grip(corner, corner + QPointF(50, 40))
         r = self.rects()[0]
         self.assertGreater(r.width, 120)
         self.assertGreater(r.height, 80)
@@ -140,7 +142,7 @@ class Resize(CadWindow):
         self.assertIsNotNone(box)
         right = box_handles(box)["r"].center()
         before = self.rects()
-        self.drag(right, right + QPointF(100, 0))
+        self.grip(right, right + QPointF(100, 0))
         after = self.rects()
         for b, a in zip(before, after):
             self.assertAlmostEqual(a.x0, b.x0 + (b.x0 - 400) * 1.0, delta=0.6)
@@ -158,7 +160,7 @@ class Resize(CadWindow):
         box = cad_select.resize_box(self.page)
         self.assertIsNotNone(box)
         corner = box_handles(box)["bl"].center()
-        self.drag(corner, corner + QPointF(-50, 0), Qt.ShiftModifier)     # (Shift: free)
+        self.grip(corner, corner + QPointF(-50, 0), Qt.ShiftModifier)     # (Shift: free)
         self.v._obj_cache.pop(0, None)
         shapes = [it for it in self.v.content_objects(0).items if it["kind"] == "shape"]
         self.assertLess(shapes[0]["rect"].x0, 95)           # (the line got longer, leftward)
@@ -175,7 +177,7 @@ class Resize(CadWindow):
         del page
         box = cad_select.resize_box(self.page)
         right = box_handles(box)["r"].center()
-        self.drag(right, right + QPointF(80, 0))
+        self.grip(right, right + QPointF(80, 0))
         page = self.v.doc[0]
         now = [self.v._display_bounds(page, A.read(a)) for a in A.each_annot(page)]
         for b, a in zip(seen, now):

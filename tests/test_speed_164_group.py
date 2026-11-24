@@ -1,4 +1,4 @@
-"""1.16.4: Group, a drag and its release on a big CAD sheet, timed (the owner, 23 Nov 2026:
+"""1.16.4: Group, a move and its end on a big CAD sheet, timed (the owner, 23 Nov 2026:
 on his 174,000-object sheet with 92 layers, grouping a fork truck's 216 shapes took 4.6 s,
 each mouse move of a drag 41 ms and the release 0.7 to 1 s).
 
@@ -7,9 +7,11 @@ the clip again for each run of layers, many lines each in its own  q ... Q , lab
 page turned 270 degrees, and a fork truck of 216 shapes on a layer of its own.
 
 - Group works from the objects as read (it read the 5.8 MB drawing three times).
-- A drag's mouse moves don't wait for CAD mode's idle preparation (a slice of it ran
-  between two moves).
-- The release writes the moved group over where it is and keeps the rest of the objects
+- A move's mouse moves don't wait for CAD mode's idle preparation (a slice of it ran
+  between two moves). Since 1.17 CAD mode moves by clicks (a click on the group picks it
+  up, the pointer moves with no button held, a click puts it down): the preparation waits
+  for that click as it waited for a held button to be let go.
+- The click that puts it down (the release of a drag before 1.17) writes the moved group over where it is and keeps the rest of the objects
   as read, and the sheet's scale note isn't read again when the text didn't change.
 
 Grouping and the release are timed against one read of the sheet's objects, so a slower
@@ -38,6 +40,7 @@ from PySide6.QtWidgets import QApplication  # noqa: E402
 
 APP = QApplication.instance() or QApplication([])
 
+from kanzonas import cad_grips  # noqa: E402
 from kanzonas import page_objects as P  # noqa: E402
 
 FRAME = b"q\n648 0 m\n5951 0 l\n5951 10199 l\n648 10199 l\n648 0 l W n\n"
@@ -136,7 +139,7 @@ class BigSheet(unittest.TestCase):
         objs = self.v.content_objects(0)
         return [it for it in objs.items if it["obj"]["ctx"][0] == (b"/OC /Fork BDC",)]
 
-    def test_group_drag_and_release(self):
+    def test_group_picked_up_moved_and_put_down(self):
         w, v = self.w, self.v
         t = time.perf_counter()
         objs = P.Objects(v.doc[0])
@@ -159,10 +162,10 @@ class BigSheet(unittest.TestCase):
                 w.a_undo.trigger()
                 APP.processEvents()
         group = min(tries)
-        # drags of the group and their releases. In the first, right after grouping, CAD
-        # mode's idle preparation has all the sheet's outlines still to read: its first
-        # mouse moves are timed (the preparation, run between them, read them in half a
-        # second). The fastest of three releases
+        # moves of the group, each picked up by a click and put down by a click. In the first,
+        # right after grouping, CAD mode's idle preparation has all the sheet's outlines
+        # still to read: its first mouse moves are timed (the preparation, run between them,
+        # read them in half a second). The fastest of three clicks that put it down
         pw = v.pages[0]
         releases = []
         for k in range(3):
@@ -173,8 +176,9 @@ class BigSheet(unittest.TestCase):
                 self.assertTrue(any("lines" not in it for it in v.content_objects(0).items))
                 v._prep_timer.start(0)
                 APP.processEvents()
-            QTest.mousePress(pw, Qt.LeftButton, Qt.NoModifier, c)
+            QTest.mouseClick(pw, Qt.LeftButton, Qt.NoModifier, c)
             APP.processEvents()
+            self.assertIs(cad_grips.owner(v), pw)               # (picked up)
             each = []
             for i in range(1, 9):
                 t = time.perf_counter()
@@ -185,8 +189,9 @@ class BigSheet(unittest.TestCase):
             if k == 0:
                 first, move = each, statistics.median(each)
             t = time.perf_counter()
-            QTest.mouseRelease(pw, Qt.LeftButton, Qt.NoModifier, c + QPoint(40, 24))
+            QTest.mouseClick(pw, Qt.LeftButton, Qt.NoModifier, c + QPoint(40, 24))
             releases.append(time.perf_counter() - t)
+            self.assertIsNone(cad_grips.owner(v))
             APP.processEvents()
             self.assertEqual([it["kind"] for it in v.obj_sel[1]], ["group"])
             now = v.obj_sel[1][0]["rect"]

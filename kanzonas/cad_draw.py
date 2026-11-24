@@ -1,6 +1,8 @@
 """Drawing shapes in CAD mode, as in AutoCAD and Bluebeam: click where the shape starts, move
 (the preview follows the pointer with no button held), click where it ends. A press, drag and
-release still draws it too. Escape or a right-click cancels a shape in progress.
+release is a click and a move: the shape goes on following the pointer until the next click
+(with Preferences > Mouse, "Click, move, click" off, a drag draws it at once). Escape or a
+right-click cancels a shape in progress.
 
 The first point is kept as a point of the page (view._cad_shape["at"]), so zooming or
 scrolling between the two clicks doesn't move it (as cad_select.py keeps the first corner of
@@ -72,12 +74,17 @@ def start(w, e, a, b):
     down = getattr(w, "_shape_press", None)     # (raw press position, its time in ms)
     raw = e.position()
     ms = None
-    if down is not None:
-        ms = e.timestamp() - down[1]
-        if not is_click(down[0], raw, ms):
+    # with click, move, click on (Preferences > Mouse), a press, drag and release is a click
+    # and a move: the shape goes on following the pointer, the next click ends it (the
+    # owner, 23 Nov 2026: "No clicking and holding for anything")
+    from . import cad_grips
+    if not cad_grips.clicks(v):
+        if down is not None:
+            ms = e.timestamp() - down[1]
+            if not is_click(down[0], raw, ms):
+                return False
+        elif not is_click(a, b, None):
             return False
-    elif not is_click(a, b, None):
-        return False
     tool = v.tool
     pdf = w.to_pdf(a)
     # a click on a markup with the Eraser deletes it, and on a link with the Links tool

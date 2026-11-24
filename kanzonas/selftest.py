@@ -488,6 +488,37 @@ def run(log_path):
             for q in pts:
                 v.annot_at(1, q)
             per("markup hover", 150, lambda k: v.annot_at(1, pts[k]))
+            # CAD mode's click, move, click: the 2,000 markups, selected and picked up by a
+            # click, follow the pointer with no button held, drawn again on each move (1.16
+            # took 80 ms a move dragging them: their outlines worked out on each paint)
+            from PySide6.QtCore import QEvent, QPointF, Qt
+            from PySide6.QtGui import QMouseEvent
+            from . import annotations, cad_grips
+            v.mouse_mode, v.cad_select, v.click_click = "cad", True, True
+            v.set_tool("select")
+            page = v.doc[1]
+            v._set_selection(1, [a.xref for a in annotations.each_annot(page)])
+            del page
+            pw = v.pages[1]
+            v.ensureWidgetVisible(pw)
+            app.processEvents()
+
+            def mouse(kind, at, button, buttons):
+                return QMouseEvent(kind, at, pw.mapToGlobal(at), button, buttons, Qt.NoModifier)
+            at = QPointF(pw.to_screen_pt(P(20, 25)))       # (on the first markup's edge)
+            pw.mousePressEvent(mouse(QEvent.MouseButtonPress, at, Qt.LeftButton, Qt.LeftButton))
+            pw.mouseReleaseEvent(mouse(QEvent.MouseButtonRelease, at, Qt.LeftButton,
+                                       Qt.NoButton))
+            assert cad_grips.owner(v) is pw, "a click on the selection didn't pick it up"
+            pw.repaint()
+            per("CAD move", 30, lambda k: (pw.mouseMoveEvent(mouse(
+                QEvent.MouseMove, at + QPointF(3 * k, 2 * k), Qt.NoButton, Qt.NoButton)),
+                pw.repaint()))
+            assert cad_grips.cancel(v), "the selection picked up wasn't following the pointer"
+            v.clear_selection()
+            for k in ("mouse_mode", "cad_select", "click_click"):
+                delattr(v, k)                   # (the class's own: the mode in use)
+            v.set_tool("hand")
             v.object_at(0, pts[0])
             per("objects hover", 150, lambda k: v.object_at(0, pts[k]))
             w, h = 3264, 2448                       # 8 megapixels
@@ -514,8 +545,8 @@ def run(log_path):
             v.dirty = False
             v.close_doc()
             v.deleteLater()
-        limits = {"text drag move": 0.01, "markup hover": 0.01, "objects hover": 0.005,
-                  "night mode": 0.5, "command preview": 0.08, "Tab on a form": 0.02,
+        limits = {"text drag move": 0.01, "markup hover": 0.01, "CAD move": 0.05,
+                  "objects hover": 0.005, "night mode": 0.5, "command preview": 0.08, "Tab on a form": 0.02,
                   "insert 100 pages": 2.5, "delete 10 pages": 2.5}
         slow = [f"{k} {took[k] * 1000:.1f} ms (limit {lim * 1000:g} ms)"
                 for k, lim in limits.items() if took[k] >= lim]

@@ -7229,8 +7229,8 @@ msgid "Window (blue) and crossing (green) selection: clicks add to the selection
 msgstr "Selección por ventana (azul) y por captura (verde): los clics agregan a la selección, Shift quita y Escape la borra"
 
 #: cad
-msgid "Click, move, click draws the selection box"
-msgstr "Clic, mover, clic dibuja el recuadro de selección"
+msgid "Click, move, click, never holding the button: selection boxes, grips, moving the selection, drawing (off: drag them)"
+msgstr "Clic, mover, clic, sin mantener nunca el botón presionado: recuadros de selección, pinzamientos, mover la selección, dibujar (desactivado: se arrastran)"
 
 #: cad
 msgid "Hold the button and drag to draw a lasso"
@@ -12084,3 +12084,24 @@ msgstr "Dibujado con la pestaña Dibujo, en la capa KanzonasPDF drawing."
 
 msgid "For the next shapes you draw with this tool, saved for next time. They're drawn into the page itself, on the layer KanzonasPDF drawing; Edit objects selects and changes them."
 msgstr "Para las próximas formas que dibuje con esta herramienta; se guarda para la próxima vez. Se dibujan en la propia página, en la capa KanzonasPDF drawing; Editar objetos las selecciona y las cambia."
+
+msgid "Move to draw, click to end the stroke (Escape or a right-click cancels)"
+msgstr "Mueva para dibujar, haga clic para terminar el trazo (Escape o un clic derecho cancela)"
+
+msgid "Move to turn it, click to set the angle; Shift: 15° steps (Escape or a right-click puts it back)"
+msgstr "Mueva para girarlo, haga clic para fijar el ángulo; Shift: pasos de 15° (Escape o un clic derecho lo deja como estaba)"
+
+msgid "Move it, click where it goes, or type the distance toward the pointer and press Enter (Escape or a right-click puts it back)"
+msgstr "Muévalo, haga clic donde va, o escriba la distancia hacia el puntero y presione Enter (Escape o un clic derecho lo deja como estaba)"
+
+msgid "Move the grip, click where it goes (Escape or a right-click puts it back)"
+msgstr "Mueva el pinzamiento, haga clic donde va (Escape o un clic derecho lo deja como estaba)"
+
+msgid "Put back as it was"
+msgstr "Se dejó como estaba"
+
+msgid "Point the way it goes, then type the distance as a number (or 12'-6\") and press Enter; or click where it goes"
+msgstr "Apunte hacia donde va, luego escriba la distancia como un número (o 12'-6\") y presione Enter; o haga clic donde va"
+
+msgid "Move to where the text ends, click there (Escape or a right-click cancels)"
+msgstr "Mueva hasta donde termina el texto y haga clic ahí (Escape o un clic derecho cancela)"

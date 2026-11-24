@@ -558,6 +558,14 @@ dibujo y las marcas dibujadas encima (nubes, líneas, notas...), en una sola sel
 Simetría, Alinear, Matriz y Eliminar trabajan entonces sobre todo junto, y un solo Ctrl+Z lo deshace (el texto del
 dibujo solo se mueve: no se copia, gira, escala ni refleja). <b>Seleccionar</b> (la pestaña CAD, o V cuando las letras
 no van a la línea de comandos) selecciona del mismo modo solo sus marcas, o los caracteres del texto de la página.</p>
+<p><b>Solo clics, como en AutoCAD:</b> en el modo CAD nunca se mantiene presionado el botón del mouse. Lo que otros
+programas hacen arrastrando aquí es <b>clic, mover, clic</b>: haga clic para empezar (la primera esquina de un recuadro de
+selección, un pinzamiento, lo seleccionado, el primer punto de una forma), mueva el mouse sin presionar ningún botón (lo
+que está haciendo sigue al puntero, así lo ve antes de que se haga) y vuelva a hacer clic para terminar. <b>Escape</b> o
+un <b>clic derecho</b> lo detiene y lo deja todo como estaba. Presionar, arrastrar y soltar cuenta como un clic y un
+movimiento: al soltar no se hace nada, el clic siguiente lo termina. Cada clic, mover, clic se deshace con un solo Ctrl+Z.
+Mantener presionada la <b>rueda</b> y arrastrar sigue desplazando la vista, también a mitad de camino. (Preferencias &gt;
+Mouse, CAD: desactive <b>Clic, mover, clic</b> para arrastrar en su lugar.)</p>
 <ul>
 <li>Haga <b>clic</b> en algo para agregarlo a la selección. <b>Shift+clic</b> lo quita. <b>Escape</b> borra toda la
 selección, también justo después de escribir una letra para la línea de comandos o de un clic que empezó un cuadro de
@@ -568,8 +576,9 @@ una marca para ver su propio menú, y en los objetos del dibujo para ver el suyo
 <b>Cambiar el tamaño:</b> una marca seleccionada muestra sus propios controladores (las esquinas y los lados de un
 rectángulo, los extremos de una línea); las formas e imágenes propias del dibujo muestran controladores a su alrededor;
 varios elementos (o marcas junto con objetos del dibujo) muestran un solo recuadro con controladores alrededor de todos.
-Arrastre un controlador para cambiar el tamaño; una esquina conserva las proporciones (mantenga presionada Shift mientras
-arrastra para cambiarlo libremente; Shift en el propio clic quita un elemento de la selección). Todo el cambio se deshace
+Haga clic en un controlador y queda <b>activo</b>: sigue al puntero; vuelva a hacer clic donde va. Una esquina conserva
+las proporciones (mantenga presionada Shift mientras lo mueve y en el segundo clic para cambiar el tamaño libremente;
+Shift en el primer clic quita un elemento de la selección). Todo el cambio se deshace
 con un solo Ctrl+Z. El texto propio del dibujo solo se mueve. <b>Doble clic</b> en un texto para editarlo: el texto propio
 de la página se abre en Editar texto, el texto de una marca (un cuadro de texto, una nota, el comentario de una forma) en
 su editor.
@@ -585,25 +594,37 @@ clic. De izquierda a derecha es una <b>ventana azul</b> de línea continua: toma
 derecha a izquierda es un <b>recuadro de captura verde</b> de línea discontinua: toma todo lo que toca, incluida una
 línea que lo atraviese. La primera esquina se marca en cuanto hace clic, y la barra de estado pide la otra esquina. Un
 clic rápido cuenta como clic aunque el mouse se haya movido un poco al presionar, y hacer clic otra vez en la primera
-esquina conserva el recuadro. Escape descarta un recuadro empezado. Mantenga presionada Shift en el segundo clic para
+esquina conserva el recuadro. Presionar en el papel vacío, arrastrar y soltar también empieza un recuadro: su otra
+esquina es el clic siguiente. Escape descarta un recuadro empezado. Mantenga presionada Shift en el segundo clic para
 quitar elementos en lugar de agregarlos. Un recuadro (o un lazo) también puede empezar y terminar en el <b>área gris
 alrededor de la página</b>, útil cuando la hoja está cubierta. Una forma rellena o una imagen que cubre toda la hoja (un
 fondo, un escaneo) cuenta aquí como papel vacío: un clic en ella empieza un recuadro, y solo una ventana alrededor de toda
 la hoja la toma (una forma rellena, también un clic justo en su borde).</li>
-<li><b>Mantenga presionado el botón y arrastre</b>: un <b>lazo</b> que sigue al puntero. Si al principio lo dibuja hacia
+<li><b>Lazo</b>, lo único del modo CAD que mantiene presionado el botón, así que está desactivado salvo que active
+<b>Mantenga presionado el botón y arrastre para dibujar un lazo</b> en Preferencias &gt; Mouse: entonces mantener
+presionado el botón y arrastrar desde el papel vacío dibuja un lazo que sigue al puntero. Si al principio lo dibuja hacia
 la derecha es un lazo de ventana azul (lo que queda completamente dentro); hacia la izquierda, un lazo de captura verde
 (lo que toca). Shift+lazo quita elementos.</li>
 <li>Con Seleccionar, un recuadro o un lazo que no toma marcas selecciona texto: los caracteres dentro de una ventana, o
 los que toca un recuadro de captura (Ctrl+C los copia).</li>
 <li>Mientras dibuja un recuadro o un lazo, lo que tomaría <b>brilla</b> (azul para una ventana, verde para un recuadro de
-captura), así que ve lo que obtendrá antes del segundo clic o antes de soltar; una vez tomado, se dibuja con línea
+captura), así que ve lo que obtendrá antes del segundo clic (o, con un lazo, antes de soltar); una vez tomado, se dibuja con línea
 discontinua y pinzamientos. En un dibujo muy grande se completa en un
 momento mientras se mueve.</li>
-<li>Arrastre lo seleccionado para moverlo, como en AutoCAD: sobre un elemento seleccionado el puntero es la flecha de
-cuatro puntas, y arrastrar desde él mueve toda la selección (marcas y las líneas, el texto y las imágenes propios de la
-página a la vez; un solo paso de deshacer; con el ajuste igual que al dibujar). Un arrastre que empieza en cualquier
-otro lugar dibuja un lazo o un cuadro y no mueve nada. Los controladores cuadrados de una marca u objeto seleccionado
-cambian su tamaño, y <b>Mover</b> de la pestaña CAD mueve desde un punto base.</li>
+<li><b>Mover:</b> haga clic en lo seleccionado para levantarlo: sobre un elemento seleccionado el puntero es la flecha
+de cuatro puntas, y después del clic toda la selección (marcas y las líneas, el texto y las imágenes propios de la página
+a la vez) sigue al puntero, con su contorno discontinuo, sin presionar ningún botón. Haga clic donde va para dejarla (con el ajuste
+igual que al dibujar; también fuera, en el gris junto a la página), o escriba una distancia en
+la línea de comandos y presione Enter: se mueve esa distancia hacia el puntero, en la unidad de medida de la página
+(12'-6" también sirve), como la entrada directa de distancia de AutoCAD. Un solo paso de deshacer;
+Escape o un clic derecho la deja donde estaba. Un clic en cualquier otro lugar selecciona, o empieza un recuadro, y no
+mueve nada. El doble clic en una marca seleccionada sigue editando su texto. <b>Mover</b> de la pestaña CAD mueve desde
+un punto base.</li>
+<li>Los <b>pinzamientos</b> funcionan igual: haga clic en uno para activarlo, mueva y haga clic donde va. Son los
+controladores cuadrados que cambian el tamaño de una marca, de los objetos del dibujo o del recuadro alrededor de varios
+elementos, los dos extremos de una línea y el rombo de su centro que la curva, las esquinas de un polígono, una polilínea
+o una medición, y el controlador redondo encima de una forma que la <b>gira</b> (el ángulo se ve mientras mueve; Shift:
+pasos de 15&deg;). La barra de estado indica qué hace el clic siguiente.</li>
 <li>Preferencias &gt; Mouse activa o desactiva cada una de estas funciones (vea Preferencias).</li>
 </ul>
 <p>La pestaña <b>CAD</b> (y el menú CAD) solo aparece en el modo CAD. Como en AutoCAD, seleccione primero y luego
@@ -646,7 +667,8 @@ programa. Cualquier otra cosa no ejecuta nada: la línea indica <b>Comando desco
 coinciden) y conserva lo que escribió, para corregirlo o para elegir un comando de la lista con Arriba y Abajo y Enter.
 Un ajuste que se activa escribiendo su nombre indica si ahora está activado o desactivado.</li>
 <li>Enter con la línea vacía repite el último comando.</li>
-<li>Mientras se dibuja un círculo (con el centro ya marcado), escriba su radio y presione Enter.</li>
+<li>Mientras se dibuja un círculo (con el centro ya marcado), escriba su radio y presione Enter; mientras la
+selección sigue al puntero (levantada con un clic), escriba cuánto se mueve.</li>
 <li>Mientras se ejecuta un comando, la línea indica qué hacer a continuación y toma lo que escribe: un ángulo, un factor
 de escala o una elección (bastan las primeras letras del nombre de un botón: C para Conservarlos, E para
 Eliminarlos). Una pregunta («¿eliminar los originales?» de Simetría, «¿escalarlo?» de Alinear) también acepta
@@ -975,7 +997,8 @@ Son marcas; para dibujar en la propia página, use la pestaña Dibujo (vea Pesta
 <li><b>Arco</b> (como el ARCO de tres puntos de AutoCAD; en la pestaña CAD bajo la flecha de Círculo): haga clic en el inicio, en
 un punto por el que pasa el arco y luego en el final; el arco sigue al puntero antes del último clic. Arrastre sus tres puntos para
 cambiar su forma.</li>
-<li><b>Curvar una línea o flecha:</b> selecciónela y arrastre el rombo de su centro: se vuelve una curva suave que pasa por ese
+<li><b>Curvar una línea o flecha:</b> selecciónela y arrastre el rombo de su centro (en el modo CAD: clic en él, mover,
+clic): se vuelve una curva suave que pasa por ese
 punto; los extremos se quedan donde están y la punta de flecha sigue la curva. Lleve el rombo de vuelta a la línea recta para
 enderezarla. La herramienta <b>Curva</b> dibuja una directamente: haga clic en el inicio, en el final y luego hasta donde se curva.</li>
 <li><b>Círculo</b> (O): arrastre desde el centro hasta un punto del círculo. En el modo CAD, haga
@@ -992,13 +1015,16 @@ Rectángulo, Elipse, Círculo, Nube, Máscara, Cuadro de texto, Llamada, Longitu
 cinta métrica, el cuadro del Borrador, Borrar contenido, Capturar área, Recortar páginas,
 Vínculos, marcadores de posición de firma, leyendas) funcionan como en AutoCAD: haga clic donde empieza,
 mueva el puntero (la forma lo sigue sin mantener el botón presionado) y haga clic donde termina.
-Se ajusta, y Shift funciona, igual que al arrastrar; presionar, arrastrar y soltar también sigue
-funcionando. Un clic que tiembla un poco sigue siendo un clic. Esc o un clic derecho cancela la
+Se ajusta, y Shift funciona, igual que al arrastrar; presionar, arrastrar y soltar es un clic y un
+movimiento: la forma sigue al puntero hasta que haga clic donde termina. Un clic que tiembla un poco sigue siendo un clic. Esc o un clic derecho cancela la
 forma que se está dibujando; acercar, alejar o desplazarse entre los dos clics no mueve su primer
 punto. Un clic sobre una marca con el Borrador la sigue eliminando de inmediato, un clic sobre un
 vínculo con la herramienta Vínculos lo sigue abriendo, y dos clics en el mismo lugar con Cuadro
 de texto crean uno del tamaño predeterminado. Nota, Sello, Conteo, Punto numerado e Imagen se siguen colocando
-con un clic.</li>
+con un clic. El <b>Lápiz</b> dibuja de un clic al siguiente: haga clic para empezar, mueva para dibujar (sin presionar
+ningún botón) y haga clic para terminar; Escape descarta el trazo. <b>Resaltado</b> y las demás herramientas de texto (Subrayado, Tachado,
+Censurar...) marcan desde un clic en la primera letra hasta un clic en la última. Los puntos de una <b>Cota</b> también son clics (en
+los otros modos un arrastre da los dos primeros).</li>
 <li><b>Polígono / polilínea:</b> haga clic en cada punto; doble clic o Enter para terminar, Retroceso para quitar el último
 punto, Esc para cancelar.</li>
 <li>Con una herramienta de dibujo, hacer clic en una marca existente la selecciona, y arrastrar mueve la marca o sus
@@ -1206,7 +1232,8 @@ Importar caja de herramientas comparte un cofre con otras personas.</li>
 
 <h2 id="rotate">Girar marcas</h2>
 <ul>
-<li>Seleccione una forma y arrastre el <b>controlador redondo</b> que está encima de ella. Mantenga presionada Shift para pasos de 15&deg;.</li>
+<li>Seleccione una forma y arrastre el <b>controlador redondo</b> que está encima de ella (en el modo CAD: clic en él,
+mover, clic). Mantenga presionada Shift para pasos de 15&deg;.</li>
 <li>O escriba un ángulo en <b>Rotación</b> en el panel de propiedades (en sentido antihorario).</li>
 <li>Los cuadros de texto y las llamadas giran en pasos de 90&deg; (una limitación de los cuadros de texto de PDF).</li>
 </ul>
@@ -1390,7 +1417,8 @@ la suelta sobre otra página, se mueve allí (su contorno muestra dónde queda);
 hacen lo mismo.
 Arrastre un controlador de esquina para cambiar su tamaño conservando sus proporciones
 (mantenga presionada Shift para estirarla libremente), o un controlador lateral para hacerla más ancha o más alta. Cambiar el tamaño de una forma también
-cambia la escala del grosor de sus líneas. <b>Gírela</b> arrastrando el <b>controlador redondo</b> que tiene encima: gira
+cambia la escala del grosor de sus líneas (en el modo CAD se hace clic en un controlador, se mueve y se vuelve a hacer
+clic: vea Modo CAD). <b>Gírela</b> arrastrando el <b>controlador redondo</b> que tiene encima: gira
 alrededor de su centro, el ángulo aparece en la barra de estado y Shift la gira en pasos de 15&deg;. Para girarla un ángulo
 exacto, haga clic con el botón derecho &gt; <b>Girar un ángulo...</b> y escriba los grados (en sentido contrario a las agujas
 del reloj, como la Rotación de una marca; -90 la gira un cuarto en el sentido de las agujas del reloj). El panel
@@ -2615,11 +2643,14 @@ se inicia KanzonasPDF y a la que vuelve Escape) y las opciones de cada modo:
 <li>Estándar: Desplazar una página por paso de la rueda (activado), Movimiento libre de la página (desactivado).</li>
 <li>Mano: Movimiento libre de la página (activado), Desplazar una página por paso de la rueda (activado).</li>
 <li>CAD: La rueda acerca y aleja en el cursor (Ctrl+rueda desplaza), Cursor en cruz, Lienzo abierto alrededor de las
-páginas, Selección por ventana (azul) y por captura (verde), Clic, mover, clic dibuja el recuadro de selección, Mantenga
-presionado el botón y arrastre para dibujar un lazo, Mostrar la pestaña CAD, Las letras escritas sobre el dibujo van a la
-línea de comandos: todas activadas (la última está desactivada para quien usaba el mouse estilo CAD antes de la 1.5, así
-siguen funcionando los atajos de una letra que usaba). Con el recuadro de clic, mover, clic y el lazo desactivados,
-presionar, arrastrar y soltar dibuja un recuadro.</li>
+páginas, Selección por ventana (azul) y por captura (verde), Clic, mover, clic, sin mantener nunca el botón presionado:
+recuadros de selección, pinzamientos, mover la selección, dibujar (desactivado: se arrastran), Mantenga presionado el
+botón y arrastre para dibujar un lazo, Mostrar la pestaña CAD, Las letras escritas sobre el dibujo van a la línea de
+comandos: todas activadas salvo el lazo (desactivado desde la 1.17: el modo CAD no mantiene presionado ningún botón salvo
+que usted lo pida), y la última desactivada para quien usaba el mouse estilo CAD antes de la 1.5, así siguen
+funcionando los atajos de una letra que usaba. Con Clic, mover, clic desactivado, el modo CAD arrastra como los otros
+modos: presionar, arrastrar y soltar dibuja un recuadro de selección (o un lazo), mueve la selección, un pinzamiento o
+una forma.</li>
 <li>Clic central en un vínculo abre: Preguntar cada vez, Una pestaña nueva o La vista dividida (vea Desplazarse por el
 documento).</li>
 </ul>
