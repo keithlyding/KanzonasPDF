@@ -211,6 +211,30 @@ class Moving(Base):
         self.assertNotIn((100, 400, 300, 400), self.drawn())
 
 
+class Zoom(Base):
+    def test_a_zoom_between_the_clicks_keeps_where_it_was_picked_up(self):
+        v = self.v
+        v.set_tool("editobjects")
+        self.click((150, 400))
+        self.click((150, 400))
+        v.set_zoom(2.0)                                 # (the wheel, halfway)
+        APP.processEvents()
+        self.hover((180, 430))
+        self.click((180, 430))
+        self.assertIn((130, 430, 330, 430), self.drawn())
+
+    def test_and_a_hot_grip_too(self):
+        v = self.v
+        v.set_tool("select")
+        self.click((425, 100))
+        self.click(self.handle("br"))
+        v.set_zoom(1.5)
+        APP.processEvents()
+        self.hover((540, 200))
+        self.click((540, 200))
+        self.assertEqual(self.rects()[0], (400, 100, 540, 200))
+
+
 class Grips(Base):
     def test_a_markups_corner_grip(self):
         v = self.v

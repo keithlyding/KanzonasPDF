@@ -520,6 +520,23 @@ class PageWidget(QWidget):
             p = getattr(self, name, None)
             if isinstance(p, QPointF):
                 setattr(self, name, moved(p))
+        # (and in CAD mode, zooming between two clicks: a grip made hot, the selection picked
+        # up, a stroke of the Pen: cad_grips.py)
+        if self._ink:
+            self._ink = [moved(p) for p in self._ink]
+        for st in (self._edit, self._obj_edit, getattr(self, "_cad_resize", None),
+                   self._cad_down):
+            if not st:
+                continue
+            for key, val in list(st.items()):
+                if isinstance(val, QPointF):
+                    st[key] = moved(val)
+                elif isinstance(val, QRectF):
+                    st[key] = QRectF(moved(val.topLeft()), moved(val.bottomRight()))
+            if isinstance(st.get("pts"), list):
+                st["pts"] = [moved(p) for p in st["pts"]]
+            for key in ("ghost_pm", "ghost_rect", "bounds_rect", "ghost_path"):
+                st.pop(key, None)       # (pictures of it at the old zoom: drawn again)
 
     def invalidate(self):
         """The page changed: its markups are drawn again; its content too if that changed
