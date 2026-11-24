@@ -11934,3 +11934,39 @@ msgstr "Grupo (1 objeto)"
 
 msgid "Group ({n} objects)"
 msgstr "Grupo ({n} objetos)"
+
+msgid "Move to the &left side"
+msgstr "Mover al lado &izquierdo"
+
+msgid "Move to the &right side"
+msgstr "Mover al lado &derecho"
+
+msgid "Properties panel (click again to fold it away)"
+msgstr "Panel Propiedades (haga clic de nuevo para plegarlo)"
+
+msgid "Tool chest (click again to fold it away)"
+msgstr "Caja de herramientas (haga clic de nuevo para plegarla)"
+
+msgid "Markups list (click again to fold it away)"
+msgstr "Lista de marcas (haga clic de nuevo para plegarla)"
+
+msgid "Icons on the left edge that open and close the panels, several at once"
+msgstr "Iconos en el borde izquierdo que abren y cierran los paneles, varios a la vez"
+
+msgid "La&yers panel"
+msgstr "Panel de ca&pas"
+
+msgid "Ob&jects panel"
+msgstr "Panel de ob&jetos"
+
+msgid "S&ets panel"
+msgstr "Panel de co&njuntos"
+
+msgid "Show or hide the PDF's layers; pick the layer new markups go on"
+msgstr "Mostrar u ocultar las capas del PDF; elegir la capa en la que van las marcas nuevas"
+
+msgid "The page's markups from front to back: select, lock or hide them"
+msgstr "Las marcas de la página, de delante hacia atrás: selecciónelas, bloquéelas u ocúltelas"
+
+msgid "The PDFs of a set and their sheets, as one list"
+msgstr "Los PDF de un conjunto y sus hojas, en una sola lista"

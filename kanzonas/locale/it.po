@@ -11998,3 +11998,39 @@ msgstr "Gruppo (1 oggetto)"
 
 msgid "Group ({n} objects)"
 msgstr "Gruppo ({n} oggetti)"
+
+msgid "Move to the &left side"
+msgstr "Sposta sul lato &sinistro"
+
+msgid "Move to the &right side"
+msgstr "Sposta sul lato &destro"
+
+msgid "Properties panel (click again to fold it away)"
+msgstr "Pannello Proprietà (fai di nuovo clic per comprimerlo)"
+
+msgid "Tool chest (click again to fold it away)"
+msgstr "Cassetta degli attrezzi (fai di nuovo clic per comprimerla)"
+
+msgid "Markups list (click again to fold it away)"
+msgstr "Elenco annotazioni (fai di nuovo clic per comprimerlo)"
+
+msgid "Icons on the left edge that open and close the panels, several at once"
+msgstr "Icone sul bordo sinistro che aprono e chiudono i pannelli, anche più di uno alla volta"
+
+msgid "La&yers panel"
+msgstr "Pannello &Livelli"
+
+msgid "Ob&jects panel"
+msgstr "Pannello &Oggetti"
+
+msgid "S&ets panel"
+msgstr "Pannello &Raccolte"
+
+msgid "Show or hide the PDF's layers; pick the layer new markups go on"
+msgstr "Mostra o nascondi i livelli del PDF; scegli il livello su cui vanno le nuove annotazioni"
+
+msgid "The page's markups from front to back: select, lock or hide them"
+msgstr "Le annotazioni della pagina, da quella in primo piano a quella più in fondo: selezionale, bloccale o nascondile"
+
+msgid "The PDFs of a set and their sheets, as one list"
+msgstr "I PDF di una raccolta e i loro fogli, in un unico elenco"

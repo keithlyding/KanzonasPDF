@@ -661,7 +661,7 @@ class Thumbnails(unittest.TestCase):
         self.w.resize(1200, 800)
         self.w.show()
         self.w.dock.show()
-        self.w.left_tabs.setCurrentIndex(0)
+        self.w.dock.raise_()
         self.drawn = []
         # (1.7: a thumbnail is drawn by page_widget.thumbnail, from the page's render on
         # screen when it has one, else with get_pixmap as before: each one drawn counts)
