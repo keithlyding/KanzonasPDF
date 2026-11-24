@@ -4346,7 +4346,8 @@ class DocumentView(QScrollArea):
         the next markup, not the one just drawn, and seemed to do nothing). In CAD mode, as
         in AutoCAD, what's drawn isn't selected: a selection there shows grips, and the next
         line starting on its end would take a grip instead."""
-        if self.drawing_tool is not None:
+        from . import drawing
+        if self.drawing_tool is not None and drawing.makes(self.drawing_tool, model):
             return self._draw_into_page(index, model)
         if select is None:
             select = self.mouse_mode != "cad"

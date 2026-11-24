@@ -64,6 +64,12 @@ def base_tool(tool):
     return TOOLS.get(tool)
 
 
+def makes(tool, model):
+    """Whether model is what Drawing tool tool draws (as its markup tool would make it)."""
+    kind = {"circle": "ellipse", "cloud": "rect"}.get(TOOLS.get(tool), TOOLS.get(tool))
+    return kind is not None and model.get("kind") == kind
+
+
 def draws(model):
     """Whether a Drawing tool's shape draws anything: a line color, or a fill on a shape
     that has one."""
