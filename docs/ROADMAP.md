@@ -160,6 +160,17 @@ a decision changes or a piece of work lands. Details of each version are in
   small dialog around Qt's rather than Qt's dialog with a strip added: the system's dialog
   (macOS's color panel, GTK's) can't hold the rows, and Qt's own custom color slots are the
   user's to keep.
+- 1.17 (the owner, 23 Nov: "the side panels must be able to show several at once, on the
+  right and on the left, stacked, with handles to resize"): every panel (Pages, Bookmarks,
+  Layers, Objects, Sets, Properties, Tool chest, Markups list) is a Qt dock widget of its own
+  (`kanzonas/side_panels.py`), no longer Bookmarks, Layers, Objects and Sets as tabs inside
+  Pages: stacked on either side with QMainWindow's handles, dragged by the title (or moved
+  from the title's right-click menu) to the other side, kept with saveState (LAYOUT_VERSION 2;
+  a layout 1.16 saved is still read). Dock widgets rather than our own splitters: Properties,
+  Tool chest and the Markups list were dock widgets already, and Qt gives the handles,
+  dragging, tabs and the saved layout. Panels don't float (one left on a monitor that's gone
+  would be lost). The panel strip has an icon for each panel; a pulled-out window starts with
+  the panels of the window it came from.
 
 ## Next
 The owner sets this list; nothing below is promised until it's here.
