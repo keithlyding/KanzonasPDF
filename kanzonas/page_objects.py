@@ -2701,13 +2701,20 @@ def reorder(page, ns, how, dry_run=False):
     for n in sel:
         d = found[n]
         old = data[d["start"]:d["end"]]
+        moved = old
+        own = _own(data, d)
+        if own is not None:
+            # (restyled before, recolor: its settings and its arrowheads' marker go with it,
+            # as recolor writes them, so Properties reads them where it now is; its arrowheads
+            # showed "none" after To back or To front)
+            moved = b"\nq\n" + own.group(1) + b"\n" + (own.group(2) or b"") + old + b"\nQ\n"
         m = d["ctm"] * ~target
         layers = [b for b in (d.get("ctx") or ((), ()))[0]
                   if _OC_MARK.match(b.strip()) and b not in there]
         snippet += (b"".join(b"\n" + b for b in layers) +
                     b"\nq %.6f %.6f %.6f %.6f %.4f %.4f cm\n" % tuple(m) + _DEFAULTS + b" " +
                     d.get("state", b"") +
-                    b"\n" + old + b"\nQ\n" + b"EMC\n" * len(layers))
+                    b"\n" + moved + b"\nQ\n" + b"EMC\n" * len(layers))
         keep = _split(old)[0] if old[:2] != b"BI" else b""
         pieces.append((d["start"], d["end"], b" " + keep + b" "))
     pieces.append((at, at, snippet))
