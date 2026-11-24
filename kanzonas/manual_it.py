@@ -848,6 +848,13 @@ appiattita. Il suo carattere può essere Helvetica, Times o Courier (Proprietà 
 ogni visualizzatore PDF possiede, quindi il commento appare uguale ovunque. Per scrivere testo che fa parte
 della pagina, usa <b>Aggiungi testo</b> (più avanti).</li>
 <li><b>Richiamo</b> (K): premi sul punto che vuoi indicare e trascina fino a dove va il testo.</li>
+<li><b>Più linee guida su un richiamo</b> (come Add Leader di Bluebeam): seleziona il richiamo, fai clic destro dove
+deve puntare un'altra linea guida e scegli <b>Aggiungi linea guida</b> (con clic destro sul suo riquadro, la nuova linea
+guida punta lontano dal riquadro, dal lato opposto alla prima). Ogni linea guida arriva al centro del lato più vicino del
+riquadro e ha la punta di freccia e la Dimensione punta di freccia della prima; trascina il punto di presa della sua
+estremità per farla puntare altrove. <b>Rimuovi linea guida</b> toglie la linea guida aggiunta più vicina a dove hai fatto
+clic destro (la prima resta). Sono disegnate nel richiamo stesso, quindi anche gli altri visualizzatori PDF le mostrano;
+uno che ridisegna il richiamo dalle sue impostazioni mostra solo la prima.</li>
 <li><b>Le caselle di testo e i richiami si adattano al testo:</b> il riquadro mantiene la larghezza ed è alto
 quanto il suo testo, che va a capo al suo interno, quando lo crei, quando cambi il testo o la dimensione del
 carattere e quando trascini un suo lato per allargarlo o restringerlo. Trascina il bordo superiore o inferiore

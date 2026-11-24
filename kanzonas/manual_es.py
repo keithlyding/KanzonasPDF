@@ -841,6 +841,13 @@ acopla. Su fuente puede ser Helvetica, Times o Courier (Propiedades > Fuente): s
 tiene todo visor de PDF, así que el comentario se ve igual en todas partes. Para escribir texto que forme parte de
 la página, use <b>Agregar texto</b> (más abajo).</li>
 <li><b>Llamada</b> (K): presione en el punto que señala y arrastre hasta donde va el texto.</li>
+<li><b>Más líneas guía en una llamada</b> (como Add Leader de Bluebeam): seleccione la llamada, haga clic con el
+botón derecho donde deba apuntar otra línea guía y elija <b>Agregar línea guía</b> (con clic derecho en su cuadro, la
+nueva línea guía apunta lejos del cuadro, al lado opuesto de la primera). Cada línea guía va al centro del lado más
+cercano del cuadro y lleva la punta de flecha y el Tamaño de punta de flecha de la primera; arrastre el pinzamiento de su
+extremo para que apunte a otro lugar. <b>Quitar línea guía</b> quita la línea guía agregada más cercana a donde hizo clic
+con el botón derecho (la primera se queda). Se dibujan en la propia llamada, así que otros visores de PDF las muestran;
+uno que vuelva a dibujar la llamada a partir de sus ajustes muestra solo la primera.</li>
 <li><b>Los cuadros de texto y las llamadas se ajustan a su texto:</b> el cuadro mantiene su ancho y es tan alto como
 su texto, que se ajusta dentro, al crearlo, al cambiar su texto o el tamaño de fuente y al arrastrar su lado para
 hacerlo más ancho o más angosto. Arrastre su borde superior o inferior (o una esquina) para darle una altura propia:

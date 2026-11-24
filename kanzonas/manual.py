@@ -863,6 +863,13 @@ flattened. Its font can be Helvetica, Times or Courier (Properties > Font): thos
 every PDF viewer has, so the comment looks the same everywhere. To write text that's part of
 the page, use <b>Add text</b> (below).</li>
 <li><b>Callout</b> (K): press on the point you're pointing at, drag to where the text goes.</li>
+<li><b>More leaders on a callout</b> (as Bluebeam's Add Leader): select the callout, right-click
+where another leader should point and choose <b>Add leader</b> (right-clicked on its box, the new
+leader points away from the box, across from the first one). Each leader runs to the middle of
+the box's nearest side and has the first one's arrowhead and Arrowhead size; drag its end's grip to
+point it elsewhere. <b>Remove leader</b> takes off the added leader nearest where you right-clicked
+(the first one stays). They're drawn in the callout itself, so other PDF viewers show them; one that
+draws the callout anew from its settings shows the first leader only.</li>
 <li><b>Text boxes and callouts fit their text:</b> the box keeps its width and is as tall as its
 text, wrapped in it, when it's made, when its text or font size changes and when you drag its
 side to make it wider or narrower. Drag its top or bottom (or a corner) to give it a height of

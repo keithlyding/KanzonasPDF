@@ -750,7 +750,8 @@ class Battery:
     def table(self):
         return [
             (self.op_shape, 10), (self.op_line, 5), (self.op_poly, 4), (self.op_ink, 3),
-            (self.op_textbox, 3), (self.op_callout, 2), (self.op_note, 2), (self.op_stamp, 2),
+            (self.op_textbox, 3), (self.op_callout, 2), (self.op_callout_leader, 2),
+            (self.op_note, 2), (self.op_stamp, 2),
             (self.op_dot, 2), (self.op_dot_options, 2),
             (self.op_measure, 2), (self.op_dimension, 3), (self.op_cutout, 3),
             (self.op_drops, 2), (self.op_find_similar, 1),
@@ -875,6 +876,41 @@ class Battery:
             self.v.apply_drag_tool(i, self.rnd.choice(["m_length", "m_radius"]), a, b, False)
         else:
             self.v.apply_poly(i, "m_angle", [a, b, self.point(i, 40)])
+
+    def op_callout_leader(self):
+        """Callout leaders (1.17, the owner: "add leaders to callouts"): a callout already there
+        given another leader (pointing at a spot of the page, or right-clicked on its box) or
+        one of its added leaders taken off. Its leaders must be one more or one fewer, the
+        first kept, and read back from the file."""
+        v = self.v
+        have = [(i, x) for i in range(v.doc.page_count) for x in self.markups(i)
+                if self.kind(i, x) == "callout"]
+        if not have:
+            return self.op_callout()
+        i, x = self.rnd.choice(have)
+        v.select_xref(i, x)
+        m = v.selected_model
+        if m is None or m["kind"] != "callout" or m.get("locked") or v.selected_callout() is None:
+            v.clear_selection()
+            return "none"
+        before = [pymupdf.Point(q) for q in m["points"]]
+        if len(before) > 1 and self.rnd.random() < 0.35:
+            k = self.rnd.randrange(1, len(before))
+            if not v.remove_callout_leader(before[k]):
+                raise Failed("Remove leader refused on a callout with %d leaders" % len(before))
+            want = len(before) - 1
+        else:
+            a, b = self.box(i, 10, 60)
+            at = None if self.rnd.random() < 0.2 else a
+            if not v.add_callout_leader(at):
+                raise Failed("Add leader refused on a selected callout")
+            want = len(before) + 1
+        now = v.selected_model
+        if now is None or len(now["points"]) != want or \
+                abs(now["points"][0] - before[0]) > 0.01:
+            raise Failed("leaders: %d before, %s after (wanted %d, the first kept)" % (
+                len(before), None if now is None else len(now["points"]), want))
+        return None
 
     def op_cutout(self):
         """Cut-outs (1.16.1, measure.cut_area): an Area or Volume drawn, or one already there

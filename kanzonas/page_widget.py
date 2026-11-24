@@ -1471,8 +1471,9 @@ class PageWidget(QWidget):
             return {}
         extra = {}
         if model["kind"] == "callout":
-            s_ = self.to_screen_pt(model["points"][0])
-            extra["p0"] = QRectF(s_.x() - h / 2, s_.y() - h / 2, h, h)
+            for i, q in enumerate(model["points"]):     # (each leader's end)
+                s_ = self.to_screen_pt(q)
+                extra[f"p{i}"] = QRectF(s_.x() - h / 2, s_.y() - h / 2, h, h)
         out = box_handles(self.to_screen(A.bounds(model)))
         out.update(extra)
         out.update(self._rot_handle(model))
@@ -1521,10 +1522,10 @@ class PageWidget(QWidget):
             return [pts]
         if m["kind"] == "callout":
             r = self.to_screen(m["rect"], page).adjusted(-pad, -pad, pad, pad)
-            c = r.center()
+            box = pymupdf.Rect(m["rect"])
             return [[(r.left(), r.top()), (r.right(), r.top()), (r.right(), r.bottom()),
-                     (r.left(), r.bottom()), (r.left(), r.top())],
-                    [pt(m["points"][0]), (c.x(), c.y())]]
+                     (r.left(), r.bottom()), (r.left(), r.top())]] + \
+                [[pt(q), pt(A.callout_knee(box, q))] for q in m["points"]]
         r = self.to_screen(self._shown_box(m), page).adjusted(-pad, -pad, pad, pad)
         return [[(r.left(), r.top()), (r.right(), r.top()), (r.right(), r.bottom()),
                  (r.left(), r.bottom()), (r.left(), r.top())]]
@@ -2207,6 +2208,12 @@ class PageWidget(QWidget):
             if v.default_tool_of_selected() is not None:
                 # its style for the next markups made with its tool (Bluebeam's name for it)
                 menu.addAction(tr("Set as Default"), v.set_selected_as_default)
+            if v.selected_callout() is not None:
+                # (more leaders, as Bluebeam's Add Leader: this one points where it was
+                # right-clicked)
+                menu.addAction(tr("Add leader"), lambda: v.add_callout_leader(pdf))
+                if len(v.selected_model["points"]) > 1:
+                    menu.addAction(tr("Remove leader"), lambda: v.remove_callout_leader(pdf))
             if v.can_fit_to_text():
                 # (issue #90) the box as tall as its text, and following it from then on
                 menu.addAction(tr("Fit to text"), v.fit_selected_to_text)
@@ -2787,7 +2794,8 @@ class PageWidget(QWidget):
         model = ed["model"]
         if ed["mode"] == "move":
             return A.moved(model, self._snapped_delta(model, pos, snap))
-        if snap and (ed["mode"] in ("p0", "p1", "mid") or ed["mode"].startswith("v")):
+        point_grip = ed["mode"][:1] == "p" and ed["mode"][1:].isdigit()    # (p0, p1...)
+        if snap and (point_grip or ed["mode"] == "mid" or ed["mode"].startswith("v")):
             pos = self._snap(pos, exclude=excl)
         if ed["mode"] == "mid":
             # bend the line through the grip; back onto the straight line (4 px) straightens it
@@ -2801,8 +2809,8 @@ class PageWidget(QWidget):
                 new = round(new / 15.0) * 15
             ed["pos"] = pos
             return A.rotated(model, new)
-        if ed["mode"] in ("p0", "p1"):
-            i = int(ed["mode"][1])
+        if point_grip:
+            i = int(ed["mode"][1:])
             if shift and model["kind"] != "callout":
                 other = self.to_screen_pt(model["points"][1 - i])
                 pos = snap45(other, pos)

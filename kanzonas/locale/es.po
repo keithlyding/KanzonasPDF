@@ -11976,3 +11976,12 @@ msgstr "Conteo 1"
 
 msgid "All {n} pages"
 msgstr "Todas las {n} páginas"
+
+msgid "Add leader"
+msgstr "Agregar línea guía"
+
+msgid "Remove leader"
+msgstr "Quitar línea guía"
+
+msgid "Leader added: drag its end to point it elsewhere"
+msgstr "Línea guía agregada: arrastre su extremo para que apunte a otro lugar"

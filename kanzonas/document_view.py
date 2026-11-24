@@ -6813,6 +6813,49 @@ class DocumentView(QScrollArea):
         tool = tool_chest.tool_for(m)
         return tool if tool in annotations.DEFAULTS else None
 
+    def selected_callout(self):
+        """(page, xref, model) of the one callout selected, else None."""
+        m = self.selected_model
+        if self.read_only or self.extra or self.selection is None or m is None or \
+                m["kind"] != "callout":
+            return None
+        return self.selection[0], self.selection[1], m
+
+    def add_callout_leader(self, at=None):
+        """Right-click > Add leader (the owner, 23 Nov: "add leaders to callouts", as
+        Bluebeam's Add Leader): one more leader on the selected callout, pointing at at (page
+        coordinates: where it was right-clicked). Right-clicked on the callout's box, or
+        with no point, it points away from the box on the side across from its first
+        leader. One undo step."""
+        sel = self.selected_callout()
+        if sel is None:
+            return False
+        index, xref, m = sel
+        box = pymupdf.Rect(m["rect"])
+        if at is None or (box + (-4, -4, 4, 4)).contains(at):
+            c = (box.tl + box.br) / 2
+            away = c - m["points"][0]
+            n = abs(away) or 1.0
+            at = c + away / n * (max(box.width, box.height) / 2 + 40)
+        new = annotations.copy(m)
+        new["points"] = list(m["points"]) + [pymupdf.Point(at)]
+        self.commit_models(index, [(xref, new)], olds={xref: m})
+        self.statusMessage.emit(tr("Leader added: drag its end to point it elsewhere"))
+        return True
+
+    def remove_callout_leader(self, near):
+        """Right-click > Remove leader: the selected callout's leader whose end is nearest
+        near (page coordinates), one of those added (its first stays). One undo step."""
+        sel = self.selected_callout()
+        if sel is None or len(sel[2]["points"]) < 2:
+            return False
+        index, xref, m = sel
+        k = min(range(1, len(m["points"])), key=lambda i: abs(m["points"][i] - near))
+        new = annotations.copy(m)
+        new["points"] = [q for i, q in enumerate(m["points"]) if i != k]
+        self.commit_models(index, [(xref, new)], olds={xref: m})
+        return True
+
     def set_selected_as_default(self):
         """Right-click > Set as Default: the selected markup's style becomes its tool's
         default style, for the next markups made with it (as Bluebeam's Set as Default)."""

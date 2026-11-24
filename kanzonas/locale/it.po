@@ -12040,3 +12040,12 @@ msgstr "Conteggio 1"
 
 msgid "All {n} pages"
 msgstr "Tutte le {n} pagine"
+
+msgid "Add leader"
+msgstr "Aggiungi linea guida"
+
+msgid "Remove leader"
+msgstr "Rimuovi linea guida"
+
+msgid "Leader added: drag its end to point it elsewhere"
+msgstr "Linea guida aggiunta: trascina la sua estremità per farla puntare altrove"
