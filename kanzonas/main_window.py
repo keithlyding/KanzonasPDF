@@ -331,6 +331,26 @@ def _inside(path, folder):
         return False
 
 
+# the ribbon's tabs in order, each by an English key: the tab open last is remembered by its
+# key ("ribbon_tab_name"), so a tab added later (1.17's Drawing, after Markup) doesn't open the
+# one beside it. 1.16 and before kept its place ("ribbon_tab"), read in that order.
+RIBBON_TABS = ("home", "markup", "drawing", "measure", "arrange", "review", "protect", "forms",
+               "pages", "print", "view", "reading", "cad")
+_RIBBON_TABS_1_16 = tuple(k for k in RIBBON_TABS if k != "drawing")
+
+
+def ribbon_tab_to_open(settings, count):
+    """The place of the ribbon tab to open at start-up: the one open last."""
+    name = settings.value("ribbon_tab_name")
+    if isinstance(name, str) and name in RIBBON_TABS:
+        tab = RIBBON_TABS.index(name)
+    else:
+        old = paths.stored_int(settings, "ribbon_tab", 0)
+        tab = RIBBON_TABS.index(_RIBBON_TABS_1_16[old]) if 0 <= old < len(_RIBBON_TABS_1_16) \
+            else 0
+    return max(0, min(tab, count - 1))
+
+
 def windows():
     """The open main windows, oldest first."""
     out = []
@@ -6561,9 +6581,9 @@ class MainWindow(QMainWindow):
         rt.addWidget(r)
         r.set_group_names(self.a_group_names.isChecked())
         self.addToolBar(rt)
-        tab = paths.stored_int(self.settings, "ribbon_tab", 0)
-        r.setCurrentIndex(max(0, min(tab, r.count() - 1)))
-        r.currentChanged.connect(lambda i: self.settings.setValue("ribbon_tab", i))
+        r.setCurrentIndex(ribbon_tab_to_open(self.settings, r.count()))
+        r.currentChanged.connect(lambda i: self.settings.setValue(
+            "ribbon_tab_name", RIBBON_TABS[i] if 0 <= i < len(RIBBON_TABS) else ""))
         if self.settings.value("ribbon_collapsed", "false") == "true":
             r.set_collapsed(True)
         self._apply_ui_mode()
