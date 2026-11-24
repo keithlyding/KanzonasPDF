@@ -657,6 +657,10 @@ class Thumbnails(unittest.TestCase):
         p = mock.patch.object(QMessageBox, "question", return_value=QMessageBox.Yes)
         p.start()
         self.addCleanup(p.stop)
+        # (the usual panels, whatever an earlier test left open: Pages alone on its side,
+        # the full height, so the rows in view are the same every run)
+        from kanzonas import paths
+        paths.settings().remove("window_state")
         self.w = MainWindow()
         self.w.resize(1200, 800)
         self.w.show()
