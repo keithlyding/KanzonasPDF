@@ -1095,7 +1095,8 @@ nombre de la pestaña Marcas: arrastrando (en el modo CAD, clic, mover, clic); P
 Polígono con un clic en cada punto, doble clic o Enter para terminar; Arco con el inicio, un punto
 por el que pasa y el final. Las vistas previas, el ajuste, Shift (pasos de 45&deg;, cuadrados y
 círculos) y la línea de comandos de CAD funcionan igual. Una herramienta de Dibujo siempre
-dibuja: un clic sobre una marca no la elige.</li>
+dibuja: un clic sobre una marca no la elige. En la línea de comandos de CAD, "rect" sigue siendo
+el Rectángulo de la pestaña Marcas: escriba "drawing rect" (su nombre en inglés) para este.</li>
 <li><b>Estilo:</b> con una herramienta de Dibujo elegida, el panel de propiedades muestra el
 estilo de esa herramienta para las próximas formas: Color de línea, Relleno (y Sin borde, Sin
 relleno), Grosor de línea, Estilo de línea, la Punta de flecha inicial y final y la Flecha

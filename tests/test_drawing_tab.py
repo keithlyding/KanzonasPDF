@@ -815,6 +815,29 @@ class CadMode(Base):
         self.assertTrue(near(got[0]["rect"].tl, (100, 300), 1.5) and
                         near(got[0]["rect"].br, (300, 300), 1.5), got[0]["rect"])
 
+    def test_the_command_line_names_them(self):
+        # ("rect" stays the Markup tab's Rectangle; the Drawing tab's is "drawing rect")
+        from kanzonas.main_window import MainWindow
+        w = MainWindow()
+        self.addCleanup(lambda: (setattr(w, "_close_confirmed", True), w.close()))
+        w.resize(1100, 900)
+        w.show()
+        w.open_file(sheet())
+        old = w.settings.value("mouse_mode")
+        self.addCleanup(lambda: w.settings.setValue("mouse_mode", old or "hand"))
+        w.set_mouse_mode("cad")
+        APP.processEvents()
+        self.addCleanup(setattr, w.view(), "dirty", False)
+        line = w.cad_command_line()
+        for typed, tool in (("rect", "rect"), ("drawing rect", "d_rect"),
+                            ("drawing poly", None), ("drawing polygon", "d_polygon"),
+                            ("polygon", "polygon")):
+            before = w.tool
+            line.edit.setText(typed)
+            line.run()
+            APP.processEvents()
+            self.assertEqual(w.tool, tool or before, typed)
+
 
 if __name__ == "__main__":
     unittest.main()

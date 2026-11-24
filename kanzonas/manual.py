@@ -1106,7 +1106,8 @@ Pen (also in Tools &gt; Drawing). They're drawn exactly as the Markup tab's shap
 name: a drag (in CAD mode, click, move, click); Polyline and Polygon a click at each point,
 double-click or Enter to finish; Arc the start, a point it passes through, then the end. The
 previews, snapping, Shift (45&deg; steps, squares and circles) and the CAD command line work
-the same. A Drawing tool always draws: a click on a markup doesn't pick it.</li>
+the same. A Drawing tool always draws: a click on a markup doesn't pick it. On the CAD command
+line, "rect" is still the Markup tab's Rectangle: type "drawing rect" for this one.</li>
 <li><b>Style:</b> with a Drawing tool picked, the Properties panel shows that tool's style for
 the next shapes: Line color, Fill (and No border, No fill), Line width, Line style, the Start
 and End arrowhead and Middle arrow of lines (none, open or closed), Opacity and Fill opacity.

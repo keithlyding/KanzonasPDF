@@ -1096,7 +1096,8 @@ della scheda Annotazioni: trascinando (in modalità CAD, clic, sposta, clic); Po
 con un clic su ogni punto, doppio clic o Invio per finire; Arco con l'inizio, un punto da cui
 passa e la fine. Le anteprime, l'aggancio, Shift (passi di 45&deg;, quadrati e cerchi) e la riga
 di comando CAD funzionano allo stesso modo. Uno strumento di Disegno disegna sempre: un clic su
-un'annotazione non la seleziona.</li>
+un'annotazione non la seleziona. Nella riga di comando CAD, "rett" resta il Rettangolo della
+scheda Annotazioni: scrivi "drawing rect" (il suo nome inglese) per questo.</li>
 <li><b>Stile:</b> con uno strumento di Disegno scelto, il pannello Proprietà mostra lo stile di
 quello strumento per le prossime forme: Colore linea, Riempimento (e Nessun bordo, Nessun
 riempimento), Spessore linea, Stile linea, la Punta di freccia iniziale e finale e la Freccia
