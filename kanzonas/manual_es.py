@@ -1571,6 +1571,18 @@ tamaño. Clic derecho en un marcador &gt; <b>Renumerar el grupo</b> numera su gr
 sin huecos. Un marcador de Conteo copiado con Duplicar (Ctrl+D) o con copiar y pegar toma el siguiente
 número de su grupo. Un marcador seleccionado muestra un recuadro discontinuo alrededor de él y de su número
 (trazos azules sobre blanco, para que se vea también sobre un marcador azul).</li>
+<li><b>Buscar similares</b> (pestaña Medir, grupo "Más", y el menú Medir), como VisualSearch de Bluebeam:
+cuenta un símbolo por usted. Elija Buscar similares y arrastre un cuadro ajustado alrededor de un símbolo (una
+luminaria, un enchufe, un rociador). Elija dónde buscar (<b>Esta página</b> o <b>Todas las páginas</b>), el grupo
+de Conteo en que <b>Contar como</b> (se ofrece uno nuevo, o elija uno del documento), la <b>Sensibilidad</b> (80% al
+principio; menos encuentra más, y más que no son iguales) y si buscarlo <b>También girado</b> en cuartos de vuelta, y
+luego <b>Buscar</b>. KanzonasPDF mira cada página tal como se dibuja, sin sus marcas, una página a la vez (una
+ventana muestra cuánto lleva, y <b>Detener</b> lo detiene: entonces no se pone nada), y pone un marcador de Conteo
+en cada coincidencia, numerado desde el número más alto del grupo, como un solo paso. <b>Revíselos antes de
+quedárselos</b>: borre los que no sean el símbolo, o presione Ctrl+Z para quitarlos todos. Un símbolo en que el
+grupo ya tiene un marcador no se cuenta dos veces, así que puede buscar de nuevo con otra sensibilidad. Funciona
+también con planos escaneados; un cuadro sin nada no encuentra nada. Compara imágenes, así que un símbolo dibujado
+a otro tamaño no se encuentra.</li>
 <li><b>Cota</b> (Shift+D; pestaña Medir, grupo "Más", el menú Medir y el botón Medir de la pestaña CAD),
 como la Cota de Bluebeam y la cota alineada de AutoCAD: haga clic en los dos puntos que va a medir, luego
 mueva el puntero y haga clic donde va la línea de cota (en el modo del mouse Estándar también puede

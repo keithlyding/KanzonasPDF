@@ -188,7 +188,7 @@ The owner sets this list; nothing below is promised until it's here.
      measurement; the summary and the Excel export show counts and resulting quantities.
   6. **Slope for roof areas** (1.16.3): a pitch on an Area (6:12, or degrees) turning the plan area into
      the sloped area.
-  7. **Find similar symbols** (as Bluebeam's VisualSearch): one symbol picked, its matches
+  7. **Find similar symbols** (1.17, as Bluebeam's VisualSearch): one symbol picked, its matches
      found on the page or the whole set and placed as Count markers in a group, for the
      user to check before keeping. Last, the hardest: fast on big sheets, with no worker
      thread touching the document.

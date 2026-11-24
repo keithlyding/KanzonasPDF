@@ -1586,6 +1586,19 @@ size. Right-click a marker &gt; <b>Renumber group</b> numbers its group 1, 2, 3.
 no gaps. A Count marker copied with Duplicate (Ctrl+D) or copy and paste takes the next
 number of its group. A selected marker shows a dashed box around it and its number (blue
 dashes over white, so it shows on a blue marker too).</li>
+<li><b>Find similar</b> (Measure tab, "More" group, and the Measure menu), like Bluebeam's
+VisualSearch: counts a symbol for you. Pick Find similar and drag a box tightly around one
+symbol (a light fixture, an outlet, a sprinkler head). Choose where to look (<b>This page</b> or
+<b>All pages</b>), the Count group to <b>Count as</b> (a new one is offered, or pick one the document
+has), the <b>Sensitivity</b> (80% at first; lower finds more, and more that aren't the same) and
+whether to find it <b>Also turned</b> by quarters, then <b>Find</b>. KanzonasPDF looks at each page
+as drawn, without its markups, one page at a time (a window shows how far it is, and <b>Stop</b>
+stops it: nothing is placed then), and places a Count marker on every match, numbered on from the
+group's highest number, as one step. <b>Check them before keeping them</b>: delete any that
+aren't the symbol, or press Ctrl+Z to take them all back. A symbol the group has a marker on
+already isn't counted twice, so you can search again with another sensitivity. It works on
+scanned drawings too; a box with nothing in it finds nothing. It compares pictures, so a symbol
+drawn at another size isn't found.</li>
 <li><b>Dimension</b> (Shift+D; Measure tab, "More" group, the Measure menu and the CAD tab's
 Measure button), like Bluebeam's Dimension and AutoCAD's aligned dimension: click the two
 points to measure, then move the pointer and click where the dimension line goes (in the

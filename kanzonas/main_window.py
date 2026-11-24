@@ -137,6 +137,10 @@ MEASURE_TOOLS = [
                                        "window, a column) inside an Area or Volume, "
                                        "double-click or Enter: its area is taken out of the "
                                        "measurement")),
+    ("findsimilar", tr("Find similar"), "", tr("Find similar: drag a box around a symbol; the "
+                                               "matching ones on this page or every page are "
+                                               "placed as Count markers of a group, for you to "
+                                               "check")),
     ("m_volume", tr("Volume"), "", tr("Measure volume: click the corners of the area, double-click or Enter; set the depth in Properties")),
     ("m_count", tr("Count"), "Shift+C", tr("Count: click each item; set the group name in Properties (Shift+C)")),
     ("space", tr("Space"), "", tr("Space: a named area (a room, a zone): click each corner, "
@@ -181,7 +185,7 @@ MARKUP_TOOLS = ("highlight", "underline", "strikeout", "comment", "note", "textb
                 "dot", "rect", "ellipse", "cloud", "circle", "mask", "polygon", "line", "arrow",
                 "polyline", "arc", "curve", "ink", "stamp", "attach", "m_length", "m_dim",
                 "m_poly", "m_area", "m_angle", "m_radius", "m_perimeter", "m_volume", "m_count",
-                "space", "legend", "m_cutout")
+                "space", "legend", "m_cutout", "findsimilar")
 
 
 def kind_tip(tid, tip):
@@ -6294,7 +6298,7 @@ class MainWindow(QMainWindow):
             (tr("Measure"), "large", [t["m_length"], t["m_poly"], t["m_area"], t["m_count"]]),
             (tr("More"), "small", [t["m_angle"], t["m_radius"], t["m_dim"], t["m_perimeter"],
                                    t["m_volume"], t["m_cutout"], t["space"],
-                                   t["m_calibrate"]]),
+                                   t["findsimilar"], t["m_calibrate"]]),
             # the page's scale in large type opens Set scale (so no separate button for it),
             # with the Show scale bar switch beside it
             (tr("Page scale"), "large", [self.scale_panel]),

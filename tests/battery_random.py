@@ -753,7 +753,7 @@ class Battery:
             (self.op_textbox, 3), (self.op_callout, 2), (self.op_note, 2), (self.op_stamp, 2),
             (self.op_dot, 2), (self.op_dot_options, 2),
             (self.op_measure, 2), (self.op_dimension, 3), (self.op_cutout, 3),
-            (self.op_drops, 2),
+            (self.op_drops, 2), (self.op_find_similar, 1),
             (self.op_text_markup, 6),
             (self.op_attach, 1), (self.op_legend, 2), (self.op_legend_options, 2),
             (self.op_move, 6), (self.op_nudge, 3), (self.op_resize, 3), (self.op_props, 4),
@@ -963,6 +963,43 @@ class Battery:
                 if abs(value - want) > 1e-6:
                     raise Failed("page %d: a Polylength's total %.4f isn't its length and "
                                  "drops %.4f" % (i, value, want))
+        return "edit"
+
+    def op_find_similar(self):
+        """Measure > Find similar (1.17, visual_search.py): a box around something on a page
+        (a symbol, a word, part of a line), its matches on that page placed as Count markers of
+        a group in one step. None may land where the group has one already, and each one placed
+        must be a new number of that group."""
+        from kanzonas import counts
+        v = self.v
+        i = self.page()
+        a, b = self.box(i, 8, 60)
+        group = self.rnd.choice(["Found 1", "Found 2"])
+        before = [(j, m) for j, _x, m in counts.markers(v.doc) if counts.group_of(m) == group]
+        v.ask_find_similar = lambda groups, default: {
+            "scope": "page", "group": group, "sensitivity": self.rnd.choice([0.85, 0.95]),
+            "turned": self.rnd.random() < 0.3}
+        rev = v.revision
+        v.apply_drag_tool(i, "findsimilar", a, b, False)
+        end = time.monotonic() + 60
+        while v._find_job is not None and time.monotonic() < end:
+            APP.processEvents()
+        if v._find_job is not None:
+            raise Failed("page %d: Find similar didn't finish in a minute" % i)
+        if v.revision == rev:
+            return "none"
+        after = [(j, m) for j, _x, m in counts.markers(v.doc) if counts.group_of(m) == group]
+        nums = [m["n"] for _j, m in after]
+        if len(nums) != len(set(nums)):
+            raise Failed("page %d: Find similar gave %s numbers twice" % (i, group))
+        old = {(j, round(m["points"][0].x), round(m["points"][0].y)) for j, m in before}
+        for j, m in after:
+            key = (j, round(m["points"][0].x), round(m["points"][0].y))
+            if key in old:
+                continue
+            if any(jj == j and abs(mm["points"][0] - m["points"][0]) < 1.0
+                   for jj, mm in before):
+                raise Failed("page %d: Find similar counted a symbol of %s twice" % (j, group))
         return "edit"
 
     def op_dimension(self):

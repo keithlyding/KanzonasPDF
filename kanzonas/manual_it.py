@@ -1573,6 +1573,18 @@ suo gruppo salgono o scendono per fargli posto), Livello, colore e dimensione. C
 Conteggio copiato con Duplica (Ctrl+D) o con copia e incolla prende il numero successivo del suo
 gruppo. Un indicatore selezionato mostra un riquadro tratteggiato attorno a sé e al suo numero
 (trattini blu su bianco, così si vede anche su un indicatore blu).</li>
+<li><b>Trova simili</b> (scheda Misure, gruppo "Altro", e il menu Misure), come VisualSearch di Bluebeam:
+conta un simbolo al posto tuo. Scegli Trova simili e trascina un riquadro stretto attorno a un simbolo (un
+apparecchio illuminante, una presa, uno sprinkler). Scegli dove cercare (<b>Questa pagina</b> o <b>Tutte le
+pagine</b>), il gruppo di Conteggio in cui <b>Contare come</b> (ne viene proposto uno nuovo, o scegline uno del
+documento), la <b>Sensibilità</b> (80% all'inizio; meno ne trova di più, e più che non sono uguali) e se trovarlo
+<b>Anche ruotato</b> di quarti di giro, poi <b>Trova</b>. KanzonasPDF guarda ogni pagina com'è disegnata, senza le
+annotazioni, una pagina alla volta (una finestra mostra a che punto è, e <b>Interrompi</b> la ferma: allora non viene
+messo nulla), e mette un indicatore di Conteggio su ogni corrispondenza, numerato dal numero più alto del gruppo,
+in un solo passaggio. <b>Controllali prima di tenerli</b>: elimina quelli che non sono il simbolo, o premi Ctrl+Z
+per toglierli tutti. Un simbolo su cui il gruppo ha già un indicatore non viene contato due volte, quindi puoi
+cercare di nuovo con un'altra sensibilità. Funziona anche con disegni scansionati; un riquadro vuoto non trova
+nulla. Confronta immagini, quindi un simbolo disegnato a un'altra dimensione non viene trovato.</li>
 <li><b>Quota</b> (Shift+D; scheda Misure, gruppo "Altro", il menu Misure e il pulsante Misure della scheda CAD),
 come la quota di Bluebeam e la quota allineata di AutoCAD: fai clic sui due
 punti da misurare, poi sposta il puntatore e fai clic dove va la linea di quota (nella

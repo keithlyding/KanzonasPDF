@@ -23,7 +23,7 @@ from .i18n import tr
 TEXT_TOOLS = {"select", "highlight", "underline", "strikeout", "comment", "redact"}
 SHAPE_TOOLS = {"textbox", "rect", "ellipse", "circle", "mask", "line", "arrow", "eraser", "cloud",
                "callout", "m_length", "m_calibrate", "m_radius", "image", "placeholder",
-               "erasecontent", "capture", "crop", "link", "legend"}
+               "erasecontent", "capture", "crop", "link", "legend", "findsimilar"}
 POLY_TOOLS = {"polygon", "polyline", "m_poly", "m_area", "m_angle", "m_perimeter", "m_volume",
               "arc", "curve", "m_dim", "space", "m_cutout"}
 # three clicks: Arc = start, a point it passes through, end; Curve = start, end, the bend
@@ -60,8 +60,9 @@ CARD_W = 190        # comment box width in px
 ROT_GAP = 26        # rotation handle distance above the selection, px
 # tools whose points snap (to the grid / to objects) while drawing
 # (Crop too: its box snaps to the page's corners and edges, the grid and objects, the owner
-# 23 Nov: "when cropping, I need to be able to snap to page, including corners")
-SNAP_TOOLS = (SHAPE_TOOLS - {"eraser", "erasecontent", "capture", "link"}) | POLY_TOOLS | {"stamp", "note", "m_count", "attach", "dot"}
+# 23 Nov: "when cropping, I need to be able to snap to page, including corners"; Find similar's
+# box is drawn around a symbol as seen, not snapped)
+SNAP_TOOLS = (SHAPE_TOOLS - {"eraser", "erasecontent", "capture", "link", "findsimilar"}) | POLY_TOOLS | {"stamp", "note", "m_count", "attach", "dot"}
 STRAIGHT_TOOLS = {"line", "arrow", "m_length", "m_calibrate", "m_radius", "callout"}   # Shift = 45° steps
 SQUARE_TOOLS = {"rect", "ellipse", "cloud", "mask"}                       # Shift = square / circle
 

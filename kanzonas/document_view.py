@@ -4465,7 +4465,7 @@ class DocumentView(QScrollArea):
             else:
                 self.add_link(index, rect)
             return
-        if tool in ("erasecontent", "capture", "crop"):
+        if tool in ("erasecontent", "capture", "crop", "findsimilar"):
             if is_click or rect.width < 2 or rect.height < 2:
                 self.statusMessage.emit(tr("Drag a box around the area"))
                 return
@@ -4476,6 +4476,8 @@ class DocumentView(QScrollArea):
                 self.setFocus()         # so Escape still puts the Crop tool down
             elif tool == "capture":
                 self.capture_area(index, rect)
+            elif tool == "findsimilar":
+                self.find_similar(index, rect)
             else:
                 self.erase_content(index, rect)
             return
@@ -5070,6 +5072,114 @@ class DocumentView(QScrollArea):
             if not new["holes"]:
                 new.pop("holes")
         self.commit_model(index, xref, new)
+
+    # ---- Find similar: a symbol's matches placed as Count markers (visual_search.py) ---
+    _find_job = None                    # the search running (one page a step), or None
+
+    def ask_find_similar(self, groups, default):
+        """{"scope": "page" or "all", "group", "sensitivity" (0-1), "turned"} from the Find
+        similar dialog, or None. (Tests replace it.)"""
+        from . import measure_ui
+        dlg = measure_ui.FindSimilarDialog(self, groups, default, self.doc.page_count)
+        return dlg.values() if dlg.exec() == dlg.DialogCode.Accepted else None
+
+    def find_similar(self, index, rect):
+        """Measure > Find similar: the symbol in rect (page index) searched for on that page or
+        every page, a page a step from the event loop (a window shows how far it is and can
+        stop it); what's found placed as Count markers of a group in one undo step."""
+        from . import counts, visual_search as VS
+        if self._find_job is not None:
+            return
+        page = self.doc[index]
+        rect = pymupdf.Rect(rect)
+        found = counts.markers(self.doc)
+        groups, _last = counts.summary(self.doc, found)
+        opts = self.ask_find_similar(sorted(groups), counts.next_group_name(self.doc))
+        if not opts:
+            return
+        pages = [index] if opts["scope"] == "page" else list(range(self.doc.page_count))
+        zoom = VS.zoom_for(page, rect)
+        for i in pages:                 # (one zoom for all: the symbol's picture fits them)
+            r = self.doc[i].rect
+            zoom = min(zoom, max(0.25, (VS.PIXELS / max(1.0, r.width * r.height)) ** 0.5))
+        tmpl = VS.template(page, rect, zoom)
+        if tmpl is None:
+            self.statusMessage.emit(tr("There's nothing in that box to look for: drag a box "
+                                       "around one symbol"))
+            return
+        from PySide6.QtWidgets import QProgressDialog
+        bar = QProgressDialog(tr("Finding similar symbols..."), tr("Stop"), 0, len(pages), self)
+        bar.setWindowTitle(tr("Find similar"))
+        bar.setMinimumDuration(400)
+        # (the window's own reset when it reaches its end counts as no stop: a flag of ours)
+        bar.setAutoReset(False)
+        bar.setAutoClose(False)
+        hits = {}
+        self._find_job = {"pages": pages, "k": 0, "bar": bar, "stopped": False}
+        bar.canceled.connect(lambda: self._find_job and self._find_job.update(stopped=True))
+
+        def step():
+            job = self._find_job
+            if job is None:
+                return
+            if job["stopped"] or job["k"] >= len(pages):
+                self._find_job = None
+                bar.close()
+                if not job["stopped"]:
+                    self._place_found(hits, opts["group"], found)
+                else:
+                    self.statusMessage.emit(tr("Find similar stopped: nothing was placed"))
+                return
+            i = pages[job["k"]]
+            got = VS.search_page(self.doc[i], tmpl, zoom, opts["sensitivity"], opts["turned"])
+            if got:
+                hits[i] = [r for r, _score in got]
+            job["k"] += 1
+            bar.setValue(job["k"])
+            QTimer.singleShot(0, step)
+        QTimer.singleShot(0, step)
+
+    def _place_found(self, hits, group, found):
+        """Count markers of group at the middles of hits ({page index: [Rect]}), numbered on
+        from the group's highest, in one undo step; a match where the group has a marker
+        already is left out (so searching again doesn't count a symbol twice)."""
+        from . import counts
+        have = {}
+        for i, _x, m in found:
+            if counts.group_of(m) == group:
+                have.setdefault(i, []).append(m["points"][0])
+        todo = {}
+        for i, rects in hits.items():
+            for r in rects:
+                c = (r.tl + r.br) / 2
+                near = max(r.width, r.height) / 2
+                if any(abs(c - q) < near for q in have.get(i, ())):
+                    continue
+                todo.setdefault(i, []).append(c)
+        n = sum(len(v) for v in todo.values())
+        if not n:
+            self.statusMessage.emit(tr("Find similar found nothing new to count"))
+            return
+        props = dict(annotations.tool_props("m_count"), group=group)
+        look = counts.look_of(found, group)
+        if look:
+            props.update(look)
+        start = counts.last_numbers(self.doc).get(group, 0)
+
+        def do():
+            k = start
+            for i in sorted(todo):
+                pg = self.doc[i]
+                for c in todo[i]:
+                    k += 1
+                    annotations.write(pg, {"kind": "m_count", "props": dict(props),
+                                           "points": [pymupdf.Point(c)], "n": k,
+                                           "rect": pymupdf.Rect()})
+        if self.modify(do, sorted(todo), permission=pymupdf.PDF_PERM_ANNOTATE):
+            self.statusMessage.emit(tr(
+                "Found {n} similar symbols on {pages} pages, counted as {group}: check them, "
+                "delete any that aren't (Ctrl+Z takes them all back)").format(
+                n=n, pages=len(todo), group=group))
 
     # ---- a Count group's quantities per item and waste (takeoff.group_setup) ----------
     def set_count_setup(self, group, items, waste):

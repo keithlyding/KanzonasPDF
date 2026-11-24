@@ -11934,3 +11934,45 @@ msgstr "Grupo (1 objeto)"
 
 msgid "Group ({n} objects)"
 msgstr "Grupo ({n} objetos)"
+
+msgid "Finding similar symbols..."
+msgstr "Buscando símbolos similares..."
+
+msgid "Find similar"
+msgstr "Buscar similares"
+
+msgid "There's nothing in that box to look for: drag a box around one symbol"
+msgstr "No hay nada que buscar en ese cuadro: arrastre un cuadro alrededor de un símbolo"
+
+msgid "Find similar found nothing new to count"
+msgstr "Buscar similares no encontró nada nuevo que contar"
+
+msgid "Find similar stopped: nothing was placed"
+msgstr "Buscar similares se detuvo: no se puso nada"
+
+msgid "Found {n} similar symbols on {pages} pages, counted as {group}: check them, delete any that aren't (Ctrl+Z takes them all back)"
+msgstr "Se encontraron {n} símbolos similares en {pages} páginas, contados como {group}: revíselos y borre los que no lo sean (Ctrl+Z los quita todos)"
+
+msgid "Find similar: drag a box around a symbol; the matching ones on this page or every page are placed as Count markers of a group, for you to check"
+msgstr "Buscar similares: arrastre un cuadro alrededor de un símbolo; los que coinciden en esta página o en todas se ponen como marcadores de Conteo de un grupo, para que los revise"
+
+msgid "Look on"
+msgstr "Buscar en"
+
+msgid "Count as"
+msgstr "Contar como"
+
+msgid "How alike a symbol must be to count: lower finds more, and more that aren't the same"
+msgstr "Cuánto debe parecerse un símbolo para contarse: menos encuentra más, y más que no son iguales"
+
+msgid "Sensitivity"
+msgstr "Sensibilidad"
+
+msgid "Also turned by a quarter, a half or three quarters"
+msgstr "También girado un cuarto, media o tres cuartos de vuelta"
+
+msgid "Count 1"
+msgstr "Conteo 1"
+
+msgid "All {n} pages"
+msgstr "Todas las {n} páginas"
