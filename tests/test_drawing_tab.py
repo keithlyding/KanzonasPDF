@@ -511,6 +511,30 @@ class ConvertToDrawing(Base):
         self.assertEqual(list(v.doc[0].annots()), [])
         self.assertLess(differing(before, pixels(v.doc[0])), 40)
 
+    def test_every_shape_kind_keeps_its_look(self):
+        # (ellipse, cloud, pen, arrow, arc, polyline: drawn as their appearance draws them)
+        for rot in (0, 90):
+            with self.subTest(rotation=rot):
+                v = self.view(sheet(rot))
+                v.set_tool("ellipse")
+                v.apply_drag_tool(0, "ellipse", P(80, 120), P(260, 200), False)
+                v.set_tool("cloud")
+                v.apply_drag_tool(0, "cloud", P(300, 120), P(500, 220), False)
+                v.set_tool("ink")
+                v.apply_ink(0, [P(100, 400), P(120, 420), P(150, 405), P(190, 450)])
+                v.set_tool("arrow")
+                v.apply_drag_tool(0, "arrow", P(300, 400), P(500, 480), False)
+                v.set_tool("arc")
+                v.apply_poly(0, "arc", [P(100, 600), P(160, 550), P(220, 600)])
+                v.set_tool("polyline")
+                v.apply_poly(0, "polyline", [P(300, 600), P(350, 650), P(420, 600)])
+                v.set_tool("editobjects")
+                before = pixels(v.doc[0])
+                v._set_selection(0, [an.xref for an in v.doc[0].annots()])
+                self.assertEqual(v.convert_to_drawing(), 6)
+                self.assertEqual(list(v.doc[0].annots()), [])
+                self.assertLess(differing(before, pixels(v.doc[0])), 40)
+
     def test_measurements_notes_and_highlights_stay_markups(self):
         v = self.view()
         v.set_tool("m_length")
