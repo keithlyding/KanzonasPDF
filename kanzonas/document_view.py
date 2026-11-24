@@ -8579,6 +8579,12 @@ class DocumentView(QScrollArea):
     # ---- CAD mode: the page made ready while nothing happens -------------------------------
     PREP_WAIT = 600             # ms without a new reason before preparing starts
     PREP_SLICE = 0.03           # seconds of preparing at a time
+    # the mouse buttons pressed on this view's pages and not yet let go (page_widget: added
+    # by a press, taken off by its release and by a move that has them up): the idle
+    # preparation waits for them. Qt's own state (QApplication.mouseButtons) can stay "held"
+    # when a release never reaches the window (let go outside it, a press left without its
+    # release), and a move's buttons say so too: CAD mode's preparation then waited for good
+    held_buttons = Qt.MouseButton.NoButton
 
     def _cad_prepare_soon(self):
         """In CAD mode, read the page's objects and their lines in short slices while you
@@ -8598,7 +8604,7 @@ class DocumentView(QScrollArea):
                 not getattr(self, "pages", None):
             return
         from . import cad_grips
-        if QApplication.mouseButtons() != Qt.NoButton or cad_grips.owner(self) is not None:
+        if self.held_buttons != Qt.NoButton or cad_grips.owner(self) is not None:
             # a mouse button held (a drag, a box), or a grip or the selection following the
             # pointer after a click (cad_grips.py): not now. A slice run between two mouse
             # moves made each move of a drag on a big sheet wait for it (41 ms a move on the

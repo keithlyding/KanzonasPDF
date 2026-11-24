@@ -2531,6 +2531,7 @@ class PageWidget(QWidget):
     def mousePressEvent(self, e):
         if self._gone():
             return                      # (its tab is closing: the document is closed)
+        self.view.held_buttons |= e.button()    # (the view's own: DocumentView.held_buttons)
         if e.button() == Qt.MiddleButton:
             # hold the wheel down and drag to pan (CAD style), with any tool; a click on a
             # link to a page of this document (with the Hand, or Ctrl held, as a left click
@@ -2962,6 +2963,7 @@ class PageWidget(QWidget):
     def mouseMoveEvent(self, e):
         if self._gone():
             return                      # (its tab is closing: the document is closed)
+        self.view.held_buttons &= e.buttons()   # (a release that never reached it)
         self.view.pointer_at(self.index, e.position())     # (rulers, the status bar)
         if getattr(self, "_mid_pan", False):
             self.view.continue_pan(e.globalPosition())
@@ -3170,6 +3172,7 @@ class PageWidget(QWidget):
     def mouseReleaseEvent(self, e):
         if self._gone():
             return                      # (its tab is closing: the document is closed)
+        self.view.held_buttons &= ~e.button()
         if getattr(self, "_swallow", False) and e.button() != Qt.MiddleButton:
             self._swallow = False       # (the click that placed a hot grip: cad_grips.press)
             return

@@ -210,13 +210,48 @@ class Speed(View):
         todo = unread()
         self.assertGreater(todo, 0)
         with mock.patch.object(QApplication, "mouseButtons", return_value=Qt.LeftButton):
+            v.held_buttons = Qt.LeftButton  # (as a press on one of its pages sets it)
             for _ in range(5):
                 v._cad_prepare_step()
             self.assertEqual(unread(), todo)
             self.assertTrue(v._prep_timer.isActive())       # (it tries again later)
+        v.held_buttons = Qt.NoButton        # (as the release, or a move with none held, does)
         for _ in range(5):
             v._cad_prepare_step()
         self.assertEqual(unread(), 0)
+
+    def test_idle_preparation_goes_on_when_qt_says_held_but_this_view_has_no_press(self):
+        # (Qt's own button state stays "held" when a release never reaches the window: a
+        # press another test left without its release, a button let go outside the window.
+        # The preparation waited for good: test_zoom_while_drawing before this one in the
+        # same run left it so, and nothing was read)
+        v = self.view()
+        v.cad_select = True
+        v._prep_timer = QTimer(v)
+        v._prep_timer.setSingleShot(True)
+        with mock.patch.object(QApplication, "mouseButtons", return_value=Qt.LeftButton):
+            self.assertEqual(v.held_buttons, Qt.NoButton)
+            for _ in range(5):
+                v._cad_prepare_step()
+        self.assertEqual(sum(1 for it in self.objs.items
+                             if it["kind"] == "shape" and "lines" not in it), 0)
+
+    def test_a_press_on_its_page_holds_it_and_the_release_lets_go(self):
+        from PySide6.QtCore import QPoint
+        from PySide6.QtTest import QTest
+        v = self.view()
+        pw = v.pages[0]
+        QTest.mousePress(pw, Qt.MiddleButton, Qt.NoModifier, QPoint(20, 20))
+        self.assertEqual(v.held_buttons, Qt.MiddleButton)
+        QTest.mouseRelease(pw, Qt.MiddleButton, Qt.NoModifier, QPoint(20, 20))
+        self.assertEqual(v.held_buttons, Qt.NoButton)
+        # (its release went elsewhere: a move that has it up lets go of it)
+        v.held_buttons = Qt.RightButton
+        from PySide6.QtGui import QMouseEvent
+        from PySide6.QtCore import QEvent, QPointF
+        pw.mouseMoveEvent(QMouseEvent(QEvent.MouseMove, QPointF(30, 30), QPointF(30, 30),
+                                      Qt.NoButton, Qt.NoButton, Qt.NoModifier))
+        self.assertEqual(v.held_buttons, Qt.NoButton)
 
     def test_idle_preparation_waits_while_a_grip_is_hot(self):
         # (1.17: CAD mode moves by click, move, click, no button held: the pointer's moves
