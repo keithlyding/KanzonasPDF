@@ -151,7 +151,7 @@ a decision changes or a piece of work lands. Details of each version are in
   appearance, the PDF's line endings kept); **grouping the drawing's own objects on big CAD
   sheets**: across layers (each object keeps its layer inside the group), shown as one group,
   and fast (the owner's 174,000-object sheet: 4.6 s to under half a second). The arrowheads of
-  the drawing's own lines (Edit objects) keep their size for now.
+  the drawing's own lines (Edit objects) kept their size until 1.17.
 - 1.16.4 (the owner, 23 Nov: "when making custom colors, a recent or currently used colors
   section"): one color picker for every color in the app (`kanzonas/color_picker.py`): Qt's own
   color dialog inside a small dialog, with a Recent row (the last 12 colors picked anywhere,
@@ -197,6 +197,12 @@ a decision changes or a piece of work lands. Details of each version are in
   Hand modes are unchanged. Not changed in CAD mode: Edit text's drag of a line, the form
   field tools and a signature's box (a click does what's needed there without holding).
 
+- 1.17 (the owner, 23 Nov: "add leaders to callouts"): a callout's **leaders** (right-click >
+  Add leader, Remove leader): PDF gives a callout one leader (/CL), so the others are drawn in
+  its appearance, each to the middle of the box's nearest side with a copy of the first one's
+  arrowhead, and kept in KZProps; other viewers show them, and a program drawing the callout
+  anew from its settings shows the first only. **Arrowhead size** for the drawing's own lines
+  and the Drawing tab's lines too, kept in the line's /KZHeads marker.
 ## Next
 The owner sets this list; nothing below is promised until it's here.
 - **Takeoff and quantity surveying** (the owner, 23 Nov 2026: estimators and quantity surveyors

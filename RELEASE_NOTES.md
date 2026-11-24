@@ -9,6 +9,51 @@ Spanish translation under `## <version> (es)`. The Windows build fails without t
 translation under `## <version> (it)` is shown to Italian users (since 1.13); without one they
 see the English.
 
+## 1.17
+
+**New**
+- Find similar (Measure tab, More group): drag a box around one symbol, such as a light fixture or an outlet, and KanzonasPDF finds its matches on the page or on every page and places a Count marker on each, as one step you can check and undo.
+- The Drawing tab: lines, arrows, polylines, polygons, rectangles, ellipses, circles, arcs, clouds and pen strokes drawn into the page itself, on their own layer (KanzonasPDF drawing), instead of as markups. Edit objects changes them afterwards, and Convert to drawing turns shape and line markups into drawing.
+- Side panels: Pages, Bookmarks, Layers, Objects, Sets, Properties, the Tool chest and the Markups list can be open at once, stacked on the left or the right, with handles to resize them. Drag a panel by its title to the other side.
+- CAD mode works by clicks: click what's selected to pick it up and click again to put it down; click a grip, move, and click again; the Pen and the highlight tools go from one click to the next. Nothing needs the button held. Preferences > Mouse > Click, move, click off gives the drags back.
+- Callouts can have more than one leader: right-click a selected callout > Add leader. Each one has the first one's arrowhead, and its end has a grip. Remove leader takes one off.
+- Arrowhead size for the drawing's own lines (Edit objects) and for the Drawing tab's lines, as markups have.
+
+**Fixed**
+- A callout's fill opacity makes its box see-through. With a closed arrowhead, it made the arrowhead see-through instead.
+- A line of the drawing given arrowheads in Properties keeps them, and Properties shows them, after To back, To front, Forward or Backward.
+- In CAD mode, a big sheet's snap points and outlines are made ready again after the mouse button was let go outside the window. They could wait for good.
+
+## 1.17 (es)
+
+**Novedades**
+- Buscar similares (pestaña Medir, grupo Más): arrastre un cuadro alrededor de un símbolo, como una luminaria o un enchufe, y KanzonasPDF encuentra sus coincidencias en la página o en todas las páginas y coloca un marcador de Conteo en cada una, en un solo paso que puede revisar y deshacer.
+- La pestaña Dibujo: líneas, flechas, polilíneas, polígonos, rectángulos, elipses, círculos, arcos, nubes y trazos de pluma dibujados en la propia página, en su propia capa (KanzonasPDF drawing), en lugar de como marcas. Editar objetos los cambia después, y Convertir en dibujo convierte las marcas de formas y líneas en dibujo.
+- Paneles laterales: Páginas, Marcadores, Capas, Objetos, Conjuntos, Propiedades, la Caja de herramientas y la Lista de marcas pueden estar abiertos a la vez, apilados a la izquierda o a la derecha, con tiradores para cambiar su tamaño. Arrastre un panel por su título al otro lado.
+- El modo CAD funciona con clics: haga clic en lo seleccionado para tomarlo y haga clic de nuevo para soltarlo; haga clic en un pinzamiento, mueva y haga clic otra vez; el Lápiz y las herramientas de resaltado van de un clic al siguiente. Nada necesita mantener el botón presionado. Desactivar Preferencias > Mouse > Clic, mover, clic devuelve los arrastres.
+- Las llamadas pueden tener más de una línea guía: clic derecho en una llamada seleccionada > Agregar línea guía. Cada una lleva la punta de flecha de la primera, y su extremo tiene un pinzamiento. Quitar línea guía quita una.
+- Tamaño de punta de flecha para las líneas del propio dibujo (Editar objetos) y para las líneas de la pestaña Dibujo, como ya tienen las marcas.
+
+**Correcciones**
+- La opacidad del relleno de una llamada hace transparente su cuadro. Con una punta de flecha cerrada, hacía transparente la punta en su lugar.
+- Una línea del dibujo con puntas de flecha puestas en Propiedades las conserva, y Propiedades las muestra, después de Al fondo, Al frente, Adelante o Atrás.
+- En el modo CAD, los puntos de referencia y los contornos de un plano grande vuelven a prepararse después de soltar el botón del mouse fuera de la ventana. Podían quedarse esperando para siempre.
+
+## 1.17 (it)
+
+**Novità**
+- Trova simili (scheda Misure, gruppo Altro): trascina un riquadro attorno a un simbolo, come un apparecchio di illuminazione o una presa, e KanzonasPDF trova le sue corrispondenze nella pagina o in tutte le pagine e mette un marcatore di Conteggio su ciascuna, in un solo passaggio che puoi controllare e annullare.
+- La scheda Disegno: linee, frecce, polilinee, poligoni, rettangoli, ellissi, cerchi, archi, nuvole e tratti di penna disegnati nella pagina stessa, su un livello proprio (KanzonasPDF drawing), invece che come annotazioni. Modifica oggetti li cambia dopo, e Converti in disegno trasforma le annotazioni di forme e linee in disegno.
+- Pannelli laterali: Pagine, Segnalibri, Livelli, Oggetti, Raccolte, Proprietà, la Cassetta degli attrezzi e l'Elenco annotazioni possono essere aperti insieme, impilati a sinistra o a destra, con maniglie per ridimensionarli. Trascina un pannello per il titolo sull'altro lato.
+- La modalità CAD funziona con i clic: fai clic su ciò che è selezionato per prenderlo e fai clic di nuovo per posarlo; fai clic su un grip, sposta e fai clic ancora; la Penna e gli strumenti di evidenziazione vanno da un clic al successivo. Niente richiede di tenere premuto il pulsante. Disattivare Preferenze > Mouse > Clic, sposta, clic riporta i trascinamenti.
+- I richiami possono avere più di una linea guida: clic destro su un richiamo selezionato > Aggiungi linea guida. Ognuna ha la punta di freccia della prima, e la sua estremità ha un grip. Rimuovi linea guida ne toglie una.
+- Dimensione punta di freccia per le linee del disegno stesso (Modifica oggetti) e per le linee della scheda Disegno, come già hanno le annotazioni.
+
+**Correzioni**
+- L'opacità del riempimento di un richiamo rende trasparente il suo riquadro. Con una punta di freccia chiusa, rendeva trasparente la punta invece.
+- Una linea del disegno a cui sono state date punte di freccia in Proprietà le mantiene, e Proprietà le mostra, dopo In fondo, In cima, Avanti o Indietro.
+- In modalità CAD, i punti di aggancio e i contorni di una tavola grande vengono di nuovo preparati dopo aver rilasciato il pulsante del mouse fuori dalla finestra. Potevano restare in attesa per sempre.
+
 ## 1.16.4
 
 **New**
