@@ -1107,7 +1107,7 @@ né riempimento non disegna nulla.</li>
 <li><b>Il suo livello:</b> tutto ciò che disegna la scheda Disegno va su un livello del PDF,
 <b>KanzonasPDF drawing</b>, creato la prima volta che disegni. Il pannello Livelli lo elenca:
 togli la spunta per nascondere il disegno, a schermo e in stampa, come fanno gli altri programmi
-PDF che mostrano i livelli.</li>
+PDF che mostrano i livelli. Se disegni di nuovo mentre è nascosto, torna visibile.</li>
 <li><b>Come distinguerlo dalle annotazioni:</b> la sua scheda, il suo livello, l'etichetta di
 Proprietà <b>Contenuto della pagina: cambia la pagina stessa</b> per i suoi strumenti e per ciò
 che hanno disegnato, e una selezione <b>arancione</b> quando Modifica oggetti o la modalità CAD

@@ -4388,11 +4388,24 @@ class DocumentView(QScrollArea):
             return None
         if not had:
             self._redraw_all()          # (a new layer: the Layers panel lists it)
+        else:
+            self._show_drawing_layer()
         if not DocumentView.reuse_tools:
             self.toolUsed.emit()
         self.statusMessage.emit(tr("Drawn into the page, on the layer {layer} (Ctrl+Z undoes "
                                    "it)").format(layer=drawing.LAYER))
         return True
+
+    def _show_drawing_layer(self):
+        """The drawing layer shown again when it's hidden, so what was just drawn on it shows
+        (a viewing choice, as the Layers panel's)."""
+        from . import drawing
+        ocg = drawing.layer_xref(self.doc)
+        if ocg is None or ocg not in markup_layers.hidden(self.doc):
+            return
+        for number, x in markup_layers.ui_layers(self.doc):
+            if x == ocg:
+                self.set_layer(number, True)
 
     def convertible_selection(self):
         """The selected markups Convert to drawing takes: [(xref, model)]."""
@@ -4424,6 +4437,8 @@ class DocumentView(QScrollArea):
             return 0
         if not had:
             self._redraw_all()
+        else:
+            self._show_drawing_layer()
         n = len(made["done"])
         self.statusMessage.emit(tr("{n} markup(s) converted to drawing, on the layer {layer} "
                                    "(Ctrl+Z undoes it)").format(n=n, layer=drawing.LAYER))

@@ -1106,7 +1106,7 @@ dibuja nada.</li>
 <li><b>Su propia capa:</b> todo lo que dibuja la pestaña Dibujo va a una capa del PDF,
 <b>KanzonasPDF drawing</b>, creada la primera vez que dibuja. El panel Capas la muestra:
 desmárquela para ocultar el dibujo, en pantalla y al imprimir, como hacen otros programas de PDF
-que muestran capas.</li>
+que muestran capas. Si vuelve a dibujar mientras está oculta, se muestra de nuevo.</li>
 <li><b>Cómo distinguirlo de las marcas:</b> su propia pestaña, su propia capa, la etiqueta de
 Propiedades <b>Contenido de la página: cambia la propia página</b> para sus herramientas y para lo
 que dibujaron, y una selección <b>naranja</b> cuando Editar objetos o el modo CAD lo seleccionan

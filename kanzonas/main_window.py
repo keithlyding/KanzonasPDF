@@ -1496,6 +1496,9 @@ class MainWindow(QMainWindow):
             self.tool_actions[tid] = a
         for tid, label, tip in DRAW_TOOLS:
             a = QAction(label, self, checkable=True)
+            # (its own name for Keyboard shortcuts and the palette's recent commands: the
+            # Markup tab's Line is "Line" too)
+            a.setProperty("kz_id", "Drawing " + english_name(label))
             tip = kind_tip(tid, tip)
             a.setToolTip(tip)
             a.setStatusTip(tip)

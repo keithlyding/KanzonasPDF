@@ -444,6 +444,16 @@ class Layer(Base):
         v.set_layer(configs[0]["number"], True)
         self.assertTrue(dark_near(pixels(v.doc[0]), P(100, 350)))
 
+    def test_drawing_on_the_hidden_layer_shows_it_again(self):
+        v = self.view()
+        self.draw(v, "d_rect", (100, 300), (300, 400))
+        number = v.layer_configs()[0]["number"]
+        v.set_layer(number, False)
+        self.assertFalse(v.layer_configs()[0]["on"])
+        self.draw(v, "d_line", (100, 500), (300, 500))
+        self.assertTrue(v.layer_configs()[0]["on"])
+        self.assertTrue(dark_near(pixels(v.doc[0]), P(200, 500)))
+
     def test_the_layer_is_made_once_and_kept_by_name(self):
         v = self.view()
         for k in range(3):

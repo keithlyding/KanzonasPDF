@@ -1114,7 +1114,8 @@ Black, 1 pt, by default, as a drawing's lines usually are; saved for next time, 
 markup tools' styles. A shape with neither a line color nor a fill draws nothing.</li>
 <li><b>Its own layer:</b> everything the Drawing tab draws goes on one layer of the PDF,
 <b>KanzonasPDF drawing</b>, made the first time you draw. The Layers panel lists it: untick it
-to hide the drawing, on screen and in print, as other PDF programs that show layers do.</li>
+to hide the drawing, on screen and in print, as other PDF programs that show layers do.
+Drawing on it again while it's hidden shows it.</li>
 <li><b>Telling it apart from markups:</b> its own tab, its own layer, the Properties tag
 <b>Page content: changes the page itself</b> for its tools and for what they drew, and an
 <b>orange</b> selection when Edit objects or CAD mode selects it (the page's other lines and
