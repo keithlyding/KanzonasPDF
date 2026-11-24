@@ -951,7 +951,8 @@ segnalano allora qualsiasi modifica successiva.</li>
 <h2 id="shapes">Forme, linee e penna</h2>
 <ul>
 <li>Rettangolo (R), Ellisse (E), Cerchio (O), Nuvola (D), Maschera, Poligono (Y), Linea (L), Freccia (A),
-Polilinea (Shift+L), Arco, Curva, Penna (P). Le forme condividono un unico pulsante della barra degli strumenti: fai clic sulla sua freccia per sceglierne un'altra.</li>
+Polilinea (Shift+L), Arco, Curva, Penna (P). Le forme condividono un unico pulsante della barra degli strumenti: fai clic sulla sua freccia per sceglierne un'altra.
+Sono annotazioni; per disegnare nella pagina stessa, usa la scheda Disegno (vedi Scheda Disegno).</li>
 <li><b>Arco</b> (come l'ARC a tre punti di AutoCAD; nella scheda CAD sotto la freccia di Cerchio): fai clic sull'inizio, su un punto
 per cui passa l'arco, poi sulla fine; l'arco segue il puntatore prima dell'ultimo clic. Trascina i suoi tre punti per cambiarne la forma.</li>
 <li><b>Curvare una linea o una freccia:</b> selezionala e trascina il rombo al centro: diventa una curva morbida che passa per quel
@@ -1054,7 +1055,7 @@ spostare, nascondere, eliminare, mettere su livelli o appiattire, e la pagina so
 com'era; gli altri lettori PDF le elencano come commenti.</li>
 <li><b>Il contenuto della pagina</b> è la pagina stessa: il suo testo, le sue linee e le sue
 immagini. <b>Modifica testo</b>, <b>Aggiungi testo</b>, <b>Modifica oggetti</b>, lo strumento
-<b>Immagine</b> e <b>Cancella contenuto</b> lo cambiano. Ciò che scrivono fa parte della pagina:
+<b>Immagine</b>, <b>Cancella contenuto</b> e gli strumenti della scheda <b>Disegno</b> lo cambiano. Ciò che scrivono fa parte della pagina:
 ogni lettore lo mostra e lo stampa, e non si può nascondere né togliere come un'annotazione.</li>
 <li><b>Come capirlo:</b> il pannello Proprietà mostra un'etichetta sopra il titolo,
 <b>Annotazione: sopra la pagina</b> (viola) o <b>Contenuto della pagina: cambia la pagina
@@ -1081,6 +1082,52 @@ vengono riscritti dove sono, con le righe allontanate (o avvicinate) quanto cres
 dimensione. Il testo inclinato di un angolo che non è un quarto di giro (una filigrana in
 diagonale) non ha sottolineatura, barrato né sfondo. Per cambiare singole parole, modifica il
 testo (Modifica testo) e selezionale nella casella.</li>
+</ul>
+
+<h2 id="drawing">Scheda Disegno: linee e forme disegnate nella pagina</h2>
+<p>La scheda <b>Disegno</b> disegna linee e forme nella pagina stessa, come suo disegno
+vettoriale, così come le linee di un programma CAD fanno parte di una tavola stampata. Le forme
+della scheda Annotazioni restano annotazioni, sopra la pagina (vedi Annotazione o contenuto della
+pagina).</p>
+<ul>
+<li><b>Strumenti:</b> Linea, Freccia, Polilinea, Poligono, Rettangolo, Ellisse, Cerchio, Arco,
+Nuvola e Penna (anche in Strumenti &gt; Disegno). Si disegnano come le forme con lo stesso nome
+della scheda Annotazioni: trascinando (in modalità CAD, clic, sposta, clic); Polilinea e Poligono
+con un clic su ogni punto, doppio clic o Invio per finire; Arco con l'inizio, un punto da cui
+passa e la fine. Le anteprime, l'aggancio, Shift (passi di 45&deg;, quadrati e cerchi) e la riga
+di comando CAD funzionano allo stesso modo. Uno strumento di Disegno disegna sempre: un clic su
+un'annotazione non la seleziona.</li>
+<li><b>Stile:</b> con uno strumento di Disegno scelto, il pannello Proprietà mostra lo stile di
+quello strumento per le prossime forme: Colore linea, Riempimento (e Nessun bordo, Nessun
+riempimento), Spessore linea, Stile linea, la Punta di freccia iniziale e finale e la Freccia
+centrale delle linee (nessuna, aperta o chiusa), Opacità e Opacità del riempimento. Nero, da 1 pt,
+per impostazione predefinita, come sono di solito le linee di un disegno; salvato per la volta
+successiva, a parte gli stili degli strumenti di annotazione. Una forma senza colore della linea
+né riempimento non disegna nulla.</li>
+<li><b>Il suo livello:</b> tutto ciò che disegna la scheda Disegno va su un livello del PDF,
+<b>KanzonasPDF drawing</b>, creato la prima volta che disegni. Il pannello Livelli lo elenca:
+togli la spunta per nascondere il disegno, a schermo e in stampa, come fanno gli altri programmi
+PDF che mostrano i livelli.</li>
+<li><b>Come distinguerlo dalle annotazioni:</b> la sua scheda, il suo livello, l'etichetta di
+Proprietà <b>Contenuto della pagina: cambia la pagina stessa</b> per i suoi strumenti e per ciò
+che hanno disegnato, e una selezione <b>arancione</b> quando Modifica oggetti o la modalità CAD
+lo selezionano (le altre linee e forme della pagina appaiono in blu); Proprietà dice anche che è
+sul livello KanzonasPDF drawing.</li>
+<li><b>Cambiarlo dopo:</b> è il disegno della pagina stessa, quindi <b>Modifica oggetti</b>
+(anche nella scheda Disegno) lavora su di esso come su qualsiasi linea della pagina: selezionalo,
+spostalo, ridimensionalo, ruotalo, eliminalo e copialo; cambia Colore linea, Colore riempimento,
+Spessore linea, Stile linea e punte di freccia in Proprietà; portalo In cima, Avanti, Indietro o
+In fondo; raggruppalo con le linee del disegno stesso (ognuna mantiene il suo livello nel gruppo)
+e separalo. Non compare nell'elenco annotazioni e non si può appiattire: fa già parte della
+pagina.</li>
+<li><b>Converti in disegno</b> (scheda Disegno, Strumenti &gt; Disegno, il menu del clic destro
+di un'annotazione): le annotazioni di forme e linee selezionate (rettangoli, ellissi, cerchi,
+nuvole, poligoni, linee, frecce, polilinee, archi e tratti di penna) diventano disegno della
+pagina sul livello KanzonasPDF drawing, con lo stesso identico aspetto, e non sono più
+annotazioni. Misure, note, timbri, caselle di testo, richiami ed evidenziazioni restano
+annotazioni.</li>
+<li><b>Annulla:</b> ogni forma disegnata è un passo, e così ogni Converti in disegno. Salva li
+conserva, e il file riaperto li ha sul loro livello.</li>
 </ul>
 
 <h2 id="properties">Colori, bordi e stili (pannello Proprietà)</h2>
