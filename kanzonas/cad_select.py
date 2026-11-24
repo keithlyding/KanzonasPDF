@@ -24,6 +24,7 @@ import shiboken6
 from PySide6.QtCore import Qt, QPointF, QRectF, QTimer
 from PySide6.QtGui import QColor, QPen, QPolygonF
 
+from . import cad_grips
 from .i18n import tr
 from .page_objects import Box, Lasso
 
@@ -59,6 +60,7 @@ def press(w, e, pos, pdf, outside=False):
             for hid, r in box_handles(box).items():
                 if r.adjusted(-3, -3, 3, 3).contains(pos):
                     w._cad_resize = {"mode": hid, "start": pos, "box": box, "now": None}
+                    cad_grips.hold(w)
                     return
     if outside:
         target = ("markup", None)
@@ -69,11 +71,13 @@ def press(w, e, pos, pdf, outside=False):
             for hid, r in w._handles(model).items():
                 if r.adjusted(-3, -3, 3, 3).contains(pos):
                     w._edit = {"mode": hid, "start": pos, "model": model, "preview": None}
+                    cad_grips.hold(w)
                     return
     elif w._objects_here() and not remove:
         for hid, r in w._objects_handles().items():
             if r.adjusted(-3, -3, 3, 3).contains(pos):
                 w._obj_edit = {"mode": hid, "start": pos, "preview": None}
+                cad_grips.hold(w)
                 return
     if not outside:
         target = target_at(w, pos, pdf)
@@ -81,6 +85,13 @@ def press(w, e, pos, pdf, outside=False):
                    "target": target, "remove": remove, "t": e.timestamp(),
                    "link": getattr(w, "_link_press", None) is not None,
                    "on_selection": not outside and not remove and is_selected(w, *target)}
+    if w._cad_down["on_selection"] and cad_grips.on(v):
+        # a click on what's selected picks it up: it follows the pointer until the next
+        # click puts it down (cad_grips.py)
+        _start_drag(w, w._cad_down)
+        w._cad_down["now"] = pos
+        cad_grips.hold(w)
+        w.setCursor(Qt.SizeAllCursor)
 
 
 def is_selected(w, kind, target):
@@ -134,8 +145,7 @@ def move(w, e, pos):
     v = w.view
     if d["mode"] is None and (pos - d["start"]).manhattanLength() >= 4:
         if d.get("on_selection"):
-            d["mode"] = "drag"
-            d["outlines"] = _selection_lines(w)
+            _start_drag(w, d)
         else:
             d["mode"] = "lasso" if v.lasso else "box"
     if d["mode"] == "drag":
@@ -154,6 +164,12 @@ def move(w, e, pos):
     _schedule(w)
     w.update()
     _outside_update(w)
+
+
+def _start_drag(w, d):
+    """The press in d, on what's selected, moves the selection."""
+    d["mode"] = "drag"
+    d["outlines"] = _selection_lines(w)
 
 
 def hover(w, e):
@@ -381,6 +397,13 @@ def release(w, e, pos):
     if d["mode"] == "lasso" and len(d["pts"]) >= 3:
         region = Lasso([w.to_pdf(p) for p in d["pts"]])
         pick(w, region, d["dir"] < 0, d["remove"])
+    elif d["mode"] == "box" and d["now"] is not None and cad_grips.clicks(v) and \
+            not d.get("link"):
+        # CAD mode: a press, drag and release is a click and a move: the box goes on
+        # following the pointer, and the next click is its other corner
+        _start_pick(w, d)
+        v._cad_pick["now"] = d["now"]
+        _schedule(w)
     elif d["mode"] == "box" and d["now"] is not None:
         a, b = d["start"], d["now"]
         pick(w, Box(pymupdf.Rect(w.to_pdf(a), w.to_pdf(b))), b.x() < a.x(), d["remove"])
@@ -389,13 +412,18 @@ def release(w, e, pos):
         if target is not None:
             toggle(w, kind, target, d["remove"])
         elif v.click_click and not d.get("link"):     # (Ctrl+click on a link opens it)
-            # the first corner is kept as a point of the page: zooming or scrolling before
-            # the second click doesn't move it
-            v._cad_pick = {"w": w, "at": w.to_pdf(d["start"]), "now": d["start"],
-                           "remove": d["remove"]}
-            v.statusMessage.emit(tr("Click the other corner: left to right takes what's "
-                                    "inside, right to left what it touches (Escape cancels)"))
+            _start_pick(w, d)
     w.update()
+
+
+def _start_pick(w, d):
+    """A click, move, click box from the press in d: the first corner is kept as a point of
+    the page (zooming or scrolling before the second click doesn't move it)."""
+    v = w.view
+    v._cad_pick = {"w": w, "at": w.to_pdf(d["start"]), "now": d["start"],
+                   "remove": d["remove"]}
+    v.statusMessage.emit(tr("Click the other corner: left to right takes what's "
+                            "inside, right to left what it touches (Escape cancels)"))
 
 
 def double_click(w, e):
@@ -471,8 +499,10 @@ def cancel(v):
 
 def drop(v):
     """The document changed, or the tab, tool or mode did: a box or lasso being drawn, and
-    its highlight, go (what they'd take was worked out on the drawing as it was)."""
+    its highlight, go (what they'd take was worked out on the drawing as it was), and a grip
+    made hot by a click (cad_grips.py)."""
     cancel(v)
+    cad_grips.cancel(v, quiet=True)
     for w in getattr(v, "pages", []):
         if w._cad_down is not None or getattr(w, "_cad_preview", None) is not None or \
                 getattr(w, "_preview_job", None) is not None:

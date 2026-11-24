@@ -743,8 +743,14 @@ class _Canvas(QWidget):
         return w, QPointF(pos) - QPointF(w.pos())
 
     def mousePressEvent(self, e):
-        from . import cad_select
+        from . import cad_grips, cad_select
         v = self._view
+        hot = cad_grips.owner(v) if getattr(v, "doc", None) is not None else None
+        if hot is not None and e.button() in (Qt.LeftButton, Qt.RightButton):
+            # (a grip made hot by a click: this click places it, off the page too)
+            self._fwd = hot
+            self._send(hot, e, hot.mousePressEvent)
+            return
         if e.button() == Qt.LeftButton and getattr(v, "doc", None) is not None:
             pk = v._cad_pick
             if pk is not None:
@@ -777,7 +783,13 @@ class _Canvas(QWidget):
         self.update_gray()              # (what's drawn out here: _paint_overlays)
 
     def mouseDoubleClickEvent(self, e):
+        from . import cad_grips
         v = self._view
+        hot = cad_grips.owner(v) if getattr(v, "doc", None) is not None else None
+        if hot is not None:
+            self._fwd = hot
+            self._send(hot, e, hot.mouseDoubleClickEvent)
+            return
         if getattr(v, "doc", None) is not None and not v.read_only and v._cad_pick is None:
             w, _pos = self._page_at(e.position())
             if w is not None:
@@ -2172,6 +2184,7 @@ class DocumentView(QScrollArea):
     type_to_line = False        # CAD: letters typed over the drawing go to the command line
     _cad_pick = None            # CAD: a click, move, click box in progress (cad_select.py)
     _cad_shape = None           # CAD: a shape started with a click, ended by the next (cad_draw.py)
+    _cad_hot = None             # CAD: the page with a grip made hot by a click (cad_grips.py)
     _picked = {}                # what's selected -> when it was selected (_note_picks)
     _pick_n = 0
     space_pan = False           # Space held: a drag moves the page, with any tool
@@ -7207,6 +7220,10 @@ class DocumentView(QScrollArea):
         return True
 
     def keyPressEvent(self, e):
+        if e.key() == Qt.Key_Escape:
+            from . import cad_grips
+            if cad_grips.cancel(self):
+                return          # (CAD mode: a hot grip or a selection picked up goes back)
         if self._cad_cmd is not None and e.key() in (Qt.Key_Escape, Qt.Key_Return,
                                                      Qt.Key_Enter):
             if e.key() == Qt.Key_Escape:

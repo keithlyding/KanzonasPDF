@@ -312,8 +312,8 @@ class CommandLine(QWidget):
                         self.command.cancel()
                 else:
                     self.edit.clear()
-                    from . import cad_draw, cad_select
-                    if v is not None and not cad_draw.cancel(v):
+                    from . import cad_draw, cad_grips, cad_select
+                    if v is not None and not cad_grips.cancel(v) and not cad_draw.cancel(v):
                         cad_select.cancel(v)
                         v.escape_selection()
                 self._back_to_page()

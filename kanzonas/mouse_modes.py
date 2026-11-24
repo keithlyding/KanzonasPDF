@@ -37,8 +37,9 @@ def options(mode):
             ("free_pan", tr("Open canvas around the pages (drag the drawing anywhere)"), True),
             ("cad_select", tr("Window (blue) and crossing (green) selection: clicks add to the "
                               "selection, Shift takes out, Escape clears"), True),
-            ("click_click", tr("Click, move, click draws the selection box"), True),
-            ("lasso", tr("Hold the button and drag to draw a lasso"), True),
+            ("click_click", tr("Click, move, click, never holding the button: selection boxes, "
+                               "grips, moving the selection, drawing (off: drag them)"), True),
+            ("lasso", tr("Hold the button and drag to draw a lasso"), False),
             ("cad_tab", tr("Show the CAD tab (Move, Copy, Rotate...)"), True),
             ("type_to_line", tr("Letters typed over the drawing go to the command line (off: "
                                 "one-letter tool shortcuts work, as in the other modes)"), True)]
