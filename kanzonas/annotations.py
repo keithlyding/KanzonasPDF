@@ -190,6 +190,37 @@ PAGE_TEXT_TOOLS = {
     "edittext": {"font": "", "bold": False, "italic": False, "fontsize": 0},   # 0: keep the line's
 }
 
+# the Drawing tab's tools (drawing.py): shapes written into the page itself, on the layer
+# "KanzonasPDF drawing"; black by default, as a drawing's own lines usually are
+_DRAW_LINE = {"stroke": "#000000", "width": 1.0, "dash": "solid", "head_start": "none",
+              "head": "none", "mid": "none", "opacity": 1.0}
+_DRAW_SHAPE = {"stroke": "#000000", "fill": None, "width": 1.0, "dash": "solid",
+               "opacity": 1.0, "fill_opacity": 1.0}
+DRAW_TOOLS = {
+    "d_line": dict(_DRAW_LINE), "d_arrow": dict(_DRAW_LINE, head="open"),
+    "d_polyline": dict(_DRAW_LINE), "d_arc": dict(_DRAW_LINE),
+    "d_polygon": dict(_DRAW_SHAPE), "d_rect": dict(_DRAW_SHAPE),
+    "d_ellipse": dict(_DRAW_SHAPE), "d_circle": dict(_DRAW_SHAPE),
+    # (a cloud's scallops are drawn as the Cloud markup's: no Line style)
+    "d_cloud": {"stroke": "#000000", "fill": None, "width": 1.0, "opacity": 1.0,
+                "fill_opacity": 1.0},
+    "d_ink": {"stroke": "#000000", "width": 1.0, "opacity": 1.0},
+}
+LABELS.update({"d_line": tr("Line"), "d_arrow": tr("Arrow"), "d_polyline": tr("Polyline"),
+               "d_arc": tr("Arc"), "d_polygon": tr("Polygon"), "d_rect": tr("Rectangle"),
+               "d_ellipse": tr("Ellipse"), "d_circle": tr("Circle"), "d_cloud": tr("Cloud"),
+               "d_ink": tr("Pen")})
+
+
+def has_tool_props(kind):
+    """Whether tool kind has settings of its own (Properties shows them while it's picked)."""
+    return kind in DEFAULTS or kind in PAGE_TEXT_TOOLS or kind in DRAW_TOOLS
+
+
+def _tool_defaults(kind):
+    return DEFAULTS.get(kind) or PAGE_TEXT_TOOLS.get(kind) or DRAW_TOOLS.get(kind) or {}
+
+
 # printed in the sign-here box (made from the placeholder's kind, never read back)
 PLACEHOLDER_TEXT = {"signature": tr("SIGN HERE"), "initials": tr("INITIAL HERE")}
 HEADS = {"none": pymupdf.PDF_ANNOT_LE_NONE,
@@ -302,7 +333,7 @@ _TRANSIENT = {}
 
 
 def tool_props(kind):
-    props = dict(DEFAULTS.get(kind) or PAGE_TEXT_TOOLS.get(kind, {}))
+    props = dict(_tool_defaults(kind))
     if kind in TRANSIENT_TOOLS:
         props.update({k: v for k, v in _TRANSIENT.get(kind, {}).items() if k in props})
         return props
@@ -332,7 +363,7 @@ def set_tool_props(kind, props):
 
 
 def reset_tool_props(kind):
-    set_tool_props(kind, dict(DEFAULTS.get(kind) or PAGE_TEXT_TOOLS[kind]))
+    set_tool_props(kind, dict(_tool_defaults(kind)))
 
 
 def forget_saved_transient():

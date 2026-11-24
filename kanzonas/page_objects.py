@@ -2331,6 +2331,7 @@ _OWN_COLOR = re.compile(
     rb"\nq\n((?:(?:-?[\d.]+ -?[\d.]+ -?[\d.]+ (?:RG|rg)|-?[\d.]+ w|\[[-\d. ]*\] -?[\d.]+ d) ?)*)"
     rb"\n(/KZHeads <<[^<>]*>> DP\n)?((?:\nq (?:-?[\d.]+ +){6}cm\n)*)\Z")
 _HEADS_MARK = re.compile(rb"/KZHeads <</S/(\w+)/E/(\w+)/M/(\w+)/N (\d+)>> DP")
+_OC_MARK = re.compile(rb"^/OC\s*/[^\s/\[\]()<>{}%]+\s*BDC$")       # (a layer's marked content)
 HEAD_KINDS = ("none", "open", "closed")      # a drawing line's arrowheads (closed: outlined)
 # a Line style's dash pattern, in line widths (as annotations.DASHES)
 DASHES = {"solid": None, "dash": (3, 2), "dot": (1, 1.5), "dashdot": (3, 1.5, 1, 1.5)}
@@ -2692,13 +2693,21 @@ def reorder(page, ns, how, dry_run=False):
         return True
     snippet = b""
     pieces = []
+    # (each keeps its layers: the ones not open where it goes are opened around it, so
+    # hiding a layer still hides it, a drawing.py shape sent to the back included)
+    there = set()
+    if how in ("forward", "backward"):
+        there = set((d.get("ctx") or ((), ()))[0])     # (d: the object it goes past)
     for n in sel:
         d = found[n]
         old = data[d["start"]:d["end"]]
         m = d["ctm"] * ~target
-        snippet += (b"\nq %.6f %.6f %.6f %.6f %.4f %.4f cm\n" % tuple(m) + _DEFAULTS + b" " +
+        layers = [b for b in (d.get("ctx") or ((), ()))[0]
+                  if _OC_MARK.match(b.strip()) and b not in there]
+        snippet += (b"".join(b"\n" + b for b in layers) +
+                    b"\nq %.6f %.6f %.6f %.6f %.4f %.4f cm\n" % tuple(m) + _DEFAULTS + b" " +
                     d.get("state", b"") +
-                    b"\n" + old + b"\nQ\n")
+                    b"\n" + old + b"\nQ\n" + b"EMC\n" * len(layers))
         keep = _split(old)[0] if old[:2] != b"BI" else b""
         pieces.append((d["start"], d["end"], b" " + keep + b" "))
     pieces.append((at, at, snippet))
@@ -2822,10 +2831,12 @@ def _value_text(kind, val):
             "bool": val, "string": val}.get(kind)
 
 
-def _expand(doc, page, fx, taken, depth=0):
+def _expand(doc, page, fx, taken, depth=0, clip=True):
     """The drawing instructions of Form XObject fx, to stand in for its "/Name Do" on the
     page (None when fx isn't a usable form). A group holding nothing but one other group (a
-    wrapper, as many programs write) is taken apart too."""
+    wrapper, as many programs write) is taken apart too. clip: kept inside the form's box
+    (False: a markup's appearance drawn into the page, drawing.py, whose shapes then stay
+    under the same clipping as the page's own lines, so they can be grouped with them)."""
     if fx is None or depth > 8 or doc.xref_get_key(fx, "Subtype")[1] != "/Form":
         return None
     box, fm = _form_box(doc, fx)
@@ -2879,8 +2890,10 @@ def _expand(doc, page, fx, taken, depth=0):
         if sub is not None:
             body = body[:inner[0]["start"]] + sub + body[inner[0]["end"]:]
     m = " ".join(f"{v:g}" for v in (fm.a, fm.b, fm.c, fm.d, fm.e, fm.f)).encode()
-    clip = f"{box.x0:g} {box.y0:g} {box.width:g} {box.height:g} re W n".encode()
-    return b"\nq " + m + b" cm " + clip + b"\n" + body + b"\nQ\n"
+    if not clip:
+        return b"\nq " + m + b" cm\n" + body + b"\nQ\n"
+    box_clip = f"{box.x0:g} {box.y0:g} {box.width:g} {box.height:g} re W n".encode()
+    return b"\nq " + m + b" cm " + box_clip + b"\n" + body + b"\nQ\n"
 
 
 def group_problem(objs, items):
