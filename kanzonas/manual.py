@@ -1188,8 +1188,14 @@ object; Ungroup takes it apart again, its pieces left selected. It's drawn where
 them was, so something drawn between them comes out under it. Its text is written again inside
 it in its own font, size and color, as moving text does; it can still be found and copied. Edit
 text still changes it, but a line changed that way comes out of the group (group it again, or
-Ungroup first and Group after). Markups and the page's own objects can't be one group (a PDF keeps
-the two apart): with both selected Group stays grayed out, and its tooltip says why.</li>
+Ungroup first and Group after). Objects on different layers can be one group: each keeps its own
+layer inside it, so turning a layer off in the Layers panel still hides just that layer's objects.
+Objects drawn under different clipping (cut to different areas) can't, nor parts of a tagged page
+that belong to different tags. Markups and the page's own objects can't be one group (a PDF keeps
+the two apart): with both selected Group stays grayed out, and its tooltip says why. A selected
+group shows as one box, and Properties names it with what it holds, for example
+<b>Selected: Group (31 objects)</b> (the objects in groups inside it counted too). On a big
+drawing grouping and moving a group are quick: they work from the objects as already read.</li>
 <li><b>Flip horizontally</b> / <b>Flip vertically</b> (Arrange menu, the Group group, or the
 right-click menu) mirror the selection left for right or top for bottom across its middle, as
 the page is shown; a group flips as one (each part to its mirrored place), and the page's own

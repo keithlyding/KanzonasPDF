@@ -1173,8 +1173,15 @@ bloques: un clic en cualquier parte, también en su texto, lo selecciona entero,
 como un solo objeto; Desagrupar lo vuelve a separar y deja sus piezas seleccionadas. Se dibuja donde estaba la última
 de ellas, así que lo que se dibujaba entre ellas queda debajo. Su texto se escribe de nuevo dentro de él con su propia
 fuente, tamaño y color, como al mover texto; se puede seguir buscando y copiando. Editar texto lo sigue cambiando, pero
-una línea cambiada así sale del grupo (vuelva a agruparla, o desagrupe primero y agrupe después). Las marcas y los objetos propios de la página no pueden ser un mismo grupo (un PDF los mantiene separados): con ambos
-seleccionados, Agrupar queda en gris y su información sobre herramientas dice por qué.</li>
+una línea cambiada así sale del grupo (vuelva a agruparla, o desagrupe primero y agrupe después). Los objetos
+de capas distintas pueden ser un mismo grupo: cada uno conserva su capa dentro de él, así que al desactivar una capa en
+el panel Capas se siguen ocultando solo los objetos de esa capa. No pueden serlo los objetos dibujados con recortes
+distintos (recortados a áreas distintas), ni las partes de una página etiquetada que pertenecen a etiquetas
+distintas. Las marcas y los objetos propios de la página no pueden ser un mismo grupo (un PDF los mantiene separados): con ambos
+seleccionados, Agrupar queda en gris y su información sobre herramientas dice por qué. Un grupo seleccionado se
+muestra como un solo recuadro, y Propiedades lo nombra con lo que contiene, por ejemplo
+<b>Seleccionado: Grupo (31 objetos)</b> (contando también los objetos de los grupos que hay dentro). En un dibujo
+grande, agrupar y mover un grupo es rápido: se hace a partir de los objetos ya leídos.</li>
 <li><b>Voltear horizontalmente</b> / <b>Voltear verticalmente</b> (menú Organizar, el grupo Grupo, o el menú del botón
 derecho) reflejan la selección de izquierda a derecha o de arriba abajo por su centro, tal como se ve la página; un
 grupo se voltea como uno solo (cada parte a su lugar reflejado), y los objetos propios de la página seleccionados con

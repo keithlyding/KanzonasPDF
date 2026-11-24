@@ -1176,9 +1176,16 @@ elimina come un unico oggetto; Separa lo scompone di nuovo e lascia selezionati 
 dove si trovava l'ultimo di essi, quindi ciò che era disegnato tra di loro finisce sotto. Il suo testo viene
 riscritto al suo interno con il suo carattere, la sua dimensione e il suo colore, come quando si sposta il
 testo; si può ancora cercare e copiare. Modifica testo lo cambia ancora, ma una riga cambiata così esce dal
-gruppo (raggruppala di nuovo, oppure prima Separa e poi Raggruppa). Le annotazioni e gli oggetti propri della
+gruppo (raggruppala di nuovo, oppure prima Separa e poi Raggruppa). Gli oggetti su livelli diversi possono
+formare un unico gruppo: ognuno mantiene il proprio livello al suo interno, quindi disattivando un livello nel
+pannello Livelli si nascondono ancora solo gli oggetti di quel livello. Non possono farlo gli oggetti disegnati
+con ritagli diversi (ritagliati su aree diverse), né le parti di una pagina con tag che appartengono a tag
+diversi. Le annotazioni e gli oggetti propri della
 pagina non possono formare un unico gruppo (un PDF li tiene separati): se selezioni entrambi, Raggruppa è
-disattivato e il suo suggerimento spiega perché.</li>
+disattivato e il suo suggerimento spiega perché. Un gruppo selezionato appare come un unico riquadro, e
+Proprietà lo indica con ciò che contiene, per esempio <b>Selezionato: Gruppo (31 oggetti)</b> (contando anche
+gli oggetti dei gruppi al suo interno). Su un disegno grande raggruppare e spostare un gruppo è rapido: si
+parte dagli oggetti già letti.</li>
 <li><b>Rifletti orizzontalmente</b> / <b>Rifletti verticalmente</b> (menu Disponi, il gruppo Gruppo o il
 menu del clic destro) specchiano la selezione da sinistra a destra o dall'alto in basso attorno al suo centro,
 come viene mostrata la pagina; un gruppo si riflette come un tutt'uno (ogni parte al suo posto speculare), e

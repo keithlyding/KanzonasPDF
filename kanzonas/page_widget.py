@@ -225,6 +225,14 @@ def lines_path(lines):
     return path
 
 
+def _boxed(quad):
+    """The quad is its own box, upright (not turned)."""
+    r = quad.rect
+    corners = {(round(x, 2), round(y, 2)) for x in (r.x0, r.x1) for y in (r.y0, r.y1)}
+    return {(round(q.x, 2), round(q.y, 2)) for q in (quad.ul, quad.ur, quad.ll, quad.lr)} \
+        == corners
+
+
 SELECTED = QColor(0, 120, 215)
 GRIPS_MAX = 1500        # grips drawn for a selection at most (a huge one shows its outline)
 CURVED_MAX = 300        # selected markups whose curves are drawn along them (more: 2,000 bent
@@ -1728,8 +1736,13 @@ class PageWidget(QWidget):
             elif len(items) <= 3000:            # (a huge drawing: each one's box)
                 for it in items:
                     p.drawRect(self.to_screen(it["rect"], page))
-            p.setPen(QPen(blue, 1, Qt.DashLine))
-            p.drawRect(self.to_screen(self.view.selected_objects_rect(), page).adjusted(-2, -2, 2, 2))
+            if not (len(items) == 1 and items[0]["kind"] in ("group", "picture") and
+                    _boxed(items[0]["quad"])):
+                # (one group or picture not turned: its outline is its box, and a second box
+                # just outside it looked like two things selected; the owner, 23 Nov)
+                p.setPen(QPen(blue, 1, Qt.DashLine))
+                p.drawRect(self.to_screen(self.view.selected_objects_rect(), page).adjusted(
+                    -2, -2, 2, 2))
             if ed is None:
                 p.setPen(QPen(blue, 1))
                 p.setBrush(Qt.white)
