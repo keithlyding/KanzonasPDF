@@ -543,6 +543,27 @@ class History(Quiet):
         v.undo()
         self.assertEqual(canon(v.doc), start)
 
+    def test_slow_arrow_key_nudges_are_one_step_too(self):
+        # (a press taking longer than the gap between presses: the gap is counted from when
+        # it ended. Nightly battery, seed 2026112402: on a slow runner two steps were made)
+        v = self.view()
+        steps = len(v._undo)
+        real = DocumentView.commit_models
+        clock = [1000.0]
+
+        def slow(self_, *a, **k):
+            clock[0] += 2.0                    # (each press takes 2 s)
+            return real(self_, *a, **k)
+        with mock.patch.object(DocumentView, "commit_models", slow), \
+                mock.patch.object(time, "monotonic", lambda: clock[0]):
+            _nudges(v)
+        self.assertEqual(len(v._undo), steps + 1)
+        # (a real pause between presses still starts a new step)
+        clock[0] += 5.0
+        with mock.patch.object(time, "monotonic", lambda: clock[0]):
+            v.nudge(1, 0, 1)
+        self.assertEqual(len(v._undo), steps + 2)
+
     def test_a_failed_edit_leaves_the_document_as_it_was(self):
         v = self.view()
         rect_markup(v)
