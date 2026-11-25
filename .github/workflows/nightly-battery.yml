@@ -117,16 +117,20 @@ jobs:
           path: summary
           if-no-files-found: ignore
 
-  # one open issue labeled "battery": made at the first failure, commented on at the next ones
+  # one open issue labeled "battery": made at the first failure, commented on at the next ones.
+  # (always(): with failure(), a job that was cancelled, as the macOS one was on 25 Nov 2026
+  # when no runner took it, skipped the report and the night's failure never reached the issue)
   report:
     needs: battery
-    if: failure()
+    if: ${{ always() && needs.battery.result != 'success' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      actions: read                    # (gh run view: which jobs didn't finish)
       issues: write
     steps:
       - uses: actions/download-artifact@v6
+        continue-on-error: true        # (none when every job that ran passed)
         with:
           pattern: summary-*
           merge-multiple: true
@@ -138,10 +142,23 @@ jobs:
           GH_REPO: ${{ github.repository }}
           RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
+          # (the jobs that didn't run to the end: cancelled, no runner taking them, the time limit)
+          gone=$(gh run view "$GITHUB_RUN_ID" --json jobs \
+            --jq '.jobs[] | select(.name | startswith("battery")) |
+                  select(.conclusion == "cancelled" or .conclusion == "timed_out") | .name')
+          if ! ls summary/*.md >/dev/null 2>&1; then
+            # nothing failed: a job only cancelled is said in the run, not in an issue
+            echo "No battery failed${gone:+ (not run to the end: $gone)}"
+            exit 0
+          fi
           {
             echo "Nightly battery on main ($(date -u +%F), ${GITHUB_SHA:0:7}) failed: $RUN"
             echo
-            cat summary/*.md 2>/dev/null || echo "(no summary: see the run)"
+            cat summary/*.md
+            if [ -n "$gone" ]; then
+              echo
+              echo "Not run to the end (no result): $gone"
+            fi
           } > body.md
           gh label create battery --color D93F0B --description "Nightly random editing battery" 2>/dev/null || true
           n=$(gh issue list --label battery --state open --search "Nightly battery in:title" --json number --jq '.[0].number')

@@ -65,12 +65,24 @@ class Workflow(unittest.TestCase):
         self.assertEqual(self.wf["permissions"], {"contents": "read"})
         self.assertNotIn("permissions", self.jobs["battery"])
         report = self.jobs["report"]
-        self.assertEqual(report["permissions"], {"contents": "read", "issues": "write"})
+        self.assertEqual(report["permissions"],
+                         {"contents": "read", "actions": "read", "issues": "write"})
         self.assertEqual(report["needs"], "battery")
-        self.assertEqual(report["if"], "failure()")
         text = str(report["steps"])
         self.assertIn("--label battery", text)
         self.assertIn("gh issue comment", text)         # (one open issue, commented on)
+
+    def test_reported_when_another_job_was_cancelled(self):
+        # (25 Nov 2026: the macOS job got no runner and was cancelled; with failure() the
+        # report was skipped and Linux's failure never reached the issue)
+        report = self.jobs["report"]
+        self.assertIn("always()", report["if"])
+        self.assertIn("needs.battery.result != 'success'", report["if"])
+        download = next(s for s in report["steps"] if "download-artifact" in s.get("uses", ""))
+        self.assertTrue(download.get("continue-on-error"))
+        run = next(s for s in report["steps"] if s.get("name") == "Report in an issue")["run"]
+        self.assertIn("cancelled", run)                 # (the jobs with no result named)
+        self.assertIn("exit 0", run)                    # (none failed: no issue)
 
     def test_a_failures_output_is_kept(self):
         kept = [s for s in self.jobs["battery"]["steps"]
