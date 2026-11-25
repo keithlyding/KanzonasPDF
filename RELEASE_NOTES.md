@@ -9,6 +9,24 @@ Spanish translation under `## <version> (es)`. The Windows build fails without t
 translation under `## <version> (it)` is shown to Italian users (since 1.13); without one they
 see the English.
 
+## 1.17.1
+
+**Fixed**
+- Moving the page's text with the arrow keys is one Undo step for the whole series, even when each press takes a while (a big page or a slow computer). It could become two.
+- Text lying on other text, both struck through, shows Strikethrough in Properties. The text underneath took the strikethrough line on top of it as its own, and the text on top read back as not struck through.
+
+## 1.17.1 (es)
+
+**Correcciones**
+- Mover el texto de la página con las flechas es un solo paso de Deshacer para toda la serie, aunque cada pulsación tarde un poco (una página grande o un equipo lento). Podía convertirse en dos.
+- El texto que está sobre otro texto, ambos tachados, muestra Tachado en Propiedades. El texto de debajo tomaba como propia la línea de tachado del de encima, y el de encima se leía como no tachado.
+
+## 1.17.1 (it)
+
+**Correzioni**
+- Spostare il testo della pagina con i tasti freccia è un solo passaggio di Annulla per tutta la serie, anche quando ogni pressione richiede un po' di tempo (una pagina grande o un computer lento). Poteva diventarne due.
+- Il testo che sta sopra altro testo, entrambi barrati, mostra Barrato in Proprietà. Il testo sotto prendeva come propria la linea di barratura di quello sopra, e quello sopra risultava non barrato.
+
 ## 1.17
 
 **New**

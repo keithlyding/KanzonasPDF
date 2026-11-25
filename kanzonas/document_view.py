@@ -7119,7 +7119,10 @@ class DocumentView(QScrollArea):
         # the objects were taken anew, a moved paragraph given its own item over another one)
         key = ("obj", self.obj_sel[0], tuple(it["n"] for it in self.obj_sel[1])) \
             if self.obj_sel else key
-        self._last_nudge = (key, now, self.revision)
+        # (the time it ended: the gap to the next press is the user's own, however long this
+        # one took. Taken when it began, a press slower than the gap on a big page (or a slow
+        # computer: the nightly battery, seed 2026112402) made the next one a new undo step)
+        self._last_nudge = (key, time.monotonic(), self.revision)
         self.statusMessage.emit(tr("Moved {step} pt (Shift+arrow: 10 pt, Ctrl+arrow: 0.1 pt; "
                                    "Ctrl+Z undoes the whole series)").format(step="%g" % step))
         return True
