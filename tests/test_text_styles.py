@@ -569,6 +569,29 @@ class Underlines(Fixture):
                  if text_edit.line_text(ln).startswith("s by")][0]
         self.assertFalse(any(k.strike for k in text_styles.read_lines(p, [small])[0].keys))
 
+    def test_two_struck_lines_lying_on_each_other_each_keep_their_own(self):
+        # (a label lying on a contents row of dots, both struck through: read together the
+        # row took the label's line as its own, whose ends met two of its dots, and the
+        # label read back not struck. Nightly battery, issue #133, seed 2026112503)
+        d = pymupdf.open()
+        p = d.new_page()
+        row = "Third" + "." * 90
+        p.insert_text((72, 130), row, fontsize=11)
+        label = "SHEET NO: R-5"
+        p.insert_text((150, 129), label, fontsize=9)
+        x1 = 72 + pymupdf.get_text_length(row, fontsize=11)
+        lx1 = 150 + pymupdf.get_text_length(label, fontsize=9)
+        p.draw_rect(pymupdf.Rect(72, 130 - 3.6, x1, 130 - 3.0), color=None, fill=(0, 0, 0))
+        p.draw_rect(pymupdf.Rect(150, 129 - 3.0, lx1, 129 - 2.5), color=None, fill=(0, 0, 0))
+        lines = {text_edit.line_text(ln): ln for _r, ln in text_edit.text_lines(p)}
+        self.assertEqual(set(lines), {row, label})
+        for order in ([row, label], [label, row]):
+            got = text_styles.read_lines(p, [lines[t] for t in order])
+            for st in got:
+                self.assertTrue(all(k.strike for c, k in zip(st.text, st.keys)
+                                    if not c.isspace()), (order, st.text))
+                self.assertEqual(len(st.decor), 1, (order, st.text))
+
     def test_table_border_and_long_rule_are_not_underlines(self):
         def border(p):
             # a table cell around the paragraph: its bottom border just under the last line

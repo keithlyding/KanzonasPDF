@@ -340,53 +340,86 @@ def _line_info(line, found):
     return out
 
 
-def _decorate(line, info, vecs, used):
-    """Mark the letters of line (info: _line_info) that a thin line underlines or strikes
-    through; returns the boxes of the lines taken."""
+def _line_geom(line, info):
+    """What _bar_fit needs of line (info: _line_info), worked out once: its direction, the
+    letters' extents along it, the ink's ends, its size; None for a line of spaces only."""
     dx, dy = line["dir"]
     nx, ny = -dy, dx                    # "down", across the text
     ox, oy = line["spans"][0]["origin"]
-    base = ox * nx + oy * ny
     size = te.main_span(line)["size"]
     ext = [(i, e[2][0], e[2][1]) for i, e in enumerate(info) if e[2] is not None]
     ink = [x for x in ext if not info[x[0]][0].isspace()]
     if not ink:
-        return []
-    lo, hi = min(x[1] for x in ink), max(x[2] for x in ink)
-    tol = max(0.75, 0.15 * size)
-    out = []
+        return None
+    return (dx, dy, nx, ny, ox * nx + oy * ny, size, ext,
+            min(x[1] for x in ink), max(x[2] for x in ink), max(0.75, 0.15 * size))
+
+
+def _bar_fit(geom, info, v):
+    """How a thin bar v (a drawing) underlines or strikes through a line (geom: _line_geom,
+    info: _line_info): (kind, the letters it covers, how far its ends are from theirs), or
+    None when it doesn't."""
+    dx, dy, nx, ny, base, size, ext, lo, hi, tol = geom
+    r = pymupdf.Rect(v["bbox"])
+    corners = (r.tl, r.tr, r.bl, r.br)
+    along = [p.x * dx + p.y * dy for p in corners]
+    across = [p.x * nx + p.y * ny - base for p in corners]
+    v0, v1, c0, c1 = min(along), max(along), min(across), max(across)
+    thick, length = c1 - c0, v1 - v0
+    if thick > 0.2 * size + 0.6 or length < max(3 * thick, 0.25 * size):
+        return None                     # not a thin line along the text
+    mid = (c0 + c1) / 2
+    if 0.02 * size <= mid <= 0.35 * size:
+        kind = "underline"
+    elif -0.5 * size <= mid <= -0.12 * size:
+        kind = "strike"
+    else:
+        return None
+    if v0 < lo - tol or v1 > hi + tol:
+        return None                     # longer than the text: a border or a rule
+    cov = [x for x in ext if v0 - 0.01 <= (x[1] + x[2]) / 2 <= v1 + 0.01]
+    if not any(not info[i][0].isspace() for i, _a, _b in cov):
+        return None                     # under spaces only: a form's blank
+    off = abs(min(x[1] for x in cov) - v0) + abs(max(x[2] for x in cov) - v1)
+    if abs(min(x[1] for x in cov) - v0) > tol or abs(max(x[2] for x in cov) - v1) > tol:
+        return None                     # doesn't start and end with the letters
+    return kind, {i for i, _a, _b in cov}, off
+
+
+def _mark(info, kind, idx):
+    lo_i, hi_i = min(idx), max(idx)
+    for i in range(lo_i, hi_i + 1):             # (a space put between pieces too)
+        if i in idx or info[i][2] is None:
+            info[i][1] = info[i][1]._replace(**{kind: True})
+
+
+def _decorate(line, info, vecs, used):
+    """Mark the letters of line (info: _line_info) that a thin line underlines or strikes
+    through; returns the boxes of the lines taken."""
+    return _decorate_lines([(line, info)], vecs, used)[0]
+
+
+def _decorate_lines(pairs, vecs, used):
+    """_decorate for several lines ([(line, info)]) read together: each thin line goes to
+    the line its ends fit best, whatever the order they're read in (a label lying on a row
+    of dots took the row's strikethrough as the dots', and read back not struck through:
+    the nightly battery, seed 2026112503). Returns each line's boxes taken."""
+    fits = []
+    geoms = [_line_geom(line, info) for line, info in pairs]
     for vi, v in enumerate(vecs):
         if vi in used:
             continue
-        r = pymupdf.Rect(v["bbox"])
-        corners = (r.tl, r.tr, r.bl, r.br)
-        along = [p.x * dx + p.y * dy for p in corners]
-        across = [p.x * nx + p.y * ny - base for p in corners]
-        v0, v1, c0, c1 = min(along), max(along), min(across), max(across)
-        thick, length = c1 - c0, v1 - v0
-        if thick > 0.2 * size + 0.6 or length < max(3 * thick, 0.25 * size):
-            continue                    # not a thin line along the text
-        mid = (c0 + c1) / 2
-        if 0.02 * size <= mid <= 0.35 * size:
-            kind = "underline"
-        elif -0.5 * size <= mid <= -0.12 * size:
-            kind = "strike"
-        else:
+        for li, g in enumerate(geoms):
+            f = _bar_fit(g, pairs[li][1], v) if g is not None else None
+            if f is not None:
+                fits.append((f[2], vi, li, f[0], f[1]))
+    out = [[] for _ in pairs]
+    for _off, vi, li, kind, idx in sorted(fits, key=lambda x: (x[0], x[1], x[2])):
+        if vi in used:
             continue
-        if v0 < lo - tol or v1 > hi + tol:
-            continue                    # longer than the text: a border or a rule
-        cov = [x for x in ext if v0 - 0.01 <= (x[1] + x[2]) / 2 <= v1 + 0.01]
-        if not any(not info[i][0].isspace() for i, _a, _b in cov):
-            continue                    # under spaces only: a form's blank
-        if abs(min(x[1] for x in cov) - v0) > tol or abs(max(x[2] for x in cov) - v1) > tol:
-            continue                    # doesn't start and end with the letters
-        idx = {i for i, _a, _b in cov}
-        lo_i, hi_i = min(idx), max(idx)
-        for i in range(lo_i, hi_i + 1):         # (a space put between pieces too)
-            if i in idx or info[i][2] is None:
-                info[i][1] = info[i][1]._replace(**{kind: True})
+        _mark(pairs[li][1], kind, idx)
         used.add(vi)
-        out.append(r)
+        out[li].append(pymupdf.Rect(vecs[vi]["bbox"]))
     return out
 
 
@@ -460,9 +493,10 @@ def read_paragraph(page, lines):
     try:
         found, vecs = _read_area(page, _area(lines))
         used, decor, out = set(), [], []
-        for ln in lines:
-            info = _line_info(ln, found)
-            decor += _decorate(ln, info, vecs, used)
+        infos = [_line_info(ln, found) for ln in lines]
+        for got in _decorate_lines(list(zip(lines, infos)), vecs, used):
+            decor += got
+        for ln, info in zip(lines, infos):
             decor += _backgrounds(ln, info, vecs, used)
             t = _strip(info)
             if not t:
@@ -514,11 +548,23 @@ def read_lines(page, lines):
     except Exception:
         return [_uniform(te.line_text(ln), te.main_span(ln)) for ln in lines]
     used, out = set(), []
+    infos = []
     for ln in lines:
+        try:
+            infos.append(_line_info(ln, found))
+        except Exception:
+            infos.append(None)          # (read as one style below)
+    ok = [(ln, info) for ln, info in zip(lines, infos) if info is not None]
+    try:
+        bars = iter(_decorate_lines(ok, vecs, used))
+    except Exception:
+        return [_uniform(te.line_text(ln), te.main_span(ln)) for ln in lines]
+    for ln, info in zip(lines, infos):
         text = te.line_text(ln)
         try:
-            info = _line_info(ln, found)
-            decor = _decorate(ln, info, vecs, used) + _backgrounds(ln, info, vecs, used)
+            if info is None:
+                raise ValueError("unread")
+            decor = next(bars) + _backgrounds(ln, info, vecs, used)
             if "".join(c for c, _k, _e in info) != text:
                 out.append(_uniform(text, te.main_span(ln)))
                 continue
