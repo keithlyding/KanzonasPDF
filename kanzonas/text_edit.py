@@ -107,8 +107,9 @@ def _stext_page(dl, flags, clip=None):
     return stp
 
 
-def text_lines(page):
-    """[(rect, line)] for every visual text line on the page (unrotated coords).
+def text_lines(page, outside=False):
+    """[(rect, line)] for every visual text line on the page (unrotated coords); outside:
+    with the lines lying wholly outside the page too.
 
     PDF producers often split one visual line into several pieces (kerning, a single
     letter placed separately, another text block). Pieces on the same baseline that
@@ -166,7 +167,7 @@ def text_lines(page):
             m["spans"].sort(key=lambda s: seq.get(id(s), 0))
     # (a line's pieces joined first: its letters past the edge can be a piece of their own)
     return [(m["bbox"], m) for m in merged
-            if any(s["text"].strip() for s in m["spans"]) and _shows(m, shown)]
+            if any(s["text"].strip() for s in m["spans"]) and (outside or _shows(m, shown))]
 
 
 def _rtl(text):
@@ -1006,7 +1007,10 @@ def _others_of(page, lines):
             mine[k] -= 1
             return True
         return False
-    for _r, ln in text_lines(page):
+    # (with the lines wholly outside the page: a legend's "Abc" samples drawn past its edge,
+    # within a selected line's box, went with it when it was restyled. Nightly battery,
+    # issue #135, seed 2026112603)
+    for _r, ln in text_lines(page, outside=True):
         rest = [s for s in ln["spans"] if not picked(s)]
         if not rest or not any(s["text"].strip() for s in rest):
             continue

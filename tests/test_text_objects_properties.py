@@ -171,6 +171,37 @@ class TextObjects(unittest.TestCase):
         self.assertEqual(self.props.fontsize.text().strip(), "")
 
 
+class OffThePage(unittest.TestCase):
+    def test_text_wholly_past_the_edge_inside_a_restyled_line_stays(self):
+        # (a legend drawn partly past the page's left edge, its "Abc" samples wholly past
+        # it, inside its lines' boxes: restyling the lines took the samples away. Nightly
+        # battery, issue #135, seed 2026112603)
+        from kanzonas.document_view import DocumentView
+        d = pymupdf.open()
+        p = d.new_page(width=300, height=300)
+        p.insert_text((-40, 120), "Squiggly sample", fontsize=11)
+        p.insert_text((-36, 119), "Abc", fontsize=7)
+        path = os.path.join(tempfile.mkdtemp(), "edge.pdf")
+        d.save(path)
+        v = DocumentView(path)
+        self.addCleanup(v.close_doc)
+        self.addCleanup(setattr, v, "dirty", False)
+        texts = [t for _r, ln in text_edit.text_lines(v.doc[0], outside=True)
+                 for t in [text_edit.line_text(ln)]]
+        self.assertIn("Abc", texts)
+        self.assertNotIn("Abc", [text_edit.line_text(ln)
+                                 for _r, ln in text_edit.text_lines(v.doc[0])])
+        line = [it for it in v.text_objects(0)
+                if any(text_edit.line_text(ln) == "Squiggly sample" for _r, ln in it["lines"])]
+        self.assertEqual(len(line), 1)
+        v.select_objects(0, line)
+        v.style_text_objects({"underline": True, "fontsize": 14.5})
+        texts = [text_edit.line_text(ln)
+                 for _r, ln in text_edit.text_lines(v.doc[0], outside=True)]
+        self.assertIn("Abc", texts)
+        self.assertIn("Squiggly sample", texts)
+
+
 class OnABigSheet(unittest.TestCase):
     def test_400_labels_made_bold_quickly(self):
         # (each line read on its own walked the whole drawing: 8.7 s here, 1.0 s read once)
