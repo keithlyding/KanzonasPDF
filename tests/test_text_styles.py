@@ -592,6 +592,32 @@ class Underlines(Fixture):
                                     if not c.isspace()), (order, st.text))
                 self.assertEqual(len(st.decor), 1, (order, st.text))
 
+    def test_underline_running_on_past_a_line_split_from_its_run(self):
+        # (other text lying on a run's baseline: MuPDF reads the run as two lines, and the
+        # underline under all of it ran on past the first, which read back not underlined.
+        # Nightly battery, issue #135, seed 2026112603)
+        d = pymupdf.open()
+        p = d.new_page()
+        p.insert_text((100, 130), "Line", fontsize=9, fontname="helv")
+        w = pymupdf.Font("tiro").text_length("Ellipse ", 14.5)
+        p.insert_text((70, 130), "Ellipse ", fontsize=14.5, fontname="tiro")
+        p.insert_text((70 + w, 130), "Ellipse", fontsize=14.5, fontname="tiro")
+        x1 = 70 + pymupdf.Font("tiro").text_length("Ellipse Ellipse", 14.5)
+        p.draw_rect(pymupdf.Rect(70, 131.1, x1, 131.8), color=None, fill=(0, 0, 0))
+        lines = {text_edit.line_text(ln): ln for _r, ln in text_edit.text_lines(p)}
+        self.assertIn("Ellipse ", lines)            # (read as two lines)
+        first = lines["Ellipse "]
+        for st in (text_styles.read_lines(p, [first])[0], text_styles.read_line(p, first)):
+            self.assertTrue(all(k.underline for c, k in zip(st.text, st.keys)
+                                if not c.isspace()), st.text)
+        # (a rule running on past the run's end still isn't an underline)
+        p.draw_rect(pymupdf.Rect(70, 151.1, x1 + 40, 151.8), color=None, fill=(0, 0, 0))
+        p.insert_text((70, 150), "Ellipse ", fontsize=14.5, fontname="tiro")
+        p.insert_text((70 + w, 150), "Ellipse", fontsize=14.5, fontname="tiro")
+        ln = [ln for r, ln in text_edit.text_lines(p) if r.y1 > 140][0]
+        st = text_styles.read_line(p, ln)
+        self.assertFalse(any(k.underline for k in st.keys), st.text)
+
     def test_table_border_and_long_rule_are_not_underlines(self):
         def border(p):
             # a table cell around the paragraph: its bottom border just under the last line

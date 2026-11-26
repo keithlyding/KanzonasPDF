@@ -202,17 +202,29 @@ def plain(keys, main):
 
 
 # ---- reading ------------------------------------------------------------------------
+# (how far past a level or upright line the page is read along it: an underline under a run
+# of text that MuPDF reads as more than one line runs on past the line, and was read cut off
+# where the reading stopped)
+_ALONG = 10000.0
+
+
 def _area(lines):
     box = pymupdf.Rect()
-    for ln in lines:
-        box |= pymupdf.Rect(ln["bbox"])
     size = max(s["size"] for ln in lines for s in ln["spans"])
-    return box + (-size, -size, size, size)
+    for ln in lines:
+        r = pymupdf.Rect(ln["bbox"]) + (-size, -size, size, size)
+        dx, dy = ln["dir"]
+        if abs(dy) < 1e-3:
+            r.x0, r.x1 = r.x0 - _ALONG, r.x1 + _ALONG
+        elif abs(dx) < 1e-3:
+            r.y0, r.y1 = r.y0 - _ALONG, r.y1 + _ALONG
+        box |= r
+    return box
 
 
 def _read_area(page, area):
     """The letters around area as MuPDF reads them with their drawing styles, and the thin
-    straight drawings nearby: ({(char, x, y): (row, index)} by each letter's origin, where
+    straight drawings nearby: ({(char, x, y, size): (row, index)} by each letter's origin, where
     row is the letters of one size on that baseline in order along it, each [char, flags,
     shear, a0, a1]; the drawings). (MuPDF splits a line where its letters' style changes:
     the letters are put in order along their baseline again.)"""
@@ -245,10 +257,13 @@ def _read_area(page, area):
                      ox * dx + oy * dy, ox, oy])
     found = {}
     thick = []
-    for row in rows.values():
+    for rk, row in rows.items():
         row.sort(key=lambda e: e[5])
+        found[("row",) + rk] = row      # (and each row by its key: _span_entries_along)
         for i, e in enumerate(row):
-            found.setdefault((e[0], round(e[6], 1), round(e[7], 1)), (row, i))
+            # (by size too: a copy of a line in another size starting at the same point, its
+            # letters taken for this one's. Nightly battery, issue #135, seed 2026112603)
+            found.setdefault((e[0], round(e[6], 1), round(e[7], 1), rk[3]), (row, i))
             if e[1] & _FILLED and e[1] & _STROKED:
                 thick.append(e)
     if thick:
@@ -298,14 +313,18 @@ def _same_color(a, b):
     return all(abs(((a >> s) & 255) - ((b >> s) & 255)) <= 3 for s in (0, 8, 16))
 
 
-def _span_entries(span, found):
-    """Per character of the span: its [char, flags, shear, a0, a1, ...] as read, or None."""
+def _span_entries(span, found, d=None):
+    """Per character of the span: its [char, flags, shear, a0, a1, ...] as read, or None.
+    d: the line's direction."""
     text = span["text"]
     out = [None] * len(text)
     if not text:
         return out
     o = span["origin"]
-    hit = found.get((text[0], round(o[0], 1), round(o[1], 1)))
+    size = round(span["size"], 1)
+    hit = found.get((text[0], round(o[0], 1), round(o[1], 1), size))
+    if hit is None and d is not None and len(text) > 1:
+        return _span_entries_along(span, found, d, out)
     if hit is None:
         return out
     row, i = hit
@@ -313,6 +332,34 @@ def _span_entries(span, found):
         if i + k >= len(row) or row[i + k][0] != ch:
             break
         out[k] = row[i + k]
+    return out
+
+
+def _span_entries_along(span, found, d, out):
+    """_span_entries for a span whose first letter wasn't read: MuPDF takes a letter drawn
+    where the same letter already is (a copy of the line in another size starting at the
+    same point) for a bold one's second stroke and leaves it out. Its other letters are
+    found on its baseline, and the first one is taken to run from where the span starts to
+    the next. (Nightly battery, issue #135, seed 2026112603)"""
+    text, (ox, oy), (dx, dy) = span["text"], span["origin"], d
+    base, at = oy * dx - ox * dy, ox * dx + oy * dy
+    row = None
+    for db in (0, -0.01, 0.01):
+        row = found.get(("row", round(dx, 2), round(dy, 2), round(base + db, 2),
+                         round(span["size"], 1)))
+        if row is not None:
+            break
+    if not row:
+        return out
+    j = next((j for j, e in enumerate(row) if e[5] >= at + 0.01), None)
+    if j is None or row[j][0] != text[1]:
+        return out
+    for k in range(1, len(text)):
+        if j + k - 1 >= len(row) or row[j + k - 1][0] != text[k]:
+            break
+        out[k] = row[j + k - 1]
+    if out[1] is not None and out[1][3] > at:
+        out[0] = [text[0]] + list(out[1][1:3]) + [at, out[1][3]] + [at, ox, oy]
     return out
 
 
@@ -326,7 +373,7 @@ def _line_info(line, found):
             if gap > 0.15 * s["size"] and not (out and out[-1][0] == " ") and \
                     not s["text"].startswith(" "):
                 out.append([" ", out[-1][1] if out else span_style(prev), None])
-        entries = _span_entries(s, found) if found else [None] * len(s["text"])
+        entries = _span_entries(s, found, line["dir"]) if found else [None] * len(s["text"])
         styles = {}
         for ch, e in zip(s["text"], entries):
             sb = bool(e and e[1] & _FILLED and e[1] & _STROKED and len(e) > 8 and
@@ -340,9 +387,10 @@ def _line_info(line, found):
     return out
 
 
-def _line_geom(line, info):
+def _line_geom(line, info, found=None):
     """What _bar_fit needs of line (info: _line_info), worked out once: its direction, the
-    letters' extents along it, the ink's ends, its size; None for a line of spaces only."""
+    letters' extents along it, the ink's ends, its size, and where its run of letters ends
+    (found: _read_area's letters); None for a line of spaces only."""
     dx, dy = line["dir"]
     nx, ny = -dy, dx                    # "down", across the text
     ox, oy = line["spans"][0]["origin"]
@@ -351,15 +399,46 @@ def _line_geom(line, info):
     ink = [x for x in ext if not info[x[0]][0].isspace()]
     if not ink:
         return None
-    return (dx, dy, nx, ny, ox * nx + oy * ny, size, ext,
-            min(x[1] for x in ink), max(x[2] for x in ink), max(0.75, 0.15 * size))
+    lo, hi = min(x[1] for x in ink), max(x[2] for x in ink)
+    tol = max(0.75, 0.15 * size)
+    return (dx, dy, nx, ny, ox * nx + oy * ny, size, ext, lo, hi, tol) + \
+        _run_ends(line, found, lo, hi, size)
+
+
+def _run_ends(line, found, lo, hi, size):
+    """Where the run of letters line's ink (from lo to hi along it) is part of starts and
+    ends: the letters of its size on its baseline, with no gap wider than a space between.
+    (MuPDF reads one run as two lines when other text lies on its baseline: a restyled line
+    grown into the next column's text, its underline running on past the line read. Nightly
+    battery, issue #135, seed 2026112603)"""
+    row = None
+    for s in line["spans"] if found else ():
+        if s["text"]:
+            hit = found.get((s["text"][0], round(s["origin"][0], 1), round(s["origin"][1], 1),
+                             round(s["size"], 1)))
+            if hit is not None:
+                row = hit[0]
+                break
+    if row is None:
+        return lo, hi
+    mine = [k for k, e in enumerate(row) if lo - 0.01 <= (e[3] + e[4]) / 2 <= hi + 0.01]
+    if not mine:
+        return lo, hi
+    gap = 0.5 * size
+    a, b = mine[0], mine[-1]
+    while a > 0 and row[a][3] - row[a - 1][4] <= gap:
+        a -= 1
+    while b + 1 < len(row) and row[b + 1][3] - row[b][4] <= gap:
+        b += 1
+    ink = [e for e in row[a:b + 1] if not e[0].isspace()]
+    return min([lo] + [e[3] for e in ink]), max([hi] + [e[4] for e in ink])
 
 
 def _bar_fit(geom, info, v):
     """How a thin bar v (a drawing) underlines or strikes through a line (geom: _line_geom,
     info: _line_info): (kind, the letters it covers, how far its ends are from theirs), or
     None when it doesn't."""
-    dx, dy, nx, ny, base, size, ext, lo, hi, tol = geom
+    dx, dy, nx, ny, base, size, ext, lo, hi, tol, run_lo, run_hi = geom
     r = pymupdf.Rect(v["bbox"])
     corners = (r.tl, r.tr, r.bl, r.br)
     along = [p.x * dx + p.y * dy for p in corners]
@@ -375,13 +454,16 @@ def _bar_fit(geom, info, v):
         kind = "strike"
     else:
         return None
-    if v0 < lo - tol or v1 > hi + tol:
+    if v0 < run_lo - tol or v1 > run_hi + tol:
         return None                     # longer than the text: a border or a rule
     cov = [x for x in ext if v0 - 0.01 <= (x[1] + x[2]) / 2 <= v1 + 0.01]
     if not any(not info[i][0].isspace() for i, _a, _b in cov):
         return None                     # under spaces only: a form's blank
-    off = abs(min(x[1] for x in cov) - v0) + abs(max(x[2] for x in cov) - v1)
-    if abs(min(x[1] for x in cov) - v0) > tol or abs(max(x[2] for x in cov) - v1) > tol:
+    # (a bar running on before or after the line: it starts or ends where its run does)
+    start = min(x[1] for x in cov) if v0 >= lo - tol else run_lo
+    end = max(x[2] for x in cov) if v1 <= hi + tol else run_hi
+    off = abs(start - v0) + abs(end - v1)
+    if abs(start - v0) > tol or abs(end - v1) > tol:
         return None                     # doesn't start and end with the letters
     return kind, {i for i, _a, _b in cov}, off
 
@@ -393,19 +475,19 @@ def _mark(info, kind, idx):
             info[i][1] = info[i][1]._replace(**{kind: True})
 
 
-def _decorate(line, info, vecs, used):
+def _decorate(line, info, vecs, used, found=None):
     """Mark the letters of line (info: _line_info) that a thin line underlines or strikes
     through; returns the boxes of the lines taken."""
-    return _decorate_lines([(line, info)], vecs, used)[0]
+    return _decorate_lines([(line, info)], vecs, used, found)[0]
 
 
-def _decorate_lines(pairs, vecs, used):
+def _decorate_lines(pairs, vecs, used, found=None):
     """_decorate for several lines ([(line, info)]) read together: each thin line goes to
     the line its ends fit best, whatever the order they're read in (a label lying on a row
     of dots took the row's strikethrough as the dots', and read back not struck through:
     the nightly battery, seed 2026112503). Returns each line's boxes taken."""
     fits = []
-    geoms = [_line_geom(line, info) for line, info in pairs]
+    geoms = [_line_geom(line, info, found) for line, info in pairs]
     for vi, v in enumerate(vecs):
         if vi in used:
             continue
@@ -494,7 +576,7 @@ def read_paragraph(page, lines):
         found, vecs = _read_area(page, _area(lines))
         used, decor, out = set(), [], []
         infos = [_line_info(ln, found) for ln in lines]
-        for got in _decorate_lines(list(zip(lines, infos)), vecs, used):
+        for got in _decorate_lines(list(zip(lines, infos)), vecs, used, found):
             decor += got
         for ln, info in zip(lines, infos):
             decor += _backgrounds(ln, info, vecs, used)
@@ -529,7 +611,8 @@ def read_line(page, line):
         found, vecs = _read_area(page, _area([line]))
         info = _line_info(line, found)
         used = set()
-        decor = _decorate(line, info, vecs, used) + _backgrounds(line, info, vecs, used)
+        decor = _decorate(line, info, vecs, used, found) + \
+            _backgrounds(line, info, vecs, used)
         if "".join(c for c, _k, _e in info) != text:
             return _uniform(text, te.main_span(line))
         keys = _even_sizes([k for _c, k, _e in info], te.main_span(line)["size"])
@@ -556,7 +639,7 @@ def read_lines(page, lines):
             infos.append(None)          # (read as one style below)
     ok = [(ln, info) for ln, info in zip(lines, infos) if info is not None]
     try:
-        bars = iter(_decorate_lines(ok, vecs, used))
+        bars = iter(_decorate_lines(ok, vecs, used, found))
     except Exception:
         return [_uniform(te.line_text(ln), te.main_span(ln)) for ln in lines]
     for ln, info in zip(lines, infos):
