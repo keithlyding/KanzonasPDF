@@ -9,6 +9,21 @@ Spanish translation under `## <version> (es)`. The Windows build fails without t
 translation under `## <version> (it)` is shown to Italian users (since 1.13); without one they
 see the English.
 
+## 1.17.2
+
+**Fixed**
+- Changing the style of the page's text (Properties with text selected in Edit objects) no longer takes away other text lying past the page's edge within the changed lines.
+
+## 1.17.2 (es)
+
+**Correcciones**
+- Cambiar el estilo del texto de la página (Propiedades con texto seleccionado en Editar objetos) ya no quita otro texto situado más allá del borde de la página dentro de las líneas cambiadas.
+
+## 1.17.2 (it)
+
+**Correzioni**
+- Cambiare lo stile del testo della pagina (Proprietà con testo selezionato in Modifica oggetti) non toglie più altro testo che si trova oltre il bordo della pagina all'interno delle righe cambiate.
+
 ## 1.17.1
 
 **Fixed**
