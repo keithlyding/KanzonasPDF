@@ -224,7 +224,7 @@ def _area(lines):
 
 def _read_area(page, area):
     """The letters around area as MuPDF reads them with their drawing styles, and the thin
-    straight drawings nearby: ({(char, x, y): (row, index)} by each letter's origin, where
+    straight drawings nearby: ({(char, x, y, size): (row, index)} by each letter's origin, where
     row is the letters of one size on that baseline in order along it, each [char, flags,
     shear, a0, a1]; the drawings). (MuPDF splits a line where its letters' style changes:
     the letters are put in order along their baseline again.)"""
@@ -257,10 +257,13 @@ def _read_area(page, area):
                      ox * dx + oy * dy, ox, oy])
     found = {}
     thick = []
-    for row in rows.values():
+    for rk, row in rows.items():
         row.sort(key=lambda e: e[5])
+        found[("row",) + rk] = row      # (and each row by its key: _span_entries_along)
         for i, e in enumerate(row):
-            found.setdefault((e[0], round(e[6], 1), round(e[7], 1)), (row, i))
+            # (by size too: a copy of a line in another size starting at the same point, its
+            # letters taken for this one's. Nightly battery, issue #135, seed 2026112603)
+            found.setdefault((e[0], round(e[6], 1), round(e[7], 1), rk[3]), (row, i))
             if e[1] & _FILLED and e[1] & _STROKED:
                 thick.append(e)
     if thick:
@@ -310,14 +313,18 @@ def _same_color(a, b):
     return all(abs(((a >> s) & 255) - ((b >> s) & 255)) <= 3 for s in (0, 8, 16))
 
 
-def _span_entries(span, found):
-    """Per character of the span: its [char, flags, shear, a0, a1, ...] as read, or None."""
+def _span_entries(span, found, d=None):
+    """Per character of the span: its [char, flags, shear, a0, a1, ...] as read, or None.
+    d: the line's direction."""
     text = span["text"]
     out = [None] * len(text)
     if not text:
         return out
     o = span["origin"]
-    hit = found.get((text[0], round(o[0], 1), round(o[1], 1)))
+    size = round(span["size"], 1)
+    hit = found.get((text[0], round(o[0], 1), round(o[1], 1), size))
+    if hit is None and d is not None and len(text) > 1:
+        return _span_entries_along(span, found, d, out)
     if hit is None:
         return out
     row, i = hit
@@ -325,6 +332,34 @@ def _span_entries(span, found):
         if i + k >= len(row) or row[i + k][0] != ch:
             break
         out[k] = row[i + k]
+    return out
+
+
+def _span_entries_along(span, found, d, out):
+    """_span_entries for a span whose first letter wasn't read: MuPDF takes a letter drawn
+    where the same letter already is (a copy of the line in another size starting at the
+    same point) for a bold one's second stroke and leaves it out. Its other letters are
+    found on its baseline, and the first one is taken to run from where the span starts to
+    the next. (Nightly battery, issue #135, seed 2026112603)"""
+    text, (ox, oy), (dx, dy) = span["text"], span["origin"], d
+    base, at = oy * dx - ox * dy, ox * dx + oy * dy
+    row = None
+    for db in (0, -0.01, 0.01):
+        row = found.get(("row", round(dx, 2), round(dy, 2), round(base + db, 2),
+                         round(span["size"], 1)))
+        if row is not None:
+            break
+    if not row:
+        return out
+    j = next((j for j, e in enumerate(row) if e[5] >= at + 0.01), None)
+    if j is None or row[j][0] != text[1]:
+        return out
+    for k in range(1, len(text)):
+        if j + k - 1 >= len(row) or row[j + k - 1][0] != text[k]:
+            break
+        out[k] = row[j + k - 1]
+    if out[1] is not None and out[1][3] > at:
+        out[0] = [text[0]] + list(out[1][1:3]) + [at, out[1][3]] + [at, ox, oy]
     return out
 
 
@@ -338,7 +373,7 @@ def _line_info(line, found):
             if gap > 0.15 * s["size"] and not (out and out[-1][0] == " ") and \
                     not s["text"].startswith(" "):
                 out.append([" ", out[-1][1] if out else span_style(prev), None])
-        entries = _span_entries(s, found) if found else [None] * len(s["text"])
+        entries = _span_entries(s, found, line["dir"]) if found else [None] * len(s["text"])
         styles = {}
         for ch, e in zip(s["text"], entries):
             sb = bool(e and e[1] & _FILLED and e[1] & _STROKED and len(e) > 8 and
@@ -379,7 +414,8 @@ def _run_ends(line, found, lo, hi, size):
     row = None
     for s in line["spans"] if found else ():
         if s["text"]:
-            hit = found.get((s["text"][0], round(s["origin"][0], 1), round(s["origin"][1], 1)))
+            hit = found.get((s["text"][0], round(s["origin"][0], 1), round(s["origin"][1], 1),
+                             round(s["size"], 1)))
             if hit is not None:
                 row = hit[0]
                 break

@@ -716,6 +716,15 @@ def _text_at(texts, r):
     return best
 
 
+def _line_key(line):
+    """A line of the page's text told from others: its words, where it starts, its size and
+    font."""
+    span = text_edit.main_span(line)
+    o = line["spans"][0]["origin"]
+    return (text_edit.line_text(line).strip(), round(o[0], 1), round(o[1], 1),
+            round(span["size"], 1), span["font"])
+
+
 class _Canvas(QWidget):
     """The gray canvas the pages lie on. In CAD mode a selection box or lasso can start (and
     end) on it, off the page: a sheet covered by one object (a background, a scan) leaves no
@@ -8451,19 +8460,29 @@ class DocumentView(QScrollArea):
 
     TEXT_N = 10 ** 9                   # Edit objects numbers text paragraphs from here
 
-    def _text_again(self, index, item, rect, texts_now, k=0):
+    def _text_again(self, index, item, rect, texts_now, k=0, at=None):
         """The text item selected again after an edit moved it to rect: its own lines, where
         they are now. Moved onto other text, the page's paragraphs take both in as one (the
         owner, 11 Nov: arrow keys carried the block a paragraph passed over along with it):
-        then an item of just its lines is made."""
+        then an item of just its lines is made. at: [(rect, text)] where each of its lines
+        is now, when the edit knows (a restyle: its lines grew apart)."""
         d = pymupdf.Point(rect.x0 - item["rect"].x0, rect.y0 - item["rect"].y0)
         now = self._lines(index)
         mine = []
-        for rr, ln in item.get("lines") or []:
+        olds = item.get("lines") or []
+        if at is not None:
+            olds = [(r, {"text": t}) for r, t in at]
+            d = pymupdf.Point(0, 0)
+        for rr, ln in olds:
             want = pymupdf.Rect(rr) + (d.x, d.y, d.x, d.y)
-            text = text_edit.line_text(ln)
-            hit = next((h for h in now if text_edit.line_text(h[1]) == text and
-                        abs(h[0].x0 - want.x0) < 2 and abs(h[0].y0 - want.y0) < 2), None)
+            text = ln["text"] if at is not None else text_edit.line_text(ln)
+            hits = [h for h in now if text_edit.line_text(h[1]) == text and
+                    abs(h[0].x0 - want.x0) < 2 and abs(h[0].y0 - want.y0) < 2]
+            # (the last: what's written again is put after the page's other text, and a copy
+            # of it lying there, untouched, comes first)
+            hit = (hits[-1] if at is not None else hits[0]) if hits else None
+            if hit is None and at is not None:
+                return self._text_again(index, item, rect, texts_now, k)
             if hit is None:
                 # moved up to another line, the page reads them as one (a page number put
                 # beside its leader dots: random battery, seed 31): its own spans in it
@@ -9634,7 +9653,8 @@ class DocumentView(QScrollArea):
             again = [it for it in (objs.items if objs else []) if it["n"] in wanted]
             texts_now = self.text_objects(index) if fresh.get("text_rects") else []
             for k, (it, r) in enumerate(zip(texts, fresh.get("text_rects") or [])):
-                found = self._text_again(index, it, r, texts_now, k)
+                r, at = r if isinstance(r, tuple) else (r, None)
+                found = self._text_again(index, it, r, texts_now, k, at)
                 if found is not None and all(found is not x for x in again):
                     again.append(found)
             self.obj_sel = (index, again) if again else None
@@ -10009,6 +10029,12 @@ class DocumentView(QScrollArea):
                     st = text_styles.read_lines(page, lines[:1])[0]
                     main = text_styles.main_style(st.text, st.keys, st.main).size
                     ratio[id(it)] = float(size) / main if size and main > 0 else 1.0
+                # (the lines as they are: of the lines with its words where one of its lines
+                # is now, the restyled one is one that wasn't there before, else the last,
+                # as what's written again goes after the page's other text. A legend lying
+                # on a copy of itself was selected again as the copy, not underlined:
+                # nightly battery, issue #135, seed 2026112603)
+                before = {_line_key(ln) for _r, ln in text_edit.text_lines(page)}
                 used += text_edit.restyle_lines(page, paras, change, family=family,
                                                 size=float(size) if size else None,
                                                 blocks=self._blocks_of(here))
@@ -10019,16 +10045,28 @@ class DocumentView(QScrollArea):
                     lines = [ln for _r, ln in it["lines"]]
                     first = pymupdf.Point(lines[0]["spans"][0]["origin"])
                     box = pymupdf.Rect()
+                    at = []
                     for ln in lines:
                         o = pymupdf.Point(ln["spans"][0]["origin"])
                         want = first + (o - first) * ratio[id(it)]
-                        hit = next((r for r, h in now if text_edit.line_text(h).strip() ==
-                                    text_edit.line_text(ln).strip() and
-                                    abs(pymupdf.Point(h["spans"][0]["origin"]) - want) < 0.75),
-                                   None)
-                        if hit is not None:
-                            box |= hit
-                    boxes[id(it)] = box if not box.is_empty else it["rect"]
+                        words = text_edit.line_text(ln).strip()
+                        near = [(r, h) for r, h in now
+                                if abs(pymupdf.Point(h["spans"][0]["origin"]) - want) < 0.75]
+                        hits = [(r, h) for r, h in near
+                                if text_edit.line_text(h).strip() == words]
+                        # (or the start of it: grown onto other text on its baseline, the page
+                        # reads the rest of it in that text's line)
+                        hits = hits or [(r, h) for r, h in near if text_edit.line_text(h).strip()
+                                        and words.startswith(text_edit.line_text(h).strip())]
+                        got = next((x for x in hits if _line_key(x[1]) not in before),
+                                   hits[-1] if hits else None)
+                        if got is not None:
+                            box |= got[0]
+                            at.append((pymupdf.Rect(got[0]), text_edit.line_text(got[1])))
+                    # (its lines where they are now too: the page's paragraphs, read again,
+                    # can take a line of other text lying there in; see _text_again)
+                    boxes[id(it)] = (box, at) if len(at) == len(lines) else \
+                        box if not box.is_empty else it["rect"]
             for it in rewrap:
                 lines = [ln for _r, ln in it["lines"]]
                 st = text_styles.read_paragraph(page, lines)

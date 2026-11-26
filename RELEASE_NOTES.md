@@ -14,18 +14,21 @@ see the English.
 **Fixed**
 - Changing the style of the page's text (Properties with text selected in Edit objects) no longer takes away other text lying past the page's edge within the changed lines.
 - Properties shows Underline and Strikethrough for page text whose line runs into other text on the same line, such as a legend's line made bigger. It showed them off.
+- Text restyled where a copy of it lies (two legends placed on top of each other) stays selected afterwards, and Properties shows its new style. The copy's lines were selected in its place.
 
 ## 1.17.2 (es)
 
 **Correcciones**
 - Cambiar el estilo del texto de la página (Propiedades con texto seleccionado en Editar objetos) ya no quita otro texto situado más allá del borde de la página dentro de las líneas cambiadas.
 - Propiedades muestra Subrayado y Tachado del texto de la página cuya línea llega hasta otro texto en la misma línea, como una línea de una leyenda agrandada. Los mostraba desactivados.
+- El texto cuyo estilo se cambia donde hay una copia suya (dos leyendas colocadas una sobre otra) sigue seleccionado después, y Propiedades muestra su nuevo estilo. Se seleccionaban en su lugar las líneas de la copia.
 
 ## 1.17.2 (it)
 
 **Correzioni**
 - Cambiare lo stile del testo della pagina (Proprietà con testo selezionato in Modifica oggetti) non toglie più altro testo che si trova oltre il bordo della pagina all'interno delle righe cambiate.
 - Proprietà mostra Sottolinea e Barrato del testo della pagina la cui riga arriva fino ad altro testo sulla stessa riga, come una riga di una legenda ingrandita. Li mostrava disattivati.
+- Il testo a cui si cambia lo stile dove c'è una sua copia (due legende messe una sopra l'altra) resta selezionato dopo, e Proprietà mostra il suo nuovo stile. Al suo posto venivano selezionate le righe della copia.
 
 ## 1.17.1
 

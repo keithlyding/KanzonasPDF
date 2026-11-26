@@ -202,6 +202,37 @@ class OffThePage(unittest.TestCase):
         self.assertIn("Squiggly sample", texts)
 
 
+class OnACopyOfItself(unittest.TestCase):
+    def test_restyled_text_lying_on_a_copy_stays_selected_and_reads_back(self):
+        # (two legends drawn at one place, one longer: restyled, the longer one was selected
+        # again with the other's title, and its own title, starting where the copy's does,
+        # read with no letters (MuPDF leaves out a letter drawn on the same letter): it read
+        # back not underlined. Nightly battery, issue #135, seed 2026112603)
+        from kanzonas.document_view import DocumentView
+        d = pymupdf.open()
+        p = d.new_page()
+        words = ["Legend", "APPROVED", "Attached file", "Dimension"]
+        for n in (2, 4):
+            for k, w in enumerate(words[:n]):
+                p.insert_text((72, 100 + 14 * k), w, fontsize=10.8 if k == 0 else 9,
+                              fontname="hebo" if k == 0 else "helv")
+        path = os.path.join(tempfile.mkdtemp(), "copies.pdf")
+        d.save(path)
+        v = DocumentView(path)
+        self.addCleanup(v.close_doc)
+        self.addCleanup(setattr, v, "dirty", False)
+        longer = [it for it in v.text_objects(0) if len(it["lines"]) == 4]
+        self.assertEqual(len(longer), 1)
+        v.select_objects(0, longer)
+        v.style_text_objects({"underline": True, "fontsize": 14.5})
+        lines = [ln for _r, ln in v.obj_sel[1][0]["lines"]]
+        self.assertEqual("".join(text_edit.line_text(ln) for ln in lines).replace(" ", ""),
+                         "".join(words).replace(" ", ""))      # (its own lines, not the copy's)
+        self.assertEqual({round(text_edit.main_span(ln)["size"], 1) for ln in lines}, {14.5})
+        got = v.object_text_style()
+        self.assertEqual((got["underline"], got["fontsize"]), (True, 14.5))
+
+
 class OnABigSheet(unittest.TestCase):
     def test_400_labels_made_bold_quickly(self):
         # (each line read on its own walked the whole drawing: 8.7 s here, 1.0 s read once)
