@@ -25,7 +25,7 @@ from . import annotations, dialogs, hit_index, review, signatures, smart_forms, 
 from .i18n import tr
 from .inline_editor import InlineEditor
 from .outside import page_outside_margins
-from . import markup_layers
+from . import markup_layers, render_layers
 from . import spaces
 from .page_widget import PageWidget
 
@@ -2670,6 +2670,8 @@ class DocumentView(QScrollArea):
             self.forget_margins(None if pages is None else
                                 [i for i in pages if 0 <= i < len(self.pages)])
             self.documentChanged.emit()
+        # (the pages drawn as opened afresh: see there)
+        render_layers.refresh_blending(self.doc, None if structural else pages)
         return True
 
     def _refresh_tags(self, pages, structural, changed=None):
@@ -2958,6 +2960,7 @@ class DocumentView(QScrollArea):
         self._measure_journal()
         self._trim_history()
         self._warm_tags()
+        render_layers.refresh_blending(self.doc)     # (drawn as opened afresh: see there)
         self._select_kept(kept)
         if self._layer_keys() != layers:
             # (a layer made or taken away, as the first drawing on the Drawing tab makes

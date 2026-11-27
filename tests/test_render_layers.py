@@ -379,6 +379,42 @@ class PageTransparency(unittest.TestCase):
         v.undo()
         self.check(v, "back to the start")
 
+    def test_drawn_straight_from_the_document(self):
+        # (Export to images, Find similar, OCR and the presentation draw a page straight from
+        # the document, nothing put right first: a page off screen given a multiplying fill
+        # drew as before it, from the answer MuPDF kept in the page's resources when it was
+        # drawn before. Nightly battery, issue #135, seed 2026112704 step 152)
+        import gc
+        d = pymupdf.open()
+        for n in range(2):
+            d.new_page(width=612, height=792).insert_text((72, 100), "Page %d" % n,
+                                                          fontsize=18)
+        path = os.path.join(tempfile.mkdtemp(), "two.pdf")
+        d.save(path)
+        v = DocumentView(path)
+        self.addCleanup(v.close_doc)
+        self.addCleanup(setattr, v, "dirty", False)
+
+        def check(why):
+            gc.collect()
+            same(self, expected(v.doc[1], 1.0), fresh(v, 1, 1.0), why)
+        check("as opened")                  # (MuPDF reads the page: no blending, kept)
+
+        def fill():
+            page = v.doc[1]
+            res = v.doc.xref_get_key(page.xref, "Resources")[1]
+            v.doc.xref_set_key(int(res.split()[0]), "ExtGState",
+                               "<</KZMul <</Type/ExtGState/BM/Multiply>>>>")
+            data = page.read_contents() + b"\nq /KZMul gs 1 1 0 rg 72.3 80.7 150.2 26.1 re f Q\n"
+            v.doc.update_stream(page.get_contents()[0], data)
+        v.modify(fill, pages=[1])
+        self.assertEqual(RL.transparency(v.doc[1]), 1)
+        check("a multiplying fill added")
+        v.undo()
+        check("undone")
+        v.redo()
+        check("redone")
+
     def test_as_mupdf_works_it_out(self):
         # what transparency() says of pages opened afresh is what MuPDF says
         d = pymupdf.open(marked_pdf())

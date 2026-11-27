@@ -89,6 +89,7 @@ class _Blending:
 
     def __init__(self):
         self.memo = {}                  # object number -> answer (False while being read)
+        self.read = []                  # (resource dictionary, answer) for each one read
 
     def _once(self, obj, fn):
         m = pymupdf.mupdf
@@ -117,7 +118,10 @@ class _Blending:
             yield m.pdf_dict_get_val(d, i)
 
     def resources(self, rdb):
-        return self._once(rdb, self._resources)
+        got = self._once(rdb, self._resources)
+        if rdb is not None:
+            self.read.append((rdb, got))
+        return got
 
     def _resources(self, rdb):
         if any(self._extgstate(v) for v in self._values(_get(rdb, "ExtGState"))):
@@ -205,6 +209,61 @@ def sync_transparency(page):
         return t
     except Exception:                   # (another PyMuPDF)
         return None
+
+
+_MEMO_BM = 0                            # (MuPDF's PDF_FLAGS_MEMO_BM)
+
+
+def _fix_memos(doc, pages):
+    """Put MuPDF's own answer to "do these resources use blending" (the memo it keeps in
+    each resource dictionary it read, which nothing clears) right for pages (indices; None:
+    all), worked out afresh (_Blending): the page's resources and its markups' appearances,
+    as MuPDF reads them when it loads a page."""
+    m = pymupdf.mupdf
+    pdf = pymupdf._as_pdf_document(doc)
+    b = _Blending()
+    for i in range(doc.page_count) if pages is None else pages:
+        if not 0 <= i < doc.page_count:
+            continue
+        obj = m.pdf_lookup_page_obj(pdf, i)
+        res = m.pdf_dict_get_inheritable(obj, _name("Resources"))
+        if res.m_internal:
+            b.resources(res)
+        annots = _get(obj, "Annots")
+        for k in range(m.pdf_array_len(annots) if annots is not None else 0):
+            a = m.pdf_array_get(annots, k)
+            ap = _annot_ap(pdf, a) if m.pdf_is_dict(a) else None
+            if ap is not None:
+                b.resources(_get(ap, "Resources"))
+    for rdb, got in b.read:
+        m.pdf_set_obj_memo(rdb, _MEMO_BM, int(got))
+
+
+def refresh_blending(doc, pages=None):
+    """After an edit, an undo or a redo of pages (indices; None: any): MuPDF's memos of
+    which resources use blending put right for them (_fix_memos), and sync_transparency for
+    every page of doc that MuPDF has loaded and in use. Without it a page given a blend mode
+    (a multiplying fill), or one that lost it, kept the answer from before: loaded again
+    from the memo, or held open (by the view, a markup, a thumbnail) as it was loaded, so
+    whatever drew it straight from the document (Export to images, the presentation, OCR,
+    Find similar) drew it a level of color apart from the same page opened afresh. Found by
+    the nightly battery (issue #135, seed 2026112704 step 152: Auto-tag "changed" a page
+    given a multiplying fill: drawn before it as from the memo, after it as afresh)."""
+    try:
+        if not doc.is_pdf:
+            return
+        _fix_memos(doc, pages)
+        numbers = []
+        p = doc.this.m_internal.open
+        while p:
+            if p.refs > 0:
+                numbers.append(p.number)
+            p = p.next
+    except Exception:                   # (another PyMuPDF: MuPDF's list isn't reachable)
+        return
+    for n in numbers:
+        if 0 <= n < doc.page_count:
+            sync_transparency(doc[n])
 
 
 def content_key(page):
