@@ -9,6 +9,21 @@ Spanish translation under `## <version> (es)`. The Windows build fails without t
 translation under `## <version> (it)` is shown to Italian users (since 1.13); without one they
 see the English.
 
+## 1.17.3
+
+**Fixed**
+- A page given a see-through blend, such as a highlight made part of the page, is exported to images, shown in Presentation and searched by Find similar and OCR exactly as it looks once saved and opened again. Before it was saved, its colors could come out a shade off.
+
+## 1.17.3 (es)
+
+**Correcciones**
+- Una página con una mezcla transparente, como un resaltado convertido en parte de la página, se exporta a imágenes, se muestra en la Presentación y la recorren Buscar similares y el OCR exactamente como se ve una vez guardada y abierta de nuevo. Antes de guardarla, sus colores podían salir con un tono de diferencia.
+
+## 1.17.3 (it)
+
+**Correzioni**
+- Una pagina con una fusione trasparente, come un'evidenziazione resa parte della pagina, viene esportata in immagini, mostrata nella Presentazione e letta da Trova simili e dall'OCR esattamente come appare una volta salvata e riaperta. Prima di salvarla, i suoi colori potevano uscire di una sfumatura diversi.
+
 ## 1.17.2
 
 **Fixed**
